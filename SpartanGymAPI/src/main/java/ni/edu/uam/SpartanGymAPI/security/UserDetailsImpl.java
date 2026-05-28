@@ -1,6 +1,9 @@
 package ni.edu.uam.SpartanGymAPI.security;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.models.Usuario;
+import jakarta.annotation.Nonnull;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -8,28 +11,26 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
+@Getter
+@RequiredArgsConstructor
 public class UserDetailsImpl implements UserDetails {
 
     private final Usuario usuario;
 
-    public UserDetailsImpl(Usuario usuario) {
-        this.usuario = usuario;
-    }
-
-    // --- ¡ESTE ES EL MÉTODO QUE FALTABA! ---
     @Override
+    @Nonnull
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Traducimos tu tabla "Rol" a la autoridad que entiende Spring
         return List.of(new SimpleGrantedAuthority(usuario.getRol().getNombre()));
     }
-    // ----------------------------------------
 
     @Override
+    @Nonnull
     public String getPassword() {
         return usuario.getPasswordHash();
     }
 
     @Override
+    @Nonnull
     public String getUsername() {
         return usuario.getEmail();
     }
@@ -52,10 +53,5 @@ public class UserDetailsImpl implements UserDetails {
     @Override
     public boolean isEnabled() {
         return usuario.getActivo();
-    }
-
-    // Método extra por si necesitamos el UUID original después
-    public Usuario getUsuario() {
-        return usuario;
     }
 }

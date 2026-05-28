@@ -1,26 +1,26 @@
 package ni.edu.uam.SpartanGymAPI.security;
 
+import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.models.Usuario;
 import ni.edu.uam.SpartanGymAPI.repositories.UsuarioRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.Nonnull;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    private final UsuarioRepository usuarioRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        // Va a la base de datos a buscar si el correo del socio o entrenador existe
+    @Nonnull
+    public UserDetails loadUserByUsername(@Nonnull String email) throws UsernameNotFoundException {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
 
-        // Aquí es donde usamos la clase que creaste antes, por lo que los avisos amarillos se irán
         return new UserDetailsImpl(usuario);
     }
 }
