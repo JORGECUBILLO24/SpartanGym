@@ -28,5 +28,5 @@ public class Usuario {
     private Boolean activo = true;
 
     @Column(name = "fecha_creacion", updatable = false)
-    private LocalDateTime fechaCreacion = LocalDateTime.now()
+    private LocalDateTime fechaCreacion = LocalDateTime.now();
 }

@@ -15,7 +15,7 @@ public class Personal {
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
-    @JoinColumn(name = usuario_id)
+    @JoinColumn(name = "usuario_id")
     private Usuario usuario;
 
     @Column(nullable = false, length = 100)
