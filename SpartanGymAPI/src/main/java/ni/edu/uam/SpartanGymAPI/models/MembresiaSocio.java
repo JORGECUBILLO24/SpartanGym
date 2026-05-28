@@ -7,16 +7,16 @@ import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "membresias_activas")
-public class MembresiaActiva {
+@Table(name = "membresias_socio")
+public class MembresiaSocio {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    // Relación 1 a 1 para asegurar que solo exista UNA activa por socio
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "socio_id", nullable = false, unique = true)
+    // Ahora es ManyToOne: Un socio puede tener un historial de muchas membresías
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "socio_id", nullable = false)
     private Socio socio;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -32,4 +32,7 @@ public class MembresiaActiva {
 
     @Column(name = "fecha_vencimiento", nullable = false)
     private LocalDate fechaVencimiento;
+
+    @Column(length = 20)
+    private String estado = "Activa";
 }
