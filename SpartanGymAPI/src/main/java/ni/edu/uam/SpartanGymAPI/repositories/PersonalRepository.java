@@ -1,6 +1,6 @@
-package ni.edu.uam.spartangym.repositories;
+package ni.edu.uam.SpartanGymAPI.repositories;
 
-import ni.edu.uam.spartangym.models.Personal;
+import ni.edu.uam.SpartanGymAPI.models.Personal;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.UUID;
