@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface TipoMembresiaRepository extends JpaRepository<TipoMembresia, Integer> {
-    Optional<TipoMembresia> findbyNombre(String nombre);
+    Optional<TipoMembresia> findByNombre(String nombre);
 }
