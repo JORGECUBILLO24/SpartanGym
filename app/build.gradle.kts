@@ -40,7 +40,10 @@ android {
 }
 
 dependencies {
+    // 1. BOM de Jetpack Compose (Version Catalog)
     implementation(platform(libs.androidx.compose.bom))
+
+    // 2. Dependencias de UI y Material 3 originales
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
@@ -48,6 +51,11 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    // 3. ✨ ESTA ES LA DEPENDENCIA EXTRA PARA LOS ICONOS
+    implementation("androidx.compose.material:material-icons-extended")
+
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
