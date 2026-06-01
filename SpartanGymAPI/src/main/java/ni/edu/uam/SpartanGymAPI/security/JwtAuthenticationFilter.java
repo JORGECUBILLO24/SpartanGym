@@ -43,26 +43,42 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 2. Recortamos la palabra "Bearer " (7 caracteres) para quedarnos solo con el token
         jwt = authHeader.substring(7);
-        userEmail = jwtService.extractUsername(jwt);
 
-        // 3. Si extrajimos un correo y el usuario aún no está autenticado en el contexto actual
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-
-            // 4. Validamos que el token sea correcto y no haya expirado
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-                // Registramos al usuario como autenticado
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+        // --- ESCUDO 1: Token Vacío ---
+        // Previene el error de Postman cuando envía "Bearer " con un espacio en blanco al final
+        if (jwt.trim().isEmpty()) {
+            filterChain.doFilter(request, response);
+            return;
         }
+
+        // --- ESCUDO 2: Manejo de errores de JWT ---
+        try {
+            userEmail = jwtService.extractUsername(jwt);
+
+            // 3. Si extrajimos un correo y el usuario aún no está autenticado en el contexto actual
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+
+                // 4. Validamos que el token sea correcto y no haya expirado
+                if (jwtService.isTokenValid(jwt, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails,
+                            null,
+                            userDetails.getAuthorities()
+                    );
+                    authToken.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    );
+                    // Registramos al usuario como autenticado
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            }
+        } catch (Exception e) {
+            // Si el token es inválido, está corrupto o mal formado, no hacemos crashear el servidor.
+            // Limpiamos la sesión temporalmente y dejamos que Spring Security rechace la petición si es privada.
+            SecurityContextHolder.clearContext();
+        }
+
         // Continuamos con el flujo normal de la petición
         filterChain.doFilter(request, response);
     }
