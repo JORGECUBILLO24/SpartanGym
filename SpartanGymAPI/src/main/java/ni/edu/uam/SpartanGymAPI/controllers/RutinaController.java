@@ -16,7 +16,6 @@ public class RutinaController {
 
     @PostMapping
     public ResponseEntity<Rutina> crearRutina(@RequestBody RutinaRequest request) {
-        Rutina nuevaRutina = rutinaService.crearRutina(request);
-        return ResponseEntity.ok(nuevaRutina);
+        return ResponseEntity.ok(rutinaService.crearRutinaPersonalizada(request));
     }
 }
