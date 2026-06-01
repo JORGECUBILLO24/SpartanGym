@@ -15,9 +15,6 @@ public class Ejercicio {
     private String nombre;
 
     @ManyToOne
-    @JoinColumn(name = "id_grupo_muscular", nullable = false)
+    @JoinColumn(name = "grupo_muscular_id", nullable = false)
     private GrupoMuscular grupoMuscular;
-
-    @Column(length = 500)
-    private String descripcion;
 }
