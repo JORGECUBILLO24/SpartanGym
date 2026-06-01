@@ -1,18 +1,13 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
 import lombok.RequiredArgsConstructor;
-import ni.edu.uam.SpartanGymAPI.dto.RutinaDetalleRequest;
 import ni.edu.uam.SpartanGymAPI.dto.RutinaRequest;
-import ni.edu.uam.SpartanGymAPI.models.Ejercicio;
-import ni.edu.uam.SpartanGymAPI.models.Personal;
-import ni.edu.uam.SpartanGymAPI.models.Rutina;
-import ni.edu.uam.SpartanGymAPI.models.RutinaDetalle;
-import ni.edu.uam.SpartanGymAPI.repositories.EjercicioRepository;
-import ni.edu.uam.SpartanGymAPI.repositories.PersonalRepository;
-import ni.edu.uam.SpartanGymAPI.repositories.RutinaRepository;
+import ni.edu.uam.SpartanGymAPI.models.*;
+import ni.edu.uam.SpartanGymAPI.repositories.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,28 +17,29 @@ public class RutinaService {
 
     private final RutinaRepository rutinaRepository;
     private final PersonalRepository personalRepository;
+    private final SocioRepository socioRepository;
     private final EjercicioRepository ejercicioRepository;
 
     @Transactional
-    public Rutina crearRutina(RutinaRequest request) {
-        // 1. Validar al entrenador
+    public Rutina crearRutinaPersonalizada(RutinaRequest request) {
         Personal entrenador = personalRepository.findById(request.getIdEntrenador())
                 .orElseThrow(() -> new RuntimeException("Entrenador no encontrado"));
 
-        // 2. Crear cabecera de la rutina
-        Rutina rutina = new Rutina();
-        rutina.setNombre(request.getNombre());
-        rutina.setDescripcion(request.getDescripcion());
-        rutina.setNivel(request.getNivel());
-        rutina.setEntrenador(entrenador);
+        Socio socio = socioRepository.findById(request.getIdSocio())
+                .orElseThrow(() -> new RuntimeException("Socio no encontrado"));
 
-        // 3. Mapear y validar los detalles
+        Rutina rutina = new Rutina();
+        rutina.setEntrenador(entrenador);
+        rutina.setSocio(socio);
+        rutina.setObjetivo(request.getObjetivo());
+        rutina.setFechaAsignacion(LocalDateTime.now());
+
         List<RutinaDetalle> detalles = request.getDetalles().stream().map(dto -> {
             Ejercicio ejercicio = ejercicioRepository.findById(dto.getIdEjercicio())
                     .orElseThrow(() -> new RuntimeException("Ejercicio no encontrado con ID: " + dto.getIdEjercicio()));
 
             RutinaDetalle detalle = new RutinaDetalle();
-            detalle.setRutina(rutina); // Relación bidireccional
+            detalle.setRutina(rutina);
             detalle.setEjercicio(ejercicio);
             detalle.setSeries(dto.getSeries());
             detalle.setRepeticiones(dto.getRepeticiones());
@@ -54,8 +50,6 @@ public class RutinaService {
         }).collect(Collectors.toList());
 
         rutina.setDetalles(detalles);
-
-        // 4. Guardar en base de datos (guarda rutina y detalles por el CascadeType.ALL)
         return rutinaRepository.save(rutina);
     }
 }

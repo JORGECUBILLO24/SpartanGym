@@ -6,19 +6,19 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "rutina_detalles")
+@Table(name = "detalle_rutinas")
+@IdClass(RutinaDetalleId.class)
 public class RutinaDetalle {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 
+    @Id
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_rutina", nullable = false)
-    @JsonIgnore // Evita un bucle infinito en la respuesta JSON
+    @JoinColumn(name = "rutina_id", nullable = false)
+    @JsonIgnore
     private Rutina rutina;
 
+    @Id
     @ManyToOne
-    @JoinColumn(name = "id_ejercicio", nullable = false)
+    @JoinColumn(name = "ejercicio_id", nullable = false)
     private Ejercicio ejercicio;
 
     @Column(nullable = false)
