@@ -9,7 +9,6 @@ import java.util.UUID;
 
 @Repository
 public interface MembresiaSocioRepository extends JpaRepository<MembresiaSocio, UUID> {
-
-    // Método vital: Busca el registro de un socio donde el estado sea el que le pasemos (ej. "Activa")
+    // Usamos SocioUsuarioId porque es la llave real del Socio
     Optional<MembresiaSocio> findBySocioUsuarioIdAndEstado(UUID socioId, String estado);
 }
