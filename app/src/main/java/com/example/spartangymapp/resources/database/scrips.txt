@@ -1,0 +1,147 @@
+-- ==========================================
+-- 1. CONFIGURACIÓN INICIAL Y CATÁLOGOS
+-- ==========================================
+CREATE DATABASE spartangym_db;
+
+--  IMPORTANTE: Dependiendo de tu gestor de base de datos (DBeaver, pgAdmin, psql), 
+-- debes conectarte explícitamente a 'spartangym_db' antes de ejecutar lo siguiente.
+-- En psql el comando sería: \c spartangym_db
+
+-- Habilitar la extensión para usar UUIDs autogenerados
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Catálogo de Roles
+CREATE TABLE roles (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) UNIQUE NOT NULL
+);
+
+-- Catálogo de Membresías
+CREATE TABLE tipos_membresia (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) UNIQUE NOT NULL,
+    duracion_dias INT NOT NULL CHECK (duracion_dias > 0),
+    precio DECIMAL(10, 2) NOT NULL CHECK (precio >= 0)
+);
+
+-- Catálogo de Grupos Musculares
+CREATE TABLE grupos_musculares (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) UNIQUE NOT NULL
+);
+
+-- Insertamos datos por defecto (Diccionarios)
+INSERT INTO roles (nombre) VALUES 
+    ('ROLE_ADMIN'), 
+    ('ROLE_RECEPCIONISTA'), 
+    ('ROLE_ENTRENADOR'), 
+    ('ROLE_SOCIO');
+
+INSERT INTO tipos_membresia (nombre, duracion_dias, precio) VALUES 
+    ('Mensual', 30, 30.00), 
+    ('Quincenal', 15, 18.00);
+
+INSERT INTO grupos_musculares (nombre) VALUES 
+    ('Pecho'), ('Espalda'), ('Tríceps'), ('Piernas'), ('Hombros'), ('Bíceps');
+
+
+-- ==========================================
+-- 2. GESTIÓN DE USUARIOS (HERENCIA LÓGICA)
+-- ==========================================
+
+-- Tabla Maestra de Autenticación
+CREATE TABLE usuarios (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    rol_id INT NOT NULL REFERENCES roles(id),
+    activo BOOLEAN DEFAULT TRUE,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Detalles exclusivos de los Socios (Clientes)
+CREATE TABLE socios (
+    usuario_id UUID PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    telefono VARCHAR(20),
+    estado_acceso VARCHAR(20) DEFAULT 'Inactivo' CHECK (estado_acceso IN ('Activo', 'Inactivo', 'Suspendido'))
+);
+
+-- Detalles exclusivos del Personal (Entrenadores, Recepcionistas, Admin)
+CREATE TABLE personal (
+    usuario_id UUID PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    especialidad VARCHAR(100)
+);
+
+
+-- ==========================================
+-- 3. NÚCLEO DEPORTIVO Y RUTINAS
+-- ==========================================
+
+-- Catálogo de Ejercicios
+CREATE TABLE ejercicios (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    grupo_muscular_id INT NOT NULL REFERENCES grupos_musculares(id)
+);
+
+-- Evaluaciones físicas obligatorias previas a la rutina
+CREATE TABLE controles_biometricos (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    socio_id UUID NOT NULL REFERENCES socios(usuario_id) ON DELETE CASCADE,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    peso_kg DECIMAL(5, 2) NOT NULL CHECK (peso_kg > 0),
+    medidas_notas TEXT
+);
+
+-- Cabecera del plan de entrenamiento
+CREATE TABLE rutinas (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    socio_id UUID NOT NULL REFERENCES socios(usuario_id) ON DELETE CASCADE,
+    entrenador_id UUID NOT NULL REFERENCES personal(usuario_id),
+    fecha_asignacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    objetivo VARCHAR(100)
+);
+
+-- El detalle de la rutina
+CREATE TABLE detalle_rutinas (
+    rutina_id UUID NOT NULL REFERENCES rutinas(id) ON DELETE CASCADE,
+    ejercicio_id INT NOT NULL REFERENCES ejercicios(id),
+    series INT NOT NULL CHECK (series > 0),
+    repeticiones INT NOT NULL CHECK (repeticiones > 0),
+    PRIMARY KEY (rutina_id, ejercicio_id)
+);
+
+
+-- ==========================================
+-- 4. MÓDULO FINANCIERO Y ACCESOS
+-- ==========================================
+
+-- Historial inmutable de transacciones
+CREATE TABLE pagos (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    socio_id UUID NOT NULL REFERENCES socios(usuario_id),
+    monto DECIMAL(10, 2) NOT NULL CHECK (monto >= 0),
+    metodo_pago VARCHAR(50) NOT NULL,
+    fecha_transaccion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Control de membresías (Permite historial de renovaciones)
+CREATE TABLE membresias_socio (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    socio_id UUID NOT NULL REFERENCES socios(usuario_id) ON DELETE CASCADE,
+    tipo_membresia_id INT NOT NULL REFERENCES tipos_membresia(id),
+    pago_id UUID NOT NULL REFERENCES pagos(id),
+    fecha_inicio DATE NOT NULL DEFAULT CURRENT_DATE,
+    fecha_vencimiento DATE NOT NULL,
+    estado VARCHAR(20) DEFAULT 'Activa' CHECK (estado IN ('Activa', 'Vencida', 'Cancelada'))
+);
+
+-- 🎯 REGLA DE NEGOCIO: Un socio puede tener muchas membresías en su historial (vencidas), 
+-- pero SOLO UNA puede tener el estado 'Activa' al mismo tiempo.
+CREATE UNIQUE INDEX idx_membresia_activa_unica 
+ON membresias_socio (socio_id) 
+WHERE estado = 'Activa';
