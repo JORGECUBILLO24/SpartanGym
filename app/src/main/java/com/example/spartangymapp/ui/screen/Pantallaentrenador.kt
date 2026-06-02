@@ -363,7 +363,7 @@ fun HeaderTrainer() {
         Image(
             painter = painterResource(id = R.drawable.logo_web),
             contentDescription = "Logo",
-            modifier = Modifier.height(28.dp)
+            modifier = Modifier.height(35.dp)
         )
         BadgedBox(badge = { Badge() { Text("3", fontSize = 9.sp) } }) {
             Icon(Icons.Outlined.Notifications, null, tint = Color.White, modifier = Modifier.size(22.dp))
