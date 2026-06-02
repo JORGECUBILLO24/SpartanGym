@@ -44,6 +44,6 @@ public class AsistenciaService {
     }
 
     public List<Asistencia> obtenerHistorial(UUID socioId) {
-        return asistenciaRepository.findBySocioIdOrderByFechaHoraDesc(socioId);
+        return asistenciaRepository.findBySocioUsuarioIdOrderByFechaHoraDesc(socioId);
     }
 }
