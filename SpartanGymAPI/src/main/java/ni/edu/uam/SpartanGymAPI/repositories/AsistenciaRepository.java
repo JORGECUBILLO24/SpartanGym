@@ -9,5 +9,5 @@ import java.util.UUID;
 
 @Repository
 public interface AsistenciaRepository extends JpaRepository<Asistencia, UUID> {
-    List<Asistencia> findBySocioIdOrderByFechaHoraDesc(UUID socioId);
+    List<Asistencia> findBySocioUsuarioIdOrderByFechaHoraDesc(UUID socioId);
 }

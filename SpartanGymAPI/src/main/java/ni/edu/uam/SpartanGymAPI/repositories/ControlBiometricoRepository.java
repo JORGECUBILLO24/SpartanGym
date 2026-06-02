@@ -9,6 +9,5 @@ import java.util.UUID;
 
 @Repository
 public interface ControlBiometricoRepository extends JpaRepository<ControlBiometrico, UUID> {
-    // Magia de Spring Boot: Busca por socio y los ordena de más antiguo a más reciente
-    List<ControlBiometrico> findBySocioIdOrderByFechaRegistroAsc(UUID socioId);
+    List<ControlBiometrico> findBySocioUsuarioIdOrderByFechaRegistroAsc(UUID socioId);
 }

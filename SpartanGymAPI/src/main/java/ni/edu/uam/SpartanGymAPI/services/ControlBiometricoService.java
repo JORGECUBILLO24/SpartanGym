@@ -35,6 +35,6 @@ public class ControlBiometricoService {
     }
 
     public List<ControlBiometrico> obtenerHistorialProgreso(UUID socioId) {
-        return controlRepository.findBySocioIdOrderByFechaRegistroAsc(socioId);
+        return controlRepository.findBySocioUsuarioIdOrderByFechaRegistroAsc(socioId);
     }
 }
