@@ -1,16 +1,29 @@
-# React + Vite
+<img src="https://github.com/JORGECUBILLO24/SpartanGym/blob/main/Asset/WhatsApp_Image_2026-05-20_at_6.19.35_PM-removebg-preview%20(1).png?raw=true" align="left" width="130" height="130" style="margin-right: 20px; border-radius: 10px;">
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<h1 style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif; text-transform: uppercase; letter-spacing: 2px;">SPARTAN GYM</h1>
+<h3 style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif; text-transform: uppercase;">¡EL SISTEMA QUE NECESITAS PARA SUPERAR TUS LIMITES!</h3>
 
-Currently, two official plugins are available:
+<br clear="left"/>
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+<hr style="border: 1px solid #8B0000;">
 
-## React Compiler
+<h2 style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif; text-transform: uppercase;">¿QUÉ ES SPARTAN GYM?</h2>
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+<p style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif;">
+<strong style="color: #FF0000;">SPARTAN GYM</strong> es la aplicación definitiva diseñada para los verdaderos espartanos del hierro. Olvídate de los cuadernos viejos y las notas aburridas; este sistema está pensado para llevar el control de tus rutinas de <strong style="color: #FF0000;">hipertrofia y fuerza</strong> al siguiente nivel. Es una herramienta robusta, eficiente y con una estética completamente brutal.
+</p>
 
-## Expanding the ESLint configuration
+<p style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif;">
+Si entrenás pesado, buscás optimizar tu volumen de entrenamiento por grupo muscular (Pecho, Espalda, Tríceps, Pierna) y querés ver un progreso real, ¡este proyecto está hecho a tu medida!
+</p>
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+<hr style="border: 1px solid #8B0000;">
+
+<h2 style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif; text-transform: uppercase;">INSTALACIÓN Y CONFIGURACIÓN QUICK START</h2>
+
+<p style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif;">¿Querés probar el proyecto en tu entorno local? Sigue estos sencillos pasos:</p>
+
+<p style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif;"><strong style="color: #FF0000;">1. Clonar el repositorio más salvaje de GitHub:</strong></p>
+
+```bash
+git clone [https://github.com/JORGECUBILLO24/SpartanGym.git](https://github.com/JORGECUBILLO24/SpartanGym.git)
