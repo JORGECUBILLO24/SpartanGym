@@ -1,6 +1,6 @@
-
 package com.example.spartangymapp.ui.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,23 +21,38 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.spartangymapp.R
-import  androidx.compose.ui.graphics.ColorFilter
+import com.example.spartangymapp.viewmodel.LoginViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PantallaInicio() {
+// Inyectamos el ViewModel aquí
+fun PantallaInicio(loginViewModel: LoginViewModel = viewModel()) {
+    val context = LocalContext.current
     var correo by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     var selectedRole by remember { mutableStateOf("") }
+
+    // ── Lógica de MVVM: Escuchar a la API ─────────────────────────────────────
+    LaunchedEffect(loginViewModel.loginSuccess, loginViewModel.errorMessage) {
+        if (loginViewModel.loginSuccess) {
+            Toast.makeText(context, "¡Bienvenido, ${loginViewModel.userRole}!", Toast.LENGTH_SHORT).show()
+            // TODO: Aquí agregaremos el código para saltar a la siguiente pantalla
+        }
+        if (loginViewModel.errorMessage != null) {
+            Toast.makeText(context, loginViewModel.errorMessage, Toast.LENGTH_LONG).show()
+        }
+    }
 
     // ── Paleta de colores exacta a la imagen ──────────────────────────────────
     val spartanRed        = Color(0xFFE10613)   // Rojo principal (botón, borde rol activo)
@@ -57,10 +72,7 @@ fun PantallaInicio() {
         Image(
             painter = painterResource(id = R.drawable.fondo_login),
             contentDescription = "Fondo del gimnasio",
-            // .Crop corta lo que sobra para llenar el espacio,
-            // pero siempre mantiene el centro de la imagen.
             contentScale = ContentScale.Crop,
-            // Alignment.Center asegura que no se pegue a la derecha
             alignment = Alignment.Center,
             modifier = Modifier.fillMaxSize()
         )
@@ -88,18 +100,16 @@ fun PantallaInicio() {
                 painter = painterResource(id = R.drawable.logo_spartangym),
                 contentDescription = "Logo Spartan Gym",
                 modifier = Modifier
-                    .fillMaxWidth(0.95f) // <--- Aumenta este valor (0.95f = 95% del ancho)
-                    .padding(horizontal = 8.dp), // Ajustamos el padding lateral al ser más grande
+                    .fillMaxWidth(0.95f)
+                    .padding(horizontal = 8.dp),
                 contentScale = ContentScale.Fit
             )
-
-            // Eliminamos el Spacer que estaba aquí para que no estorbe
 
             // ── Tarjeta del formulario ────────────────────────────────────────
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .offset(y = (-30).dp), // <--- TRUCO AQUÍ: Esto sube la tarjeta a la fuerza. Ajusta el -30 si necesitas más o menos.
+                    .offset(y = (-30).dp),
                 shape = RoundedCornerShape(12.dp),
                 color = darkCardBg,
                 border = BorderStroke(1.dp, cardBorder)
@@ -329,7 +339,14 @@ fun PantallaInicio() {
 
                     // ── Botón: Iniciar sesión ─────────────────────────────────
                     Button(
-                        onClick = { /* TODO: implementar login */ },
+                        // LÓGICA CONECTADA AL VIEWMODEL
+                        onClick = {
+                            if (correo.isNotEmpty() && contrasena.isNotEmpty()) {
+                                loginViewModel.iniciarSesion(correo, contrasena)
+                            } else {
+                                Toast.makeText(context, "Por favor llena todos los campos", Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(58.dp)
@@ -347,7 +364,8 @@ fun PantallaInicio() {
                             containerColor = Color.Transparent
                         ),
                         contentPadding = PaddingValues(0.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                        enabled = !loginViewModel.isLoading // Deshabilita el botón si está cargando
                     ) {
                         Box(
                             modifier = Modifier
@@ -355,21 +373,29 @@ fun PantallaInicio() {
                                 .padding(horizontal = 20.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "Iniciar sesión",
-                                color = Color.White,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .size(24.dp)
-                            )
+                            // ANIMACIÓN DE CARGA O TEXTO NORMAL
+                            if (loginViewModel.isLoading) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    modifier = Modifier.size(26.dp).align(Alignment.Center)
+                                )
+                            } else {
+                                Text(
+                                    text = "Iniciar sesión",
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .size(24.dp)
+                                )
+                            }
                         }
                     }
 
@@ -395,4 +421,3 @@ fun PantallaInicio() {
         }
     }
 }
-

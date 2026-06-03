@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             SpartanGymAppTheme {
                 // Aquí mandamos a llamar a tu pantalla de inicio
-                PantallaEntrenador()
+                PantallaInicio()
             }
         }
     }
