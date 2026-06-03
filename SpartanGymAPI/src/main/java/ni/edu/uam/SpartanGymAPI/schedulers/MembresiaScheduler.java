@@ -6,6 +6,7 @@ import ni.edu.uam.SpartanGymAPI.models.MembresiaSocio;
 import ni.edu.uam.SpartanGymAPI.models.Socio;
 import ni.edu.uam.SpartanGymAPI.repositories.MembresiaSocioRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.SocioRepository;
+import ni.edu.uam.SpartanGymAPI.services.NotificacionService;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ public class MembresiaScheduler {
 
     private final MembresiaSocioRepository membresiaRepository;
     private final SocioRepository socioRepository;
+    private final NotificacionService notificacionService;
 
     // "0 0 0 * * *" significa: Todos los días a las 00:00 (Medianoche)
     // Para hacer pruebas rápidas podrías usar @Scheduled(fixedRate = 60000) que corre cada 1 minuto
@@ -45,8 +47,7 @@ public class MembresiaScheduler {
             contador++;
             log.info("Membresía vencida para el socio: {} {}", socio.getNombres(), socio.getApellidos());
 
-            // ¡AQUÍ ES DONDE LLAMAREMOS AL SISTEMA DE NOTIFICACIONES EN EL SIGUIENTE PASO!
-            // notificacionService.enviarCorreoVencimiento(socio.getUsuario().getEmail());
+            notificacionService.enviarCorreoVencimiento(socio.getUsuario().getEmail(), socio.getNombres());
         }
 
         log.info("Revisión terminada. Membresías actualizadas: {}", contador);
