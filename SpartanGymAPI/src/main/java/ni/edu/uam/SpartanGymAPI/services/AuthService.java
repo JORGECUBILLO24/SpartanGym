@@ -33,6 +33,8 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
+    private final NotificacionService notificacionService;
+
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         Rol rolSocio = rolRepository.findByNombre("ROLE_SOCIO")
@@ -55,9 +57,14 @@ public class AuthService {
 
         socioRepository.save(socio);
 
+        // Generamos el Token JWT
         UserDetailsImpl userDetails = new UserDetailsImpl(usuario);
         String token = jwtService.generateToken(userDetails);
 
+        // Enviamos el correo en segundo plano
+        notificacionService.enviarCorreoBienvenida(usuario.getEmail(), request.getNombres());
+
+        // Hacemos el ÚNICO return correcto al final
         return AuthResponse.builder()
                 .token(token)
                 .email(usuario.getEmail())
@@ -67,11 +74,9 @@ public class AuthService {
 
     @Transactional
     public AuthResponse registerPersonal(RegisterPersonalRequest request) {
-        // 1. Buscamos el rol de Personal
         Rol rolPersonal = rolRepository.findByNombre("ROLE_ENTRENADOR")
-                .orElseThrow(() -> new RuntimeException("Error: Rol ROLE_PERSONAL no encontrado en BD."));
+                .orElseThrow(() -> new RuntimeException("Error: Rol ROLE_ENTRENADOR no encontrado en BD."));
 
-        // 2. Creamos la entidad principal del Usuario
         Usuario usuario = new Usuario();
         usuario.setEmail(request.getEmail());
         usuario.setPasswordHash(passwordEncoder.encode(request.getPassword()));
@@ -80,7 +85,6 @@ public class AuthService {
 
         usuario = usuarioRepository.save(usuario);
 
-        // 3. Creamos el perfil específico del Entrenador/Personal mapeado a tus variables reales
         Personal personal = new Personal();
         personal.setUsuario(usuario);
         personal.setNombres(request.getNombres());
@@ -89,7 +93,6 @@ public class AuthService {
 
         personalRepository.save(personal);
 
-        // 4. Generamos el Token JWT
         UserDetailsImpl userDetails = new UserDetailsImpl(usuario);
         String token = jwtService.generateToken(userDetails);
 
