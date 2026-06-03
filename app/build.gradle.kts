@@ -52,9 +52,20 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    // 3. ✨ ESTA ES LA DEPENDENCIA EXTRA PARA LOS ICONOS
+    // 3. ESTA ES LA DEPENDENCIA EXTRA PARA LOS ICONOS
     implementation("androidx.compose.material:material-icons-extended")
 
+    // 4. LIBRERÍAS PARA CONECTAR CON LA API (Retrofit y Gson)
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+
+    // 5. LIBRERÍAS PARA ARQUITECTURA MVVM
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("androidx.navigation:navigation-compose:2.7.5")
+
+    // 6. DATASTORE (Para guardar el Token JWT en el teléfono)
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
