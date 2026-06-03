@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.AuthResponse;
 import ni.edu.uam.SpartanGymAPI.dto.LoginRequest;
 import ni.edu.uam.SpartanGymAPI.dto.RegisterRequest;
+import ni.edu.uam.SpartanGymAPI.dto.RegisterPersonalRequest;
 import ni.edu.uam.SpartanGymAPI.services.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,5 +24,12 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
+    }
+
+    // <-- NUEVO ENDPOINT PARA PERSONAL -->
+    @PostMapping("/register-personal")
+    public ResponseEntity<AuthResponse> registerPersonal(@RequestBody RegisterPersonalRequest request) {
+        // Asumiendo que en tu AuthService tienes un método llamado registerPersonal
+        return ResponseEntity.ok(authService.registerPersonal(request));
     }
 }
