@@ -26,4 +26,5 @@ Si entrenás pesado, buscás optimizar tu volumen de entrenamiento por grupo mus
 <p style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif;"><strong style="color: #FF0000;">1. Clonar el repositorio más salvaje de GitHub:</strong></p>
 
 ```bash
-git clone [https://github.com/JORGECUBILLO24/SpartanGym.git](https://github.com/JORGECUBILLO24/SpartanGym.git)
+git clone https://github.com/JORGECUBILLO24/SpartanGym.git
+```
