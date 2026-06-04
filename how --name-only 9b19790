@@ -1,0 +1,35 @@
+*   [33me8c6c79[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge pull request #2 from JORGECUBILLO24/Gabo
+[31m|[m[32m\[m  
+[31m|[m * [33mf9ec8c0[m[33m ([m[1;31morigin/Gabo[m[33m)[m feat: implementar modulo de gestion de personal y registro de entrenadores
+[31m|[m * [33m5af27b2[m feat(membresias): implementar modulo financiero con modelos, repositorios, servicio de compra y controlador
+[31m|[m * [33mb77fcac[m feat: crear servicio de autenticacion, controladores y repositorios para registro y login
+[31m|[m * [33m3e02f6d[m feat(dto): crear objetos de transferencia de datos para autenticacion
+[31m|[m * [33m4870172[m fix(security): corregir inyeccion de dependencias en SecurityConfig y correcciones en las otras clases
+[31m|[m * [33m075759b[m refactor(models): actualizar modelo financiero para soportar historial de membresias
+[31m|[m * [33m322f6e0[m feat(security): finalizar configuracion global de spring security con filtros jwt y bcrypt
+[31m|[m * [33ma0f1091[m feat(security): implementar motor jwt y mapeo de usuarios para spring security
+[31m|[m * [33mfdeceef[m chore: ocultar contraseña de base de datos usando variables de entorno
+[31m|[m * [33m3b97ebe[m feat: finalizar capa de datos con modulo financiero y control de vigencias
+[31m|[m * [33m7db4783[m feat: mapear entidades de usuario, socio, personal y sus repositorios
+[31m|[m * [33md4b7ec5[m feat(repositories): crear interfaces jpa para catalogos base
+[31m|[m * [33m70bd1a1[m feat(models): crear estructura de paquetes y mapear catalogos base
+[31m|[m * [33m7308dfd[m chore: enlazar spring boot con la base de datos spartangym_db
+[31m|[m * [33m2c607b3[m fix: actualizar jjwt a version 0.12.6 para mitigar CVE-2024-31033
+[31m|[m * [33ma9aa69f[m build: integrar dependencias de seguridad JWT y Java Mail Sender
+[31m|[m * [33m17dbdfd[m chore: inicializar el api rest de SpartanGym
+* [32m|[m [33m4396d62[m Add files via upload
+* [32m|[m [33m24b8f61[m Add files via upload
+* [32m|[m   [33md72f0aa[m Merge pull request #1 from JORGECUBILLO24/Jorge
+[32m|[m[34m\[m [32m\[m  
+[32m|[m [34m|[m[32m/[m  
+[32m|[m[32m/[m[34m|[m   
+[32m|[m *   [33m7035ad1[m[33m ([m[1;31morigin/Jorge[m[33m)[m Merge branch 'main' of https://github.com/JORGECUBILLO24/SpartanGym into Jorge
+[32m|[m [35m|[m[32m\[m  
+[32m|[m [35m|[m[32m/[m  
+[32m|[m[32m/[m[35m|[m   
+* [35m|[m [33m6cf282a[m[33m ([m[1;31morigin/Julio[m[33m)[m Update Readme
+* [35m|[m [33m9b19790[m Subiendo Carpeta Asset y logo SpartanGym
+* [35m|[m [33m2f48d49[m agregando Readme
+ [35m/[m  
+* [33md4467d7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mJorge[m[33m)[m chore: configuracion inicial del proyecto SpartanGymApp
+* [33mfb5ab43[m[33m ([m[1;31morigin/Nicolás[m[33m)[m  se agrega psudo ui con algunos ejemplos
