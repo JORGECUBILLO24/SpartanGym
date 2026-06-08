@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40" viewBox="0 0 240 80" fill="none">
-  <rect width="240" height="80" rx="8" fill="none"/>
-  <g>
-    <text x="48" y="36" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="700" fill="#FFFFFF">SPARTAN</text>
-    <text x="48" y="62" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#FF2D2D">GYM</text>
-    <circle cx="24" cy="40" r="18" fill="#FF2D2D" />
-    <text x="13" y="47" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#000000">SG</text>
-  </g>
-</svg>
