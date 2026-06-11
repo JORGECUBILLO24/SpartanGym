@@ -1,9 +1,37 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Settings, Bell, ShieldAlert, Store, 
   Save, CheckCircle2, Globe, Mail, 
-  Smartphone, Database, Lock, CreditCard
+  Smartphone, Database, Lock, CreditCard,
+  Palette, Sun, Moon
 } from 'lucide-react';
+
+const SETTINGS_STORAGE_KEY = 'spartanGym.settings';
+
+const defaultConfig = {
+  gymName: 'Spartan Gym',
+  email: 'admin@spartangym.com',
+  phone: '+505 0000 0000',
+  currency: 'USD',
+  taxRate: '15',
+  theme: 'dark',
+  emailAlerts: true,
+  smsAlerts: false,
+  dailyReports: true,
+  twoFactor: false,
+  sessionTimeout: '30',
+};
+
+const cargarConfigInicial = () => {
+  try {
+    return {
+      ...defaultConfig,
+      ...JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}'),
+    };
+  } catch {
+    return defaultConfig;
+  }
+};
 
 const Configuracion = () => {
   const [activeTab, setActiveTab] = useState('general');
@@ -11,18 +39,12 @@ const Configuracion = () => {
   const [isSaved, setIsSaved] = useState(false);
 
   // Estados simulados de configuración
-  const [config, setConfig] = useState({
-    gymName: 'Spartan Gym',
-    email: 'admin@spartangym.com',
-    phone: '+505 0000 0000',
-    currency: 'USD',
-    taxRate: '15',
-    emailAlerts: true,
-    smsAlerts: false,
-    dailyReports: true,
-    twoFactor: false,
-    sessionTimeout: '30',
-  });
+  const [config, setConfig] = useState(cargarConfigInicial);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = config.theme === 'light' ? 'light' : 'dark';
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...cargarConfigInicial(), theme: config.theme }));
+  }, [config.theme]);
 
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -32,6 +54,7 @@ const Configuracion = () => {
   const handleSave = (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(config));
     
     setTimeout(() => {
       setIsSubmitting(false);
@@ -57,6 +80,11 @@ const Configuracion = () => {
             active={activeTab === 'general'} 
             onClick={() => setActiveTab('general')} 
             icon={Store} label="General" 
+          />
+          <TabButton 
+            active={activeTab === 'apariencia'} 
+            onClick={() => setActiveTab('apariencia')} 
+            icon={Palette} label="Apariencia" 
           />
           <TabButton 
             active={activeTab === 'notificaciones'} 
@@ -123,6 +151,41 @@ const Configuracion = () => {
             )}
 
             {/* --- PESTAÑA: NOTIFICACIONES --- */}
+            {activeTab === 'apariencia' && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                  <Palette className="text-red-500" size={24} />
+                  <h2 className="text-lg font-bold">Apariencia</h2>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <ThemeOption
+                    active={config.theme === 'dark'}
+                    icon={Moon}
+                    title="Tema oscuro"
+                    desc="Interfaz de alto contraste para uso diario en recepcion y administracion."
+                    onClick={() => setConfig({ ...config, theme: 'dark' })}
+                  />
+                  <ThemeOption
+                    active={config.theme === 'light'}
+                    icon={Sun}
+                    title="Tema blanco"
+                    desc="Fondos claros para trabajar mejor en pantallas con mucha luz."
+                    onClick={() => setConfig({ ...config, theme: 'light' })}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-white/5 bg-[#111] p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Vista previa</p>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="h-16 rounded-lg border border-white/10 bg-[#090909]" />
+                    <div className="h-16 rounded-lg border border-red-500/30 bg-red-600/15" />
+                    <div className="h-16 rounded-lg border border-white/10 bg-white/5" />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'notificaciones' && (
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="flex items-center gap-3 border-b border-white/5 pb-4">
@@ -236,6 +299,26 @@ const ToggleSwitch = ({ icon: Icon, title, desc, name, checked, onChange }) => (
       <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
     </label>
   </div>
+);
+
+const ThemeOption = ({ active, icon: Icon, title, desc, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`group flex min-h-36 flex-col items-start justify-between rounded-xl border p-4 text-left transition-all duration-300 ${
+      active
+        ? 'border-red-500/60 bg-red-600/10 shadow-lg shadow-red-950/20'
+        : 'border-white/5 bg-[#111] hover:-translate-y-0.5 hover:border-white/15'
+    }`}
+  >
+    <span className={`rounded-xl p-2 transition-colors ${active ? 'bg-red-600 text-white' : 'bg-white/5 text-gray-400 group-hover:text-white'}`}>
+      <Icon size={20} />
+    </span>
+    <span>
+      <span className="block text-sm font-bold text-white">{title}</span>
+      <span className="mt-1 block text-[11px] leading-4 text-gray-500">{desc}</span>
+    </span>
+  </button>
 );
 
 export default Configuracion;

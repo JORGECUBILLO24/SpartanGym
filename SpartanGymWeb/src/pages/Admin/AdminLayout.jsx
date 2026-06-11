@@ -28,7 +28,7 @@ const AdminLayout = () => {
   };
 
   return (
-    <div className="flex min-h-dvh overflow-hidden bg-[#050505] font-sans text-white">
+    <div className="admin-theme flex min-h-dvh overflow-hidden bg-[#050505] font-sans text-white transition-colors duration-300">
       {menuAbierto && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
@@ -36,7 +36,7 @@ const AdminLayout = () => {
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-1.25rem))] flex-col border-r border-white/5 bg-[#050505] shadow-2xl shadow-black/50 transition-transform duration-300 lg:static lg:w-72 lg:translate-x-0 ${menuAbierto ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`admin-sidebar fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-1.25rem))] flex-col border-r border-white/5 bg-[#050505] shadow-2xl shadow-black/50 transition-transform duration-300 lg:static lg:w-72 lg:translate-x-0 ${menuAbierto ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex shrink-0 items-center justify-between px-5 py-4 sm:py-5">
           <img
             src={LogoWeb}
@@ -78,7 +78,7 @@ const AdminLayout = () => {
       </aside>
 
       <div className="flex min-h-dvh min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="z-30 flex min-h-16 items-center justify-between gap-3 border-b border-white/5 bg-[#050505]/80 px-3 py-3 backdrop-blur-md sm:min-h-20 sm:px-6 lg:px-8">
+        <header className="admin-header z-30 flex min-h-16 items-center justify-between gap-3 border-b border-white/5 bg-[#050505]/80 px-3 py-3 backdrop-blur-md sm:min-h-20 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <button
               onClick={() => setMenuAbierto(true)}
@@ -99,8 +99,8 @@ const AdminLayout = () => {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 overflow-y-auto bg-[#050505]">
-          <div className="mx-auto w-full max-w-screen-2xl px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
+        <main className="admin-main min-w-0 flex-1 overflow-y-auto bg-[#050505]">
+          <div key={ubicacionActual.pathname} className="page-transition-shell mx-auto w-full max-w-screen-2xl px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
             <Outlet />
           </div>
         </main>

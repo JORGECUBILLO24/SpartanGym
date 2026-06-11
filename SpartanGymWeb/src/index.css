@@ -77,3 +77,168 @@ input,select,textarea{
 .benefit-card{
 	animation:homeReveal .65s ease both;
 }
+
+:root{
+	color-scheme:dark;
+}
+
+:root[data-theme="light"]{
+	color-scheme:light;
+}
+
+.admin-theme,
+.admin-theme header,
+.admin-theme aside,
+.admin-theme main,
+.admin-theme input,
+.admin-theme select,
+.admin-theme textarea,
+.admin-theme button{
+	transition:
+		background-color .24s cubic-bezier(.2,.8,.2,1),
+		border-color .24s cubic-bezier(.2,.8,.2,1),
+		color .24s cubic-bezier(.2,.8,.2,1),
+		box-shadow .24s cubic-bezier(.2,.8,.2,1),
+		transform .24s cubic-bezier(.2,.8,.2,1),
+		opacity .24s cubic-bezier(.2,.8,.2,1);
+}
+
+@keyframes adminPageEnter{
+	from{
+		opacity:0;
+		transform:translateY(14px) scale(.992);
+		filter:blur(2px);
+	}
+	to{
+		opacity:1;
+		transform:translateY(0) scale(1);
+		filter:blur(0);
+	}
+}
+
+@keyframes reportCardEnter{
+	from{
+		opacity:0;
+		transform:translateY(12px);
+	}
+	to{
+		opacity:1;
+		transform:translateY(0);
+	}
+}
+
+.page-transition-shell{
+	animation:adminPageEnter .34s cubic-bezier(.2,.8,.2,1) both;
+	will-change:opacity,transform;
+}
+
+.report-card{
+	animation:reportCardEnter .34s cubic-bezier(.2,.8,.2,1) both;
+}
+
+.report-card:nth-child(2){
+	animation-delay:.04s;
+}
+
+.report-card:nth-child(3){
+	animation-delay:.08s;
+}
+
+.report-card:nth-child(4){
+	animation-delay:.12s;
+}
+
+:root[data-theme="light"] body{
+	background:#f4f6fa;
+	color:#111827;
+}
+
+:root[data-theme="light"] .admin-theme{
+	background:#f4f6fa !important;
+	color:#111827 !important;
+}
+
+:root[data-theme="light"] .admin-sidebar,
+:root[data-theme="light"] .admin-header{
+	background:rgba(255,255,255,.92) !important;
+	border-color:rgba(15,23,42,.1) !important;
+	box-shadow:0 18px 34px rgba(15,23,42,.08) !important;
+}
+
+:root[data-theme="light"] .admin-main,
+:root[data-theme="light"] .admin-theme [class~="bg-[#050505]"],
+:root[data-theme="light"] .admin-theme [class~="bg-[#050505]/80"]{
+	background:#f4f6fa !important;
+}
+
+:root[data-theme="light"] .admin-theme [class~="bg-[#090909]"],
+:root[data-theme="light"] .admin-theme [class~="bg-[#0c0c0d]"],
+:root[data-theme="light"] .admin-theme [class~="bg-[#0d0d0e]"],
+:root[data-theme="light"] .admin-theme [class~="bg-[#111]"],
+:root[data-theme="light"] .admin-theme [class~="bg-[#111]/60"],
+:root[data-theme="light"] .admin-theme [class~="bg-[#111111]"],
+:root[data-theme="light"] .admin-theme [class~="bg-[#151515]"],
+:root[data-theme="light"] .admin-theme [class~="bg-[#171717]"],
+:root[data-theme="light"] .admin-theme [class~="bg-[#1a1a1a]"]{
+	background:#ffffff !important;
+}
+
+:root[data-theme="light"] .admin-theme [class~="bg-white/5"],
+:root[data-theme="light"] .admin-theme [class~="bg-white/10"],
+:root[data-theme="light"] .admin-theme [class~="bg-white/[0.03]"]{
+	background-color:rgba(15,23,42,.055) !important;
+}
+
+:root[data-theme="light"] .admin-theme [class*="border-white/"]{
+	border-color:rgba(15,23,42,.1) !important;
+}
+
+:root[data-theme="light"] .admin-theme .text-white{
+	color:#0f172a !important;
+}
+
+:root[data-theme="light"] .admin-theme .text-gray-300{
+	color:#334155 !important;
+}
+
+:root[data-theme="light"] .admin-theme .text-gray-400,
+:root[data-theme="light"] .admin-theme .text-gray-500,
+:root[data-theme="light"] .admin-theme .text-gray-600{
+	color:#64748b !important;
+}
+
+:root[data-theme="light"] .admin-theme input,
+:root[data-theme="light"] .admin-theme select,
+:root[data-theme="light"] .admin-theme textarea{
+	background:#ffffff !important;
+	border-color:rgba(15,23,42,.12) !important;
+	color:#0f172a !important;
+}
+
+:root[data-theme="light"] .admin-theme option{
+	color:#0f172a;
+}
+
+:root[data-theme="light"] .admin-theme .bg-red-600.text-white,
+:root[data-theme="light"] .admin-theme .bg-green-600.text-white,
+:root[data-theme="light"] .admin-theme .bg-gradient-to-br.text-white,
+:root[data-theme="light"] .admin-theme .hover\:bg-red-600:hover,
+:root[data-theme="light"] .admin-theme .hover\:bg-green-600:hover,
+:root[data-theme="light"] .admin-theme .hover\:bg-red-700:hover{
+	color:#ffffff !important;
+}
+
+:root[data-theme="light"] .admin-theme .hover\:bg-red-600:hover svg,
+:root[data-theme="light"] .admin-theme .hover\:bg-green-600:hover svg{
+	color:#ffffff !important;
+}
+
+@media (prefers-reduced-motion:reduce){
+	.admin-theme,
+	.admin-theme *,
+	.page-transition-shell,
+	.report-card{
+		animation:none !important;
+		transition:none !important;
+	}
+}

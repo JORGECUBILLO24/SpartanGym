@@ -1,105 +1,210 @@
 import { useState } from 'react';
-import { 
-  BarChart3, FileText, Download, TrendingUp, Users, 
-  Package, DollarSign, Calendar, ArrowUpRight, Clock,
-  CheckCircle2, AlertCircle
+import {
+  AlertCircle,
+  ArrowUpRight,
+  BarChart3,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  DollarSign,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Package,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
+import LogoWeb from '../../../assets/Logo Web.png';
+import {
+  createReportContent,
+  exportReportToExcel,
+  exportReportToPdf,
+  formatShortReportDate,
+  getCurrentAccountLabel,
+} from '../../../utils/reportExport';
+
+const tiposReportes = [
+  {
+    id: 'fin',
+    tipo: 'Finanzas',
+    titulo: 'Reporte Financiero Consolidado',
+    desc: 'Ingresos, egresos, desglose de metodos de pago y balance neto del gimnasio.',
+    icon: DollarSign,
+    color: 'text-green-500',
+    bg: 'bg-green-500/10',
+  },
+  {
+    id: 'soc',
+    tipo: 'Socios',
+    titulo: 'Analisis de Socios y Retencion',
+    desc: 'Altas de nuevos socios, membresias renovadas, abandonos y tasas de asistencia.',
+    icon: Users,
+    color: 'text-red-500',
+    bg: 'bg-red-500/10',
+  },
+  {
+    id: 'inv',
+    tipo: 'Inventario',
+    titulo: 'Auditoria de Inventario y Stock',
+    desc: 'Rotacion de suplementos, alertas de stock bajo y ganancias por ventas en recepcion.',
+    icon: Package,
+    color: 'text-orange-500',
+    bg: 'bg-orange-500/10',
+  },
+  {
+    id: 'asi',
+    tipo: 'Asistencia',
+    titulo: 'Control de Asistencia y Horarios',
+    desc: 'Horas pico de flujo, asistencia del personal tecnico y control de accesos.',
+    icon: Clock,
+    color: 'text-blue-500',
+    bg: 'bg-blue-500/10',
+  },
+];
+
+const crearReporteHistorial = ({ id, titulo, tipo, fecha, kind, createdAt, createdBy }) => ({
+  id,
+  titulo,
+  tipo,
+  formato: 'PDF / Excel',
+  fecha,
+  tamano: 'Listo',
+  kind,
+  createdAt,
+  createdBy,
+  ...createReportContent(kind),
+});
+
+const historialInicial = [
+  crearReporteHistorial({
+    id: 'REP-2026-001',
+    titulo: 'Cierre Financiero Mayo 2026',
+    tipo: 'Finanzas',
+    fecha: '01 Jun 2026',
+    kind: 'fin',
+    createdAt: '2026-06-01T09:00:00',
+    createdBy: 'admin@spartangym.com (Administrador)',
+  }),
+  crearReporteHistorial({
+    id: 'REP-2026-002',
+    titulo: 'Rendimiento de Inventario Q2',
+    tipo: 'Inventario',
+    fecha: '28 May 2026',
+    kind: 'inv',
+    createdAt: '2026-05-28T16:30:00',
+    createdBy: 'admin@spartangym.com (Administrador)',
+  }),
+  crearReporteHistorial({
+    id: 'REP-2026-003',
+    titulo: 'Asistencia y Flujo de Socios',
+    tipo: 'Asistencia',
+    fecha: '15 May 2026',
+    kind: 'asi',
+    createdAt: '2026-05-15T08:15:00',
+    createdBy: 'recepcion@spartangym.com (Recepcionista)',
+  }),
+];
 
 const Reportes = () => {
   const [generandoId, setGenerandoId] = useState(null);
   const [reportesDescargados, setReportesDescargados] = useState([]);
+  const [descargandoId, setDescargandoId] = useState(null);
+  const [errorDescarga, setErrorDescarga] = useState('');
+  const [historialReportes, setHistorialReportes] = useState(historialInicial);
 
-  // Historial de reportes listos para descargar
-  const [historialReportes, setHistorialReportes] = useState([
-    { id: 'REP-2026-001', titulo: 'Cierre Financiero Mayo 2026', tipo: 'Finanzas', formato: 'PDF', fecha: '01 Jun 2026', tamano: '2.4 MB' },
-    { id: 'REP-2026-002', titulo: 'Rendimiento de Inventario Q2', tipo: 'Inventario', formato: 'XLSX', fecha: '28 May 2026', tamano: '1.1 MB' },
-    { id: 'REP-2026-003', titulo: 'Asistencia y Flujo de Socios', tipo: 'Asistencia', formato: 'PDF', fecha: '15 May 2026', tamano: '3.8 MB' },
-  ]);
+  const simularGeneracionReporte = (reporteBase) => {
+    setGenerandoId(reporteBase.id);
 
-  // Tipos de reportes disponibles para generar
-  const tiposReportes = [
-    { id: 'fin', titulo: 'Reporte Financiero Consolidado', desc: 'Ingresos, egresos, desglose de métodos de pago y balance neto del gimnasio.', icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10' },
-    { id: 'soc', titulo: 'Análisis de Socios y Retención', desc: 'Altas de nuevos socios, membresías renovadas, abandonos y tasas de asistencia.', icon: Users, color: 'text-red-500', bg: 'bg-red-500/10' },
-    { id: 'inv', titulo: 'Auditoría de Inventario y Stock', desc: 'Rotación de suplementos, alertas de stock bajo y ganancias por ventas en recepción.', icon: Package, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-    { id: 'asi', titulo: 'Control de Asistencia y Horarios', desc: 'Horas pico de flujo, asistencia del personal técnico y control de accesos.', icon: Clock, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  ];
-
-  const simularGeneracionReporte = (id, titulo, tipo) => {
-    setGenerandoId(id);
-    
     setTimeout(() => {
-      const nuevoReporte = {
+      const ahora = new Date();
+      const nuevoReporte = crearReporteHistorial({
         id: `REP-2026-${Math.floor(Math.random() * 900) + 100}`,
-        titulo: `${titulo} (Generado)`,
-        tipo: tipo,
-        formato: 'PDF',
-        fecha: 'Ahora mismo',
-        tamano: '1.5 MB'
-      };
-      
+        titulo: `${reporteBase.titulo} (Generado)`,
+        tipo: reporteBase.tipo,
+        fecha: formatShortReportDate(ahora),
+        kind: reporteBase.id,
+        createdAt: ahora.toISOString(),
+        createdBy: getCurrentAccountLabel(),
+      });
+
       setHistorialReportes((prev) => [nuevoReporte, ...prev]);
-      setReportesDescargados((prev) => [...prev, id]);
+      setReportesDescargados((prev) => [...prev, reporteBase.id]);
       setGenerandoId(null);
 
-      // Limpiar animación de éxito después de 2 segundos
       setTimeout(() => {
-        setReportesDescargados(prev => prev.filter(item => item !== id));
+        setReportesDescargados((prev) => prev.filter((item) => item !== reporteBase.id));
       }, 2000);
-    }, 1500);
+    }, 1200);
+  };
+
+  const descargarReporte = async (reporte, formato) => {
+    const token = `${reporte.id}-${formato}`;
+
+    setErrorDescarga('');
+    setDescargandoId(token);
+
+    try {
+      if (formato === 'pdf') {
+        await exportReportToPdf(reporte, LogoWeb);
+      } else {
+        exportReportToExcel(reporte);
+      }
+    } catch (error) {
+      console.error(error);
+      setErrorDescarga('No se pudo generar el archivo. Intentalo de nuevo.');
+    } finally {
+      setDescargandoId(null);
+    }
   };
 
   return (
-    <div className="flex flex-col gap-6 text-white min-h-screen pb-10">
-      
-      {/* SECCIÓN 1: TARJETAS ANALÍTICAS (MÉTRICAS CLAVE) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div className="flex min-h-screen flex-col gap-6 pb-10 text-white">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <AnalyticCard title="Crecimiento" value="+24%" desc="Nuevos socios" icon={TrendingUp} color="text-green-500" />
-        <AnalyticCard title="Retención" value="92.3%" desc="Socios activos" icon={Users} color="text-red-500" />
-        <AnalyticCard title="Rotación" value="4.2x" desc="Venta Suplementos" icon={Package} color="text-orange-500" />
+        <AnalyticCard title="Retencion" value="92.3%" desc="Socios activos" icon={Users} color="text-red-500" />
+        <AnalyticCard title="Rotacion" value="4.2x" desc="Venta suplementos" icon={Package} color="text-orange-500" />
         <AnalyticCard title="Margen Neto" value="82.4%" desc="Eficiencia caja" icon={BarChart3} color="text-blue-500" />
       </div>
 
-      {/* SECCIÓN 2: GRID PRINCIPAL */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        
-        {/* COLUMNA IZQUIERDA: GENERADORES DE REPORTES (GRID 2x2 en PC) */}
-        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-2">
           {tiposReportes.map((rep) => {
             const IconComponent = rep.icon;
             const estaGenerando = generandoId === rep.id;
             const fueGenerado = reportesDescargados.includes(rep.id);
 
             return (
-              <div key={rep.id} className="bg-[#090909] border border-white/10 p-5 rounded-2xl shadow-xl hover:border-red-600/30 transition-all flex flex-col justify-between h-[200px] relative overflow-hidden group">
-                <ArrowUpRight size={14} className="absolute right-4 top-4 text-white/10 group-hover:text-red-500/70 transition-colors" />
+              <div key={rep.id} className="report-card group relative flex h-[208px] flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-xl transition-all hover:-translate-y-1 hover:border-red-600/30">
+                <ArrowUpRight size={14} className="absolute right-4 top-4 text-white/10 transition-colors group-hover:text-red-500/70" />
+
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`p-2 rounded-xl ${rep.bg} ${rep.color}`}>
+                  <div className="mb-2 flex items-center gap-3">
+                    <div className={`rounded-xl p-2 ${rep.bg} ${rep.color}`}>
                       <IconComponent size={20} />
                     </div>
-                    <h4 className="text-sm font-bold text-white tracking-tight break-words max-w-[80%]">{rep.titulo}</h4>
+                    <h4 className="max-w-[80%] break-words text-sm font-bold tracking-tight text-white">{rep.titulo}</h4>
                   </div>
-                  <p className="text-[11px] leading-4 text-gray-400 line-clamp-3 pr-2">{rep.desc}</p>
+                  <p className="line-clamp-3 pr-2 text-[11px] leading-4 text-gray-400">{rep.desc}</p>
                 </div>
 
                 <button
                   disabled={generandoId !== null}
-                  onClick={() => simularGeneracionReporte(rep.id, rep.titulo, rep.tipo)}
-                  className={`w-full py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer
-                    ${fueGenerado 
-                      ? 'bg-green-600 text-white shadow-lg shadow-green-900/20' 
-                      : estaGenerando 
-                        ? 'bg-[#111] border border-white/10 text-gray-500 cursor-wait' 
-                        : 'bg-white/[0.03] border border-white/10 hover:bg-red-600 hover:border-red-600 text-white shadow-md'
+                  onClick={() => simularGeneracionReporte(rep)}
+                  className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-[10px] font-bold uppercase tracking-wider shadow-md transition-all
+                    ${fueGenerado
+                      ? 'bg-green-600 text-white shadow-green-900/20'
+                      : estaGenerando
+                        ? 'cursor-wait border border-white/10 bg-[#111] text-gray-500'
+                        : 'border border-white/10 bg-white/[0.03] text-white hover:bg-red-600 hover:border-red-600'
                     }
                   `}
                 >
                   {estaGenerando ? (
                     'Procesando datos...'
                   ) : fueGenerado ? (
-                    <><CheckCircle2 size={14} /> ¡Reporte Compilado!</>
+                    <><CheckCircle2 size={14} /> Reporte compilado</>
                   ) : (
-                    <><FileText size={14} /> Compilar Reporte</>
+                    <><FileText size={14} /> Compilar reporte</>
                   )}
                 </button>
               </div>
@@ -107,68 +212,88 @@ const Reportes = () => {
           })}
         </div>
 
-        {/* COLUMNA DERECHA: HISTORIAL DE REPORTES GENERADOS (CRECE DINÁMICAMENTE) */}
-        <div className="bg-[#090909] border border-white/10 rounded-2xl p-6 shadow-2xl h-auto flex flex-col relative overflow-hidden">
-          
-          <div className="flex items-center gap-2 mb-1">
+        <div className="relative flex h-auto flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-6 shadow-2xl">
+          <div className="mb-1 flex items-center gap-2">
             <Clock size={16} className="text-gray-500" />
             <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400">Descargas Recientes</h4>
           </div>
-          <p className="text-[10px] text-gray-600 mb-4">Historial de archivos generados listos para su descarga local.</p>
+          <p className="mb-4 text-[10px] text-gray-600">Archivos generados listos para descargar en PDF o Excel.</p>
 
-          {/* Lista de archivos listos */}
-          <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar w-full">
+          {errorDescarga && (
+            <div className="mb-3 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-[11px] font-semibold text-red-400">
+              <AlertCircle size={14} />
+              {errorDescarga}
+            </div>
+          )}
+
+          <div className="custom-scrollbar max-h-[460px] w-full space-y-3 overflow-y-auto pr-1">
             {historialReportes.map((doc) => (
-              <div key={doc.id} className="bg-[#111]/60 border border-white/5 p-3 rounded-xl flex items-center justify-between group hover:border-white/10 transition-colors w-full">
-                {/* Contenedor de texto forzado a w-full y break-words para evitar deformaciones */}
-                <div className="overflow-hidden flex-1 pr-2 w-full">
-                  <p className="text-xs font-bold text-white truncate break-words w-full" title={doc.titulo}>
+              <div key={doc.id} className="group flex w-full flex-col gap-3 rounded-xl border border-white/5 bg-[#111]/60 p-3 transition-colors hover:border-white/10 xl:flex-row xl:items-center xl:justify-between">
+                <div className="w-full flex-1 overflow-hidden pr-1">
+                  <p className="w-full truncate break-words text-xs font-bold text-white" title={doc.titulo}>
                     {doc.titulo}
                   </p>
-                  <div className="flex flex-wrap items-center gap-2 mt-1 text-[9px] text-gray-500 font-medium">
-                    <span className="font-mono bg-white/5 px-1 py-0.5 rounded text-gray-400">{doc.id}</span>
-                    <span>•</span>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[9px] font-medium text-gray-500">
+                    <span className="rounded bg-white/5 px-1 py-0.5 font-mono text-gray-400">{doc.id}</span>
+                    <span>-</span>
                     <span>{doc.tamano}</span>
-                    <span>•</span>
-                    <span className="font-bold text-[8px] uppercase tracking-wider text-red-500">{doc.formato}</span>
+                    <span>-</span>
+                    <span className="text-[8px] font-bold uppercase tracking-wider text-red-500">{doc.formato}</span>
                     <span className="inline-flex items-center gap-1 text-gray-600">
                       <Calendar size={10} />
                       {doc.fecha}
                     </span>
                   </div>
+                  <p className="mt-1 truncate text-[9px] text-gray-600" title={doc.createdBy}>
+                    Cuenta: {doc.createdBy}
+                  </p>
                 </div>
 
-                {/* Botón de descarga individual */}
-                <button className="p-2.5 bg-white/5 group-hover:bg-red-600 text-gray-400 group-hover:text-white rounded-lg transition-all shrink-0 ml-1 cursor-pointer">
-                  <Download size={14} />
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={descargandoId === `${doc.id}-pdf`}
+                    onClick={() => descargarReporte(doc, 'pdf')}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-white/5 px-2.5 py-2 text-[10px] font-bold text-gray-300 transition-all hover:bg-red-600 hover:text-white disabled:cursor-wait disabled:opacity-60"
+                    title="Descargar PDF"
+                  >
+                    <Download size={13} />
+                    PDF
+                  </button>
+                  <button
+                    type="button"
+                    disabled={descargandoId === `${doc.id}-excel`}
+                    onClick={() => descargarReporte(doc, 'excel')}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-white/5 px-2.5 py-2 text-[10px] font-bold text-gray-300 transition-all hover:bg-green-600 hover:text-white disabled:cursor-wait disabled:opacity-60"
+                    title="Descargar Excel"
+                  >
+                    <FileSpreadsheet size={13} />
+                    Excel
+                  </button>
+                </div>
               </div>
             ))}
           </div>
 
-          <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-2 text-[9px] text-gray-600 font-medium">
+          <div className="mt-4 flex items-center gap-2 border-t border-white/5 pt-3 text-[9px] font-medium text-gray-600">
             <AlertCircle size={12} />
-            <span className="break-all">Los reportes expiran automáticamente tras 48 horas de su generación.</span>
+            <span className="break-all">Los PDF incluyen logo, nombre del reporte, fecha y cuenta creadora.</span>
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 };
 
-// Componente para las tarjetas analíticas superiores
 const AnalyticCard = ({ title, value, desc, icon: Icon, color }) => (
-  <div className="bg-[#090909] border border-white/10 p-3 sm:p-4 rounded-xl flex items-center justify-between">
+  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#090909] p-3 sm:p-4">
     <div className="overflow-hidden">
-      <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5 truncate">{title}</p>
-      <h2 className="text-xl sm:text-2xl font-black leading-none mb-1">{value}</h2>
-      <p className="text-[10px] text-gray-400 truncate">{desc}</p>
+      <p className="mb-0.5 truncate text-[9px] font-bold uppercase tracking-wider text-gray-500 sm:text-[10px]">{title}</p>
+      <h2 className="mb-1 text-xl font-black leading-none sm:text-2xl">{value}</h2>
+      <p className="truncate text-[10px] text-gray-400">{desc}</p>
     </div>
-    <div className={`p-2 bg-white/5 rounded-lg shrink-0 ml-2 ${color}`}>
-      <Icon size={18} className="sm:w-5 sm:h-5" />
+    <div className={`ml-2 shrink-0 rounded-lg bg-white/5 p-2 ${color}`}>
+      <Icon size={18} className="sm:h-5 sm:w-5" />
     </div>
   </div>
 );
