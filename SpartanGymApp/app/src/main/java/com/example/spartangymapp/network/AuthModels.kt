@@ -6,7 +6,9 @@ data class LoginRequest(
 )
 
 data class RegisterRequest(
-    val nombreCompleto: String,
+    val nombres: String,
+    val apellidos: String,
+    val telefono: String,
     val email: String,
     val password: String,
     val rol: String

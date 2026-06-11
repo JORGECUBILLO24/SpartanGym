@@ -54,6 +54,7 @@ class LoginViewModel : ViewModel() {
 
     fun crearCuenta(
         nombre: String,
+        telefono: String,
         email: String,
         password: String,
         rolSeleccionado: String
@@ -64,8 +65,14 @@ class LoginViewModel : ViewModel() {
             registerSuccess = false
 
             try {
+                val partesNombres = nombre.trim().split(" ")
+                val primerNombre = partesNombres.firstOrNull() ?: "Sin nombre"
+                val apellidos = if (partesNombres.size > 1) partesNombres.drop(1).joinToString(" ") else "N/A"
+
                 val request = RegisterRequest(
-                    nombreCompleto = nombre.trim(),
+                    nombres = primerNombre,
+                    apellidos = apellidos,
+                    telefono = telefono.trim().ifBlank { "00000000" },
                     email = email.trim(),
                     password = password,
                     rol = rolSeleccionado

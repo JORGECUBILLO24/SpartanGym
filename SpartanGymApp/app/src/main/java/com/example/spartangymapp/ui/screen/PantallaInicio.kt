@@ -8,10 +8,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
@@ -26,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -44,6 +47,7 @@ fun PantallaInicio(
 
     var modoCrearCuenta by remember { mutableStateOf(false) }
     var nombre by remember { mutableStateOf("") }
+    var telefono by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -72,6 +76,7 @@ fun PantallaInicio(
         if (loginViewModel.registerSuccess) {
             modoCrearCuenta = false
             nombre = ""
+            telefono = ""
             correo = ""
             contrasena = ""
             Toast.makeText(context, "Cuenta creada. Inicia sesión.", Toast.LENGTH_LONG).show()
@@ -155,20 +160,50 @@ fun PantallaInicio(
                             fieldBorder = fieldBorder,
                             spartanRed = spartanRed,
                             textLabel = textLabel,
-                            textPlaceholder = textPlaceholder
+                            textPlaceholder = textPlaceholder,
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Person,
+                                    contentDescription = null,
+                                    tint = textPlaceholder,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        )
+
+                        CampoInicio(
+                            label = "Celular",
+                            value = telefono,
+                            onValueChange = { telefono = it },
+                            placeholder = "Ingresa tu número de celular",
+                            fieldBackground = fieldBackground,
+                            fieldBorder = fieldBorder,
+                            spartanRed = spartanRed,
+                            textLabel = textLabel,
+                            textPlaceholder = textPlaceholder,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Phone,
+                                    contentDescription = null,
+                                    tint = textPlaceholder,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         )
                     }
 
                     CampoInicio(
-                        label = "Correo o usuario",
+                        label = "Correo electrónico",
                         value = correo,
                         onValueChange = { correo = it },
-                        placeholder = "Ingresa tu correo o usuario",
+                        placeholder = "Ingresa tu correo",
                         fieldBackground = fieldBackground,
                         fieldBorder = fieldBorder,
                         spartanRed = spartanRed,
                         textLabel = textLabel,
                         textPlaceholder = textPlaceholder,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Outlined.Person,
@@ -246,6 +281,7 @@ fun PantallaInicio(
                             if (modoCrearCuenta) {
                                 loginViewModel.crearCuenta(
                                     nombre = nombre,
+                                    telefono = telefono,
                                     email = correo,
                                     password = contrasena,
                                     rolSeleccionado = selectedRole
@@ -294,6 +330,7 @@ fun PantallaInicio(
                             .clickable {
                                 modoCrearCuenta = !modoCrearCuenta
                                 nombre = ""
+                                telefono = ""
                                 correo = ""
                                 contrasena = ""
                                 loginViewModel.limpiarEstado()
@@ -319,6 +356,7 @@ private fun CampoInicio(
     textLabel: Color,
     textPlaceholder: Color,
     isPassword: Boolean = false,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null
 ) {
@@ -343,6 +381,7 @@ private fun CampoInicio(
             },
             leadingIcon = leadingIcon,
             trailingIcon = trailingIcon,
+            keyboardOptions = keyboardOptions,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(62.dp),
