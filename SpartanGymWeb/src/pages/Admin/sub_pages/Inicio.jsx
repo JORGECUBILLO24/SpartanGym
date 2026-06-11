@@ -6,9 +6,10 @@ import {
 } from 'lucide-react';
 
 import imgLaptop from "../../../assets/ComputadoraSpartan.png";
-import imgMembresia from "../../../assets/MembresiaSpartan.png"; 
 import imgEstadisticas from "../../../assets/EstadisticasSpartan.png"; 
-import imgSuplementos from "../../../assets/SuplementosSpartan.png"; 
+import imgMembresia from "../../../assets/MembresiaSpartan.png"; 
+import imgSuplementos from "../../../assets/SuplementosSpartan.png";
+
 
 const Inicio = () => {
   return (
@@ -88,7 +89,7 @@ const Inicio = () => {
       </div>
 
       <footer className="mt-2 flex flex-col gap-2 border-t border-white/5 pt-4 text-[10px] text-gray-600 sm:flex-row sm:items-center sm:justify-between sm:text-xs">
-        <p>© 2024 Spartan Gym. Todos los derechos reservados.</p>
+        <p>© 2026 Spartan Gym. Todos los derechos reservados.</p>
         <p>Versión 1.0.0</p>
       </footer>
     </div>
