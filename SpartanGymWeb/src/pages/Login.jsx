@@ -5,10 +5,20 @@ import LogoSpartan from '../assets/Logo SpartanGym.png';
 
 const Login = () => {
   const [role, setRole] = useState('');
+  const [usuario, setUsuario] = useState('');
   const navigate = useNavigate();
 
   const handleLogin = (e) => {
     e.preventDefault();
+
+    if (!role) return;
+
+    const username = usuario.trim() || (role === 'Administrador' ? 'admin@spartangym.com' : 'recepcion@spartangym.com');
+    localStorage.setItem(
+      'spartanGym.currentAccount',
+      JSON.stringify({ username, role, loggedAt: new Date().toISOString() })
+    );
+
     if (role === 'Administrador') navigate('/admin');
     else if (role === 'Recepcionista') navigate('/recepcion');
   };
@@ -31,7 +41,13 @@ const Login = () => {
             <label className="text-xs text-gray-500 uppercase font-bold">Correo o usuario</label>
             <div className="group relative mt-2">
               <User className="absolute left-3 top-3.5 w-4 h-4 text-gray-600 transition-colors group-focus-within:text-red-500" />
-              <input type="text" className="w-full bg-[#171717] border border-white/5 rounded-xl py-3 pl-10 text-white outline-none transition-colors focus:border-red-600 focus:bg-[#1a1a1a]" placeholder="Ingresa tu correo" />
+              <input
+                type="text"
+                value={usuario}
+                onChange={(e) => setUsuario(e.target.value)}
+                className="w-full bg-[#171717] border border-white/5 rounded-xl py-3 pl-10 text-white outline-none transition-colors focus:border-red-600 focus:bg-[#1a1a1a]"
+                placeholder="Ingresa tu correo"
+              />
             </div>
           </div>
 
