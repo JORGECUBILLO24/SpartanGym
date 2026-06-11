@@ -1,0 +1,34 @@
+Index: .idea/misc.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"ProjectRootManager\" version=\"2\" languageLevel=\"JDK_24\" default=\"true\" project-jdk-name=\"openjdk-24\" project-jdk-type=\"JavaSDK\">\r\n    <output url=\"file://$PROJECT_DIR$/out\" />\r\n  </component>\r\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/misc.xml b/.idea/misc.xml
+--- a/.idea/misc.xml	(revision c0de9fb67e8bdd4967726e55cd1a3b9234d89a3b)
++++ b/.idea/misc.xml	(date 1780536229532)
+@@ -1,4 +1,3 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+ <project version="4">
+   <component name="ProjectRootManager" version="2" languageLevel="JDK_24" default="true" project-jdk-name="openjdk-24" project-jdk-type="JavaSDK">
+     <output url="file://$PROJECT_DIR$/out" />
+Index: SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/schedulers/MembresiaScheduler.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package ni.edu.uam.SpartanGymAPI.schedulers;\r\n\r\nimport lombok.RequiredArgsConstructor;\r\nimport lombok.extern.slf4j.Slf4j;\r\nimport ni.edu.uam.SpartanGymAPI.models.MembresiaSocio;\r\nimport ni.edu.uam.SpartanGymAPI.models.Socio;\r\nimport ni.edu.uam.SpartanGymAPI.repositories.MembresiaSocioRepository;\r\nimport ni.edu.uam.SpartanGymAPI.repositories.SocioRepository;\r\nimport ni.edu.uam.SpartanGymAPI.services.NotificacionService;\r\nimport org.springframework.scheduling.annotation.Scheduled;\r\nimport org.springframework.stereotype.Component;\r\nimport org.springframework.transaction.annotation.Transactional;\r\n\r\nimport java.time.LocalDate;\r\nimport java.util.List;\r\n\r\n@Slf4j // Para poder imprimir mensajes bonitos en la consola\r\n@Component\r\n@RequiredArgsConstructor\r\npublic class MembresiaScheduler {\r\n\r\n    private final MembresiaSocioRepository membresiaRepository;\r\n    private final SocioRepository socioRepository;\r\n    private final NotificacionService notificacionService;\r\n\r\n    // \"0 0 0 * * *\" significa: Todos los días a las 00:00 (Medianoche)\r\n    // Para hacer pruebas rápidas podrías usar @Scheduled(fixedRate = 60000) que corre cada 1 minuto\r\n    @Scheduled(cron = \"0 0 0 * * *\")\r\n    @Transactional\r\n    public void verificarMembresiasVencidas() {\r\n        log.info(\"Iniciando revisión automática de membresías vencidas...\");\r\n\r\n        // Buscamos las que están \"Activas\" pero su fecha de vencimiento es ANTES de hoy\r\n        List<MembresiaSocio> vencidas = membresiaRepository.findByEstadoAndFechaVencimientoBefore(\"Activa\", LocalDate.now());\r\n\r\n        int contador = 0;\r\n        for (MembresiaSocio membresia : vencidas) {\r\n            // 1. Vencemos la membresía\r\n            membresia.setEstado(\"Vencida\");\r\n            membresiaRepository.save(membresia);\r\n\r\n            // 2. Le bloqueamos el torniquete al socio\r\n            Socio socio = membresia.getSocio();\r\n            socio.setEstadoAcceso(\"Inactivo\");\r\n            socioRepository.save(socio);\r\n\r\n            contador++;\r\n            log.info(\"Membresía vencida para el socio: {} {}\", socio.getNombres(), socio.getApellidos());\r\n\r\n            notificacionService.enviarCorreoVencimiento(socio.getUsuario().getEmail(), socio.getNombres());\r\n        }\r\n\r\n        log.info(\"Revisión terminada. Membresías actualizadas: {}\", contador);\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/schedulers/MembresiaScheduler.java b/SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/schedulers/MembresiaScheduler.java
+--- a/SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/schedulers/MembresiaScheduler.java	(revision c0de9fb67e8bdd4967726e55cd1a3b9234d89a3b)
++++ b/SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/schedulers/MembresiaScheduler.java	(date 1780535356750)
+@@ -25,7 +25,7 @@
+ 
+     // "0 0 0 * * *" significa: Todos los días a las 00:00 (Medianoche)
+     // Para hacer pruebas rápidas podrías usar @Scheduled(fixedRate = 60000) que corre cada 1 minuto
+-    @Scheduled(cron = "0 0 0 * * *")
++    @Scheduled(fixedRate = 10000)
+     @Transactional
+     public void verificarMembresiasVencidas() {
+         log.info("Iniciando revisión automática de membresías vencidas...");
