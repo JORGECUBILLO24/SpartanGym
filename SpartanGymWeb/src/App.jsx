@@ -6,9 +6,11 @@ import Login from "./pages/Login.jsx";
 import AdminLayout from "./pages/Admin/AdminLayout.jsx";
 import RecepcionistaLayout from "./pages/Recepcionista/RecepcionistaLayout.jsx";
 
-// ✅ NUEVA IMPORTACIÓN: Tu pantalla de detalles del beneficio
-// Nota: Ajusta "./pages/DetalleBeneficio.jsx" si guardaste el archivo en otra carpeta como "./components/..."
+// Pantalla de Detalles del Beneficio
 import DetalleBeneficio from "./pages/DetalleBeneficio.jsx"; 
+
+// Pantalla de Registro
+import Registro from "./pages/Registro.jsx"; 
 
 // Importación de sub-páginas de Admin
 import InicioAdmin from "./pages/Admin/sub_pages/Inicio.jsx";
@@ -31,16 +33,17 @@ import Asistencias from "./pages/Recepcionista/sub_pages/Asistencias.jsx";
 import Notificaciones from "./pages/Recepcionista/sub_pages/Notificaciones.jsx";
 import Perfil from "./pages/Recepcionista/sub_pages/Perfil.jsx";
 
-
 function App() {
   return (
     <Router>
       <div className="min-h-screen bg-gray-900 font-sans">
         <Routes>
+          {/* Rutas Públicas */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/registro" element={<Registro />} />
           
-          {/* ✅ NUEVA RUTA DINÁMICA: Atrapa cualquier clic a /beneficios/... */}
+          {/* Ruta Dinámica para los detalles de cada beneficio */}
           <Route path="/beneficios/:slug" element={<DetalleBeneficio />} />
           
           {/* Rutas de Administrador */}
@@ -68,7 +71,7 @@ function App() {
             <Route path="perfil" element={<Perfil />} />
           </Route>
           
-          {/* Redirección para rutas no existentes */}
+          {/* Redirección automática si escriben una ruta inválida */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
