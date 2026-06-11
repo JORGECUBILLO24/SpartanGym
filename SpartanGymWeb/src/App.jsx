@@ -6,6 +6,12 @@ import Login from "./pages/Login.jsx";
 import AdminLayout from "./pages/Admin/AdminLayout.jsx";
 import RecepcionistaLayout from "./pages/Recepcionista/RecepcionistaLayout.jsx";
 
+// Pantalla de Detalles del Beneficio
+import DetalleBeneficio from "./pages/DetalleBeneficio.jsx"; 
+
+// Pantalla de Registro
+import Registro from "./pages/Registro.jsx"; 
+
 // Importación de sub-páginas de Admin
 import InicioAdmin from "./pages/Admin/sub_pages/Inicio.jsx";
 import Usuarios from "./pages/Admin/sub_pages/Usuarios.jsx";
@@ -32,8 +38,13 @@ function App() {
     <Router>
       <div className="min-h-screen bg-gray-900 font-sans">
         <Routes>
+          {/* Rutas Públicas */}
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/registro" element={<Registro />} />
+          
+          {/* Ruta Dinámica para los detalles de cada beneficio */}
+          <Route path="/beneficios/:slug" element={<DetalleBeneficio />} />
           
           {/* Rutas de Administrador */}
           <Route path="/admin" element={<AdminLayout />}>
@@ -60,7 +71,7 @@ function App() {
             <Route path="perfil" element={<Perfil />} />
           </Route>
           
-          {/* Redirección para rutas no existentes */}
+          {/* Redirección automática si escriben una ruta inválida */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
