@@ -6,6 +6,10 @@ import Login from "./pages/Login.jsx";
 import AdminLayout from "./pages/Admin/AdminLayout.jsx";
 import RecepcionistaLayout from "./pages/Recepcionista/RecepcionistaLayout.jsx";
 
+// ✅ NUEVA IMPORTACIÓN: Tu pantalla de detalles del beneficio
+// Nota: Ajusta "./pages/DetalleBeneficio.jsx" si guardaste el archivo en otra carpeta como "./components/..."
+import DetalleBeneficio from "./pages/DetalleBeneficio.jsx"; 
+
 // Importación de sub-páginas de Admin
 import InicioAdmin from "./pages/Admin/sub_pages/Inicio.jsx";
 import Usuarios from "./pages/Admin/sub_pages/Usuarios.jsx";
@@ -27,6 +31,7 @@ import Asistencias from "./pages/Recepcionista/sub_pages/Asistencias.jsx";
 import Notificaciones from "./pages/Recepcionista/sub_pages/Notificaciones.jsx";
 import Perfil from "./pages/Recepcionista/sub_pages/Perfil.jsx";
 
+
 function App() {
   return (
     <Router>
@@ -34,6 +39,9 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          
+          {/* ✅ NUEVA RUTA DINÁMICA: Atrapa cualquier clic a /beneficios/... */}
+          <Route path="/beneficios/:slug" element={<DetalleBeneficio />} />
           
           {/* Rutas de Administrador */}
           <Route path="/admin" element={<AdminLayout />}>
