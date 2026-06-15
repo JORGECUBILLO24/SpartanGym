@@ -15,13 +15,14 @@ import {
   Users,
 } from 'lucide-react';
 import LogoWeb from '../../../assets/Logo Web.png';
+import TarjetaMetrica from '../../../components/TarjetaMetrica';
 import {
-  createReportContent,
-  exportReportToExcel,
-  exportReportToPdf,
-  formatShortReportDate,
-  getCurrentAccountLabel,
-} from '../../../utils/reportExport';
+  crearContenidoReporte,
+  exportarReporteExcel,
+  exportarReportePdf,
+  formatearFechaCortaReporte,
+  obtenerEtiquetaCuentaActual,
+} from '../../../utils/exportarReportes';
 
 const tiposReportes = [
   {
@@ -72,7 +73,7 @@ const crearReporteHistorial = ({ id, titulo, tipo, fecha, kind, createdAt, creat
   kind,
   createdAt,
   createdBy,
-  ...createReportContent(kind),
+  ...crearContenidoReporte(kind),
 });
 
 const historialInicial = [
@@ -121,10 +122,10 @@ const Reportes = () => {
         id: `REP-2026-${Math.floor(Math.random() * 900) + 100}`,
         titulo: `${reporteBase.titulo} (Generado)`,
         tipo: reporteBase.tipo,
-        fecha: formatShortReportDate(ahora),
+        fecha: formatearFechaCortaReporte(ahora),
         kind: reporteBase.id,
         createdAt: ahora.toISOString(),
-        createdBy: getCurrentAccountLabel(),
+        createdBy: obtenerEtiquetaCuentaActual(),
       });
 
       setHistorialReportes((prev) => [nuevoReporte, ...prev]);
@@ -145,9 +146,9 @@ const Reportes = () => {
 
     try {
       if (formato === 'pdf') {
-        await exportReportToPdf(reporte, LogoWeb);
+        await exportarReportePdf(reporte, LogoWeb);
       } else {
-        exportReportToExcel(reporte);
+        exportarReporteExcel(reporte);
       }
     } catch (error) {
       console.error(error);
@@ -160,10 +161,10 @@ const Reportes = () => {
   return (
     <div className="flex min-h-screen flex-col gap-6 pb-10 text-white">
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <AnalyticCard title="Crecimiento" value="+24%" desc="Nuevos socios" icon={TrendingUp} color="text-green-500" />
-        <AnalyticCard title="Retencion" value="92.3%" desc="Socios activos" icon={Users} color="text-red-500" />
-        <AnalyticCard title="Rotacion" value="4.2x" desc="Venta suplementos" icon={Package} color="text-orange-500" />
-        <AnalyticCard title="Margen Neto" value="82.4%" desc="Eficiencia caja" icon={BarChart3} color="text-blue-500" />
+        <TarjetaMetrica titulo="Efectivo" valor="$1,180" detalle="32 pagos cobrados" icono={DollarSign} color="text-green-500" />
+        <TarjetaMetrica titulo="Tarjetas" valor="$2,910" detalle="71 pagos credito/debito" icono={FileSpreadsheet} color="text-red-500" />
+        <TarjetaMetrica titulo="Ventas" valor="$4,850" detalle="184 ventas totales" icono={TrendingUp} color="text-orange-500" />
+        <TarjetaMetrica titulo="Balance Neto" valor="$4,114.50" detalle="Ingresos menos egresos" icono={BarChart3} color="text-blue-500" />
       </div>
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
@@ -284,18 +285,5 @@ const Reportes = () => {
     </div>
   );
 };
-
-const AnalyticCard = ({ title, value, desc, icon: Icon, color }) => (
-  <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#090909] p-3 sm:p-4">
-    <div className="overflow-hidden">
-      <p className="mb-0.5 truncate text-[9px] font-bold uppercase tracking-wider text-gray-500 sm:text-[10px]">{title}</p>
-      <h2 className="mb-1 text-xl font-black leading-none sm:text-2xl">{value}</h2>
-      <p className="truncate text-[10px] text-gray-400">{desc}</p>
-    </div>
-    <div className={`ml-2 shrink-0 rounded-lg bg-white/5 p-2 ${color}`}>
-      <Icon size={18} className="sm:h-5 sm:w-5" />
-    </div>
-  </div>
-);
 
 export default Reportes;

@@ -11,7 +11,7 @@ const Registro = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-black relative p-4">
+    <div className="auth-screen relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-black p-4">
       <div className="absolute inset-0 bg-[url('/src/assets/fondo_login.png')] bg-cover bg-center opacity-20"></div>
       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/75 to-black"></div>
 
@@ -27,7 +27,7 @@ const Registro = () => {
         />
       </Link>
 
-      <div className="relative z-10 w-full max-w-md bg-[#0c0c0d] p-8 rounded-3xl border border-red-900/30 shadow-2xl">
+      <div className="tarjeta-sistema relative z-10 w-full max-w-md rounded-3xl border border-red-900/30 bg-[#0c0c0d] p-6 shadow-2xl sm:p-8">
         <div className="mb-6 text-center">
           <p className="text-xs text-red-500 uppercase font-extrabold tracking-[0.25em]">
             Crea tu cuenta

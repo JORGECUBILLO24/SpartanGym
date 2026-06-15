@@ -3,10 +3,10 @@ import {
   Settings, Bell, ShieldAlert, Store, 
   Save, CheckCircle2, Globe, Mail, 
   Smartphone, Database, Lock, CreditCard,
-  Palette, Sun, Moon
+  Palette, Sun, Moon, MonitorSmartphone
 } from 'lucide-react';
-
-const SETTINGS_STORAGE_KEY = 'spartanGym.settings';
+import { guardarDatoLocal, leerDatoLocal } from '../../../utils/almacenamientoLocal';
+import { aplicarPreferenciaTema, CLAVE_CONFIGURACION } from '../../../utils/tema';
 
 const defaultConfig = {
   gymName: 'Spartan Gym',
@@ -14,7 +14,7 @@ const defaultConfig = {
   phone: '+505 0000 0000',
   currency: 'USD',
   taxRate: '15',
-  theme: 'dark',
+  theme: 'system',
   emailAlerts: true,
   smsAlerts: false,
   dailyReports: true,
@@ -23,14 +23,10 @@ const defaultConfig = {
 };
 
 const cargarConfigInicial = () => {
-  try {
-    return {
-      ...defaultConfig,
-      ...JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}'),
-    };
-  } catch {
-    return defaultConfig;
-  }
+  return {
+    ...defaultConfig,
+    ...leerDatoLocal(CLAVE_CONFIGURACION, {}),
+  };
 };
 
 const Configuracion = () => {
@@ -42,8 +38,8 @@ const Configuracion = () => {
   const [config, setConfig] = useState(cargarConfigInicial);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = config.theme === 'light' ? 'light' : 'dark';
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...cargarConfigInicial(), theme: config.theme }));
+    aplicarPreferenciaTema(config.theme);
+    guardarDatoLocal(CLAVE_CONFIGURACION, { ...cargarConfigInicial(), theme: config.theme });
   }, [config.theme]);
 
   const handleChange = (e) => {
@@ -54,7 +50,7 @@ const Configuracion = () => {
   const handleSave = (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(config));
+    guardarDatoLocal(CLAVE_CONFIGURACION, config);
     
     setTimeout(() => {
       setIsSubmitting(false);
@@ -158,15 +154,22 @@ const Configuracion = () => {
                   <h2 className="text-lg font-bold">Apariencia</h2>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <ThemeOption
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                  <OpcionTema
+                    active={config.theme === 'system'}
+                    icon={MonitorSmartphone}
+                    title="Segun navegador"
+                    desc="La interfaz cambia automaticamente con el tema del sistema operativo."
+                    onClick={() => setConfig({ ...config, theme: 'system' })}
+                  />
+                  <OpcionTema
                     active={config.theme === 'dark'}
                     icon={Moon}
                     title="Tema oscuro"
                     desc="Interfaz de alto contraste para uso diario en recepcion y administracion."
                     onClick={() => setConfig({ ...config, theme: 'dark' })}
                   />
-                  <ThemeOption
+                  <OpcionTema
                     active={config.theme === 'light'}
                     icon={Sun}
                     title="Tema blanco"
@@ -301,7 +304,7 @@ const ToggleSwitch = ({ icon: Icon, title, desc, name, checked, onChange }) => (
   </div>
 );
 
-const ThemeOption = ({ active, icon: Icon, title, desc, onClick }) => (
+const OpcionTema = ({ active, icon: Icon, title, desc, onClick }) => (
   <button
     type="button"
     onClick={onClick}
