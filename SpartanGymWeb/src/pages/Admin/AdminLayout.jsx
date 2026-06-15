@@ -1,16 +1,45 @@
-import { useState } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CreditCard, DollarSign, Box,
   BarChart3, Settings, Bell, UserPlus, ShoppingCart,
-  Key, Sliders, Menu, X, Building2
+  Key, Sliders, Menu, X, Building2, UserCircle, LogOut
 } from 'lucide-react';
 
 import LogoWeb from '../../assets/Logo Web.png';
+import ControlSesion from '../../components/ControlSesion';
+import {
+  cerrarSesionActual,
+  EVENTO_CUENTA_ACTUAL,
+  leerCuentaActual,
+  obtenerInicialesCuenta,
+} from '../../utils/cuentaActual';
 
 const AdminLayout = () => {
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [cuentaActual, setCuentaActual] = useState(() => leerCuentaActual());
   const ubicacionActual = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const actualizarCuenta = () => setCuentaActual(leerCuentaActual());
+
+    window.addEventListener('storage', actualizarCuenta);
+    window.addEventListener(EVENTO_CUENTA_ACTUAL, actualizarCuenta);
+
+    return () => {
+      window.removeEventListener('storage', actualizarCuenta);
+      window.removeEventListener(EVENTO_CUENTA_ACTUAL, actualizarCuenta);
+    };
+  }, []);
+
+  const inicialesCuenta = useMemo(() => obtenerInicialesCuenta(cuentaActual), [cuentaActual]);
+
+  const cerrarSesion = () => {
+    cerrarSesionActual('manual');
+    setMenuAbierto(false);
+    navigate('/login', { replace: true });
+  };
 
   const obtenerTituloPagina = () => {
     switch (ubicacionActual.pathname) {
@@ -23,6 +52,8 @@ const AdminLayout = () => {
       case '/admin/sucursales': return 'Gestión de Sucursales';
       case '/admin/membresias': return 'Gestión de Membresías';
       case '/admin/registrar-socio': return 'Registro de Socio';
+      case '/admin/mensajes': return 'Mensajes Globales';
+      case '/admin/perfil': return 'Perfil del Administrador';
       default: return 'Administración';
     }
   };
@@ -38,11 +69,13 @@ const AdminLayout = () => {
 
       <aside className={`admin-sidebar fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-1.25rem))] flex-col border-r border-white/5 bg-[#050505] shadow-2xl shadow-black/50 transition-transform duration-300 lg:static lg:w-72 lg:translate-x-0 ${menuAbierto ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex shrink-0 items-center justify-between px-5 py-4 sm:py-5">
-          <img
-            src={LogoWeb}
-            alt="Spartan Gym"
-            className="h-auto w-44 max-w-full object-contain drop-shadow-[0_0_14px_rgba(220,38,38,0.45)] transition duration-300 hover:scale-[1.02]"
-          />
+          <Link to="/admin" aria-label="Ir al inicio de administrador" className="inline-flex max-w-full">
+            <img
+              src={LogoWeb}
+              alt="Spartan Gym"
+              className="h-auto w-44 max-w-full object-contain drop-shadow-[0_0_14px_rgba(220,38,38,0.45)] transition duration-300 hover:scale-[1.02]"
+            />
+          </Link>
           <button
             onClick={() => setMenuAbierto(false)}
             className="rounded-lg p-2 text-white transition-colors hover:bg-white/10 lg:hidden"
@@ -65,6 +98,8 @@ const AdminLayout = () => {
           <ElementoNavegacion to="/admin/reportes" icono={<BarChart3 size={18} />} etiqueta="Reportes" />
           <ElementoNavegacion to="/admin/sucursales" icono={<Building2 size={18} />} etiqueta="Sucursales" />
           <ElementoNavegacion to="/admin/membresias" icono={<CreditCard size={18} />} etiqueta="Membresías" />
+          <ElementoNavegacion to="/admin/mensajes" icono={<Bell size={18} />} etiqueta="Mensajes" />
+          <ElementoNavegacion to="/admin/perfil" icono={<UserCircle size={18} />} etiqueta="Mi perfil" />
           <ElementoNavegacion to="/admin/configuracion" icono={<Settings size={18} />} etiqueta="Configuración" />
 
           <div className="mb-2 mt-8 px-3">
@@ -73,7 +108,11 @@ const AdminLayout = () => {
           <AccesoRapido to="/admin/registrar-socio" icono={<UserPlus size={18} />} etiqueta="Registrar socio" />
           <AccesoRapido to="/admin/inventario" icono={<ShoppingCart size={18} />} etiqueta="Nueva venta" />
           <AccesoRapido to="/admin/membresias" icono={<Key size={18} />} etiqueta="Crear membresía" />
+          <AccesoRapido to="/admin/mensajes" icono={<Bell size={18} />} etiqueta="Mensaje global" />
           <AccesoRapido to="/admin/configuracion" icono={<Sliders size={18} />} etiqueta="Ajustes del sistema" />
+          <div className="mt-4 border-t border-white/5 pt-4">
+            <BotonCerrarSesion onClick={cerrarSesion} />
+          </div>
         </nav>
       </aside>
 
@@ -92,10 +131,17 @@ const AdminLayout = () => {
           </div>
 
           <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-            <Bell size={20} className="cursor-pointer text-gray-400 transition-colors hover:text-white" />
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-red-800 text-sm font-bold shadow-lg transition duration-300 hover:scale-105">
-              AD
-            </div>
+            <Link to="/admin/mensajes" aria-label="Ver mensajes" className="rounded-lg p-2 text-gray-400 transition-all hover:bg-white/5 hover:text-white">
+              <Bell size={20} />
+            </Link>
+            <Link
+              to="/admin/perfil"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-red-800 text-sm font-bold text-white shadow-lg transition duration-300 hover:-translate-y-0.5 hover:scale-105"
+              title={cuentaActual.name || cuentaActual.username || 'Perfil administrador'}
+              aria-label="Editar perfil de administrador"
+            >
+              {inicialesCuenta}
+            </Link>
           </div>
         </header>
 
@@ -105,6 +151,7 @@ const AdminLayout = () => {
           </div>
         </main>
       </div>
+      <ControlSesion />
     </div>
   );
 };
@@ -127,6 +174,19 @@ const AccesoRapido = ({ icono, etiqueta, to }) => (
     <span className="rounded-lg p-1.5 transition-colors group-hover:bg-white/5">{icono}</span>
     <span>{etiqueta}</span>
   </NavLink>
+);
+
+const BotonCerrarSesion = ({ onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="group flex w-full items-center gap-3 rounded-lg p-2.5 text-sm font-bold text-red-500 transition-all duration-300 hover:bg-red-500/10 sm:p-3"
+  >
+    <span className="rounded-lg p-1.5 transition-colors group-hover:bg-red-500/10">
+      <LogOut size={18} />
+    </span>
+    <span>Cerrar sesion</span>
+  </button>
 );
 
 export default AdminLayout;

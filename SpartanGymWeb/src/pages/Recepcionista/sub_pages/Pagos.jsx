@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import {
   DollarSign, FileText, Search, PlusCircle,
   CheckCircle2, Clock, CreditCard, ArrowUpRight,
@@ -24,6 +24,53 @@ const pagoVacio = {
 const metodosPago = ['Efectivo', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Transferencia'];
 const estadosPago = ['Completado', 'Pendiente'];
 
+const categoriasPago = [
+  {
+    id: 'efectivo',
+    nombre: 'Efectivo',
+    descripcion: 'Caja fisica',
+    icon: DollarSign,
+    color: 'text-green-500',
+    bg: 'bg-green-500/10',
+    border: 'border-green-500/20',
+  },
+  {
+    id: 'tarjetas',
+    nombre: 'Tarjetas',
+    descripcion: 'Credito y debito',
+    icon: CreditCard,
+    color: 'text-red-500',
+    bg: 'bg-red-500/10',
+    border: 'border-red-500/20',
+  },
+  {
+    id: 'transferencias',
+    nombre: 'Transferencias',
+    descripcion: 'Bancos y apps',
+    icon: ArrowUpRight,
+    color: 'text-blue-500',
+    bg: 'bg-blue-500/10',
+    border: 'border-blue-500/20',
+  },
+];
+
+const obtenerMontoNumerico = (monto) => Number(String(monto).replace(/[^0-9.-]+/g, '')) || 0;
+
+const formatearMoneda = (valor) =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(valor);
+
+const obtenerCategoriaPago = (metodo = '') => {
+  const metodoNormalizado = metodo.toLowerCase();
+
+  if (metodoNormalizado.includes('tarjeta')) return categoriasPago[1];
+  if (metodoNormalizado.includes('transfer')) return categoriasPago[2];
+
+  return categoriasPago[0];
+};
+
 const Pagos = () => {
   const [generandoReporte, setGenerandoReporte] = useState(false);
   const [reporteDescargado, setReporteDescargado] = useState(false);
@@ -32,6 +79,7 @@ const Pagos = () => {
   const [modalPagoAbierto, setModalPagoAbierto] = useState(false);
   const [datosPago, setDatosPago] = useState(pagoVacio);
   const [pagoGuardado, setPagoGuardado] = useState(false);
+  const [categoriaActiva, setCategoriaActiva] = useState('todos');
 
   const generarReporte = () => {
     setGenerandoReporte(true);
@@ -69,9 +117,44 @@ const Pagos = () => {
     }, 900);
   };
 
-  const pagosFiltrados = historialPagos.filter((pago) =>
-    pago.socio.toLowerCase().includes(terminoBusqueda.toLowerCase())
+  const resumenPorCategoria = useMemo(() => (
+    categoriasPago.map((categoria) => {
+      const pagos = historialPagos.filter((pago) => obtenerCategoriaPago(pago.metodo).id === categoria.id);
+      const total = pagos.reduce((suma, pago) => suma + obtenerMontoNumerico(pago.monto), 0);
+
+      return {
+        ...categoria,
+        total,
+        cantidad: pagos.length,
+        pendientes: pagos.filter((pago) => pago.estado === 'Pendiente').length,
+      };
+    })
+  ), [historialPagos]);
+
+  const categoriaMasUsada = resumenPorCategoria.reduce(
+    (mayor, categoria) => (categoria.cantidad > mayor.cantidad ? categoria : mayor),
+    resumenPorCategoria[0]
   );
+
+  const totalRecaudado = formatearMoneda(
+    historialPagos
+      .filter((pago) => pago.estado === 'Completado')
+      .reduce((suma, pago) => suma + obtenerMontoNumerico(pago.monto), 0)
+  );
+
+  const pagosFiltrados = historialPagos.filter((pago) => {
+    const coincideBusqueda = pago.socio.toLowerCase().includes(terminoBusqueda.toLowerCase());
+    const coincideCategoria = categoriaActiva === 'todos' || obtenerCategoriaPago(pago.metodo).id === categoriaActiva;
+
+    return coincideBusqueda && coincideCategoria;
+  });
+
+  const pagosAgrupados = categoriasPago
+    .map((categoria) => ({
+      ...categoria,
+      pagos: pagosFiltrados.filter((pago) => obtenerCategoriaPago(pago.metodo).id === categoria.id),
+    }))
+    .filter((categoria) => categoria.pagos.length > 0);
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
@@ -115,7 +198,7 @@ const Pagos = () => {
         <div className="flex items-center justify-between rounded-2xl border border-white/5 bg-[#111111] p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/10">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Total Recaudado (Mes)</span>
-            <h3 className="mt-1 text-3xl font-black text-white">$1,840.00</h3>
+            <h3 className="mt-1 text-3xl font-black text-white">{totalRecaudado}</h3>
             <span className="mt-2 flex items-center gap-1 text-xs font-medium text-green-500">
               <TrendingUp size={12} /> +12.5% vs mes anterior
             </span>
@@ -128,8 +211,8 @@ const Pagos = () => {
         <div className="flex items-center justify-between rounded-2xl border border-white/5 bg-[#111111] p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/10">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Método Más Utilizado</span>
-            <h3 className="mt-1 text-2xl font-bold text-white">Tarjetas</h3>
-            <p className="mt-2 text-xs text-gray-500">60% de las transacciones</p>
+            <h3 className="mt-1 text-2xl font-bold text-white">{categoriaMasUsada.nombre}</h3>
+            <p className="mt-2 text-xs text-gray-500">{categoriaMasUsada.cantidad} transacciones registradas</p>
           </div>
           <div className="rounded-xl border border-white/5 bg-[#2a0808] p-4 text-red-500">
             <CreditCard size={24} />
@@ -149,6 +232,61 @@ const Pagos = () => {
           <div className="rounded-xl border border-orange-400/10 bg-orange-400/10 p-4 text-orange-400">
             <Clock size={24} />
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/5 bg-[#111111] p-5 shadow-lg transition-all duration-300 hover:border-white/10">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-bold text-white">Tipos de pago por categoria</h3>
+            <p className="text-xs text-gray-500">Separado por el metodo usado al registrar cada pago.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCategoriaActiva('todos')}
+            className={`inline-flex w-fit items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition-all ${
+              categoriaActiva === 'todos'
+                ? 'border-red-500/50 bg-red-600/10 text-red-500'
+                : 'border-white/10 bg-[#050505] text-gray-400 hover:border-white/20 hover:text-white'
+            }`}
+          >
+            <Filter size={13} />
+            Todos
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {resumenPorCategoria.map((categoria) => {
+            const IconoCategoria = categoria.icon;
+            const activa = categoriaActiva === categoria.id;
+
+            return (
+              <button
+                key={categoria.id}
+                type="button"
+                onClick={() => setCategoriaActiva(activa ? 'todos' : categoria.id)}
+                className={`group flex items-center justify-between rounded-xl border p-4 text-left transition-all duration-300 hover:-translate-y-0.5 ${
+                  activa
+                    ? `${categoria.border} ${categoria.bg} shadow-lg`
+                    : 'border-white/5 bg-[#050505] hover:border-white/15'
+                }`}
+              >
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{categoria.descripcion}</span>
+                  <h4 className="mt-1 text-sm font-black text-white">{categoria.nombre}</h4>
+                  <p className="mt-2 text-base font-black text-white">
+                    {formatearMoneda(categoria.total)}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {categoria.cantidad} pagos - {categoria.pendientes} pendientes
+                  </p>
+                </div>
+                <div className={`rounded-xl border ${categoria.border} ${categoria.bg} p-3 ${categoria.color}`}>
+                  <IconoCategoria size={20} />
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -197,40 +335,71 @@ const Pagos = () => {
               </tr>
             </thead>
             <tbody>
-              {pagosFiltrados.map((pago) => (
-                <tr key={pago.id} className="border-b border-white/5 transition-colors last:border-0 hover:bg-white/5">
-                  <td className="flex items-center gap-3 py-3.5 pr-4">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2a0808] text-red-500">
-                      <User size={14} />
-                    </div>
-                    <span className="font-medium text-white">{pago.socio}</span>
-                  </td>
-                  <td className="py-3.5 pr-4 text-gray-300">{pago.membresia}</td>
-                  <td className="py-3.5 pr-4 font-bold text-white">{pago.monto}</td>
-                  <td className="py-3.5 pr-4 text-gray-400">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar size={12} className="text-gray-600" />
-                      {pago.fecha}
-                    </div>
-                  </td>
-                  <td className="py-3.5 pr-4 text-gray-400">
-                    <span className="rounded-lg border border-white/5 bg-[#050505] px-2.5 py-1 text-xs">
-                      {pago.metodo}
-                    </span>
-                  </td>
-                  <td className="py-3.5">
-                    {pago.estado === 'Completado' ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-500">
-                        <CheckCircle2 size={12} /> {pago.estado}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-orange-400/20 bg-orange-400/10 px-2.5 py-1 text-xs font-semibold text-orange-400">
-                        <Clock size={12} /> {pago.estado}
-                      </span>
-                    )}
+              {pagosAgrupados.map((grupo) => {
+                const IconoGrupo = grupo.icon;
+                const totalGrupo = grupo.pagos.reduce((suma, pago) => suma + obtenerMontoNumerico(pago.monto), 0);
+
+                return (
+                  <Fragment key={grupo.id}>
+                    <tr className="border-b border-white/5 bg-white/[0.03]">
+                      <td colSpan="6" className="py-3 pr-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <span className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-white">
+                            <span className={`rounded-lg border ${grupo.border} ${grupo.bg} p-1.5 ${grupo.color}`}>
+                              <IconoGrupo size={14} />
+                            </span>
+                            {grupo.nombre}
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-500">
+                            {grupo.pagos.length} pagos - {formatearMoneda(totalGrupo)}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                    {grupo.pagos.map((pago) => (
+                      <tr key={pago.id} className="border-b border-white/5 transition-colors last:border-0 hover:bg-white/5">
+                        <td className="flex items-center gap-3 py-3.5 pr-4">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2a0808] text-red-500">
+                            <User size={14} />
+                          </div>
+                          <span className="font-medium text-white">{pago.socio}</span>
+                        </td>
+                        <td className="py-3.5 pr-4 text-gray-300">{pago.membresia}</td>
+                        <td className="py-3.5 pr-4 font-bold text-white">{pago.monto}</td>
+                        <td className="py-3.5 pr-4 text-gray-400">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar size={12} className="text-gray-600" />
+                            {pago.fecha}
+                          </div>
+                        </td>
+                        <td className="py-3.5 pr-4 text-gray-400">
+                          <span className="rounded-lg border border-white/5 bg-[#050505] px-2.5 py-1 text-xs">
+                            {pago.metodo}
+                          </span>
+                        </td>
+                        <td className="py-3.5">
+                          {pago.estado === 'Completado' ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-500">
+                              <CheckCircle2 size={12} /> {pago.estado}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-orange-400/20 bg-orange-400/10 px-2.5 py-1 text-xs font-semibold text-orange-400">
+                              <Clock size={12} /> {pago.estado}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
+              {!pagosFiltrados.length && (
+                <tr>
+                  <td colSpan="6" className="py-10 text-center text-sm font-medium text-gray-500">
+                    No hay pagos para esta busqueda o categoria.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

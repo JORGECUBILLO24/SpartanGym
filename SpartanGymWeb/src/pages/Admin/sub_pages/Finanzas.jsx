@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { 
   DollarSign, TrendingUp, TrendingDown, CreditCard, 
   Plus, Save, CheckCircle2, FileText
 } from 'lucide-react';
+import TarjetaMetrica from '../../../components/TarjetaMetrica';
+
+const categoriasFinancieras = ['Membresía', 'Suplemento', 'Servicios', 'Mantenimiento'];
 
 const Finanzas = () => {
   // Estados para el formulario de registro
@@ -21,9 +24,9 @@ const Finanzas = () => {
 
   // Datos mock de transacciones
   const [transacciones, setTransacciones] = useState([
-    { id: '#TRX-9841', usuario: 'Jorge Cubillo', tipo: 'ingreso', concepto: 'Membresía Spartan Anual', monto: 250.00, metodo: 'Tarjeta', fecha: 'Hoy, 04:15 PM' },
-    { id: '#TRX-9840', usuario: 'Gimnasio Central', tipo: 'gasto', concepto: 'Mantenimiento de máquinas', monto: 120.00, metodo: 'Transferencia', fecha: 'Hoy, 11:30 AM' },
-    { id: '#TRX-9839', usuario: 'Anthony Flores', tipo: 'ingreso', concepto: 'Membresía Premium (3 Meses)', monto: 80.00, metodo: 'Efectivo', fecha: 'Ayer' },
+    { id: '#TRX-9841', usuario: 'Jorge Cubillo', tipo: 'ingreso', concepto: 'Membresía Spartan Anual', monto: 250.00, metodo: 'Tarjeta', categoria: 'Membresía', fecha: 'Hoy, 04:15 PM' },
+    { id: '#TRX-9840', usuario: 'Gimnasio Central', tipo: 'gasto', concepto: 'Mantenimiento de máquinas', monto: 120.00, metodo: 'Transferencia', categoria: 'Mantenimiento', fecha: 'Hoy, 11:30 AM' },
+    { id: '#TRX-9839', usuario: 'Anthony Flores', tipo: 'ingreso', concepto: 'Membresía Premium (3 Meses)', monto: 80.00, metodo: 'Efectivo', categoria: 'Membresía', fecha: 'Ayer' },
   ]);
 
   const handleChange = (e) => {
@@ -43,6 +46,7 @@ const Finanzas = () => {
         concepto: nuevoMovimiento.concepto,
         monto: parseFloat(nuevoMovimiento.monto),
         metodo: nuevoMovimiento.metodo,
+        categoria: nuevoMovimiento.categoria,
         fecha: 'Ahora mismo'
       };
       
@@ -62,15 +66,41 @@ const Finanzas = () => {
     return coincideTipo && (t.concepto.toLowerCase().includes(busqueda.toLowerCase()) || t.usuario.toLowerCase().includes(busqueda.toLowerCase()));
   });
 
+  const resumenCategorias = useMemo(() => (
+    categoriasFinancieras.map((categoria) => {
+      const movimientos = transacciones.filter((transaccion) => transaccion.categoria === categoria);
+      const total = movimientos.reduce((suma, transaccion) => suma + transaccion.monto, 0);
+
+      return { categoria, total, cantidad: movimientos.length };
+    })
+  ), [transacciones]);
+
+  const transaccionesPorCategoria = categoriasFinancieras
+    .map((categoria) => ({
+      categoria,
+      movimientos: transaccionesFiltradas.filter((transaccion) => transaccion.categoria === categoria),
+    }))
+    .filter((grupo) => grupo.movimientos.length > 0);
+
   return (
     <div className="flex flex-col gap-6 text-white min-h-screen pb-10">
       
       {/* MÉTRICAS SUPERIORES */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Balance" value="$4,114.50" icon={DollarSign} color="text-gray-400" trend="+12%" />
-        <MetricCard title="Ingresos" value="$4,850.00" icon={TrendingUp} color="text-green-500" trend="84 Trx" />
-        <MetricCard title="Egresos" value="$735.50" icon={TrendingDown} color="text-red-500" trend="Gastos" />
-        <MetricCard title="Pendiente" value="$320.00" icon={CreditCard} color="text-orange-500" trend="17 Socios" />
+        <TarjetaMetrica titulo="Balance" valor="$4,114.50" icono={DollarSign} color="text-gray-400" detalle="+12%" />
+        <TarjetaMetrica titulo="Ingresos" valor="$4,850.00" icono={TrendingUp} color="text-green-500" detalle="84 Trx" />
+        <TarjetaMetrica titulo="Egresos" valor="$735.50" icono={TrendingDown} color="text-red-500" detalle="Gastos" />
+        <TarjetaMetrica titulo="Pendiente" valor="$320.00" icono={CreditCard} color="text-orange-500" detalle="17 Socios" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 rounded-2xl border border-white/10 bg-[#090909] p-4 shadow-2xl sm:grid-cols-2 xl:grid-cols-4">
+        {resumenCategorias.map((item) => (
+          <div key={item.categoria} className="rounded-xl border border-white/5 bg-[#111]/60 p-4 transition-all hover:-translate-y-0.5 hover:border-white/15">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">{item.categoria}</p>
+            <h3 className="mt-1 text-xl font-black text-white">${item.total.toFixed(2)}</h3>
+            <p className="mt-1 text-[10px] font-bold text-gray-500">{item.cantidad} movimientos</p>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -92,24 +122,47 @@ const Finanzas = () => {
                 <tr className="bg-white/5 text-gray-500 text-[10px] uppercase font-bold tracking-widest">
                   <th className="p-4">Detalle</th>
                   <th className="p-4">Método</th>
+                  <th className="p-4">Categoría</th>
                   <th className="p-4 text-right">Monto</th>
                 </tr>
               </thead>
               <tbody className="text-xs divide-y divide-white/5">
-                {transaccionesFiltradas.map((t) => (
-                  <tr key={t.id} className="hover:bg-white/[0.02]">
-                    <td className="p-4">
-                      <p className="font-bold text-white break-words max-w-[180px]">{t.concepto}</p>
-                      <span className="text-[10px] text-gray-500">{t.fecha}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-gray-400">{t.metodo}</span>
-                    </td>
-                    <td className={`p-4 text-right font-black ${t.tipo === 'ingreso' ? 'text-green-500' : 'text-red-500'}`}>
-                      {t.tipo === 'ingreso' ? '+' : '-'} ${t.monto.toFixed(2)}
+                {transaccionesPorCategoria.map((grupo) => (
+                  <Fragment key={grupo.categoria}>
+                    <tr className="bg-white/[0.03]">
+                      <td colSpan="4" className="p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-white">{grupo.categoria}</span>
+                          <span className="text-[10px] font-bold text-gray-500">{grupo.movimientos.length} movimientos</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {grupo.movimientos.map((t) => (
+                      <tr key={t.id} className="hover:bg-white/[0.02]">
+                        <td className="p-4">
+                          <p className="font-bold text-white break-words max-w-[180px]">{t.concepto}</p>
+                          <span className="text-[10px] text-gray-500">{t.fecha}</span>
+                        </td>
+                        <td className="p-4">
+                          <span className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-gray-400">{t.metodo}</span>
+                        </td>
+                        <td className="p-4">
+                          <span className="px-2 py-0.5 bg-red-500/10 rounded text-[9px] font-bold text-red-500">{t.categoria}</span>
+                        </td>
+                        <td className={`p-4 text-right font-black ${t.tipo === 'ingreso' ? 'text-green-500' : 'text-red-500'}`}>
+                          {t.tipo === 'ingreso' ? '+' : '-'} ${t.monto.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                ))}
+                {!transaccionesFiltradas.length && (
+                  <tr>
+                    <td colSpan="4" className="p-8 text-center text-xs font-medium text-gray-500">
+                      No hay movimientos para el filtro seleccionado.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -209,16 +262,5 @@ const Finanzas = () => {
     </div>
   );
 };
-
-const MetricCard = ({ title, value, icon: Icon, color, trend }) => (
-  <div className="bg-[#090909] border border-white/10 p-5 rounded-2xl relative overflow-hidden">
-    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">{title}</p>
-    <h3 className="text-2xl font-black">{value}</h3>
-    <p className="text-[10px] text-gray-400 mt-1 font-bold">{trend}</p>
-    <div className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/5 rounded-xl ${color}`}>
-      <Icon size={22} />
-    </div>
-  </div>
-);
 
 export default Finanzas;

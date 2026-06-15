@@ -1,15 +1,24 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CreditCard, DollarSign, Search, Bell,
-  UserPlus, Menu, X, QrCode, ClipboardList, User
+  UserPlus, Menu, X, QrCode, ClipboardList, User, LogOut
 } from 'lucide-react';
 
 import LogoWeb from '../../assets/Logo Web.png';
+import ControlSesion from '../../components/ControlSesion';
+import { cerrarSesionActual } from '../../utils/cuentaActual';
 
 const RecepcionistaLayout = () => {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const ubicacionActual = useLocation();
+  const navigate = useNavigate();
+
+  const cerrarSesion = () => {
+    cerrarSesionActual('manual');
+    setMenuAbierto(false);
+    navigate('/login', { replace: true });
+  };
 
   const obtenerTituloPagina = () => {
     switch (ubicacionActual.pathname) {
@@ -26,7 +35,7 @@ const RecepcionistaLayout = () => {
   };
 
   return (
-    <div className="flex min-h-dvh overflow-hidden bg-[#050505] font-sans text-white">
+    <div className="reception-theme flex min-h-dvh overflow-hidden bg-[#050505] font-sans text-white transition-colors duration-300">
       {menuAbierto && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
@@ -34,13 +43,15 @@ const RecepcionistaLayout = () => {
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-1.25rem))] flex-col border-r border-white/5 bg-[#0a0a0a] shadow-2xl shadow-black/50 transition-transform duration-300 lg:static lg:w-72 lg:translate-x-0 ${menuAbierto ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`reception-sidebar fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-1.25rem))] flex-col border-r border-white/5 bg-[#0a0a0a] shadow-2xl shadow-black/50 transition-transform duration-300 lg:static lg:w-72 lg:translate-x-0 ${menuAbierto ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex shrink-0 items-center justify-between px-5 py-4 sm:py-5">
-          <img
-            src={LogoWeb}
-            alt="Logo Spartan Gym"
-            className="h-auto w-44 max-w-full object-contain drop-shadow-[0_0_14px_rgba(220,38,38,0.45)] transition duration-300 hover:scale-[1.02]"
-          />
+          <NavLink to="/recepcion" aria-label="Ir al inicio de recepcion" className="inline-flex max-w-full">
+            <img
+              src={LogoWeb}
+              alt="Logo Spartan Gym"
+              className="h-auto w-44 max-w-full object-contain drop-shadow-[0_0_14px_rgba(220,38,38,0.45)] transition duration-300 hover:scale-[1.02]"
+            />
+          </NavLink>
           <button
             onClick={() => setMenuAbierto(false)}
             className="rounded-lg p-2 text-white transition-colors hover:bg-white/10 lg:hidden"
@@ -64,11 +75,15 @@ const RecepcionistaLayout = () => {
           <ElementoNavegacion to="/recepcion/asistencias" icono={<ClipboardList size={18} />} etiqueta="Asistencias" />
           <ElementoNavegacion to="/recepcion/notificaciones" icono={<Bell size={18} />} etiqueta="Notificaciones" />
           <ElementoNavegacion to="/recepcion/perfil" icono={<User size={18} />} etiqueta="Perfil" />
+
+          <div className="mt-4 border-t border-white/5 pt-4">
+            <BotonCerrarSesion onClick={cerrarSesion} />
+          </div>
         </nav>
       </aside>
 
-      <main className="flex min-h-dvh min-w-0 flex-1 flex-col overflow-hidden bg-[#0a0a0a]">
-        <header className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/5 bg-[#0a0a0a]/90 px-3 py-3 backdrop-blur-md sm:px-5 lg:px-8">
+      <main className="reception-main flex min-h-dvh min-w-0 flex-1 flex-col overflow-hidden bg-[#0a0a0a]">
+        <header className="reception-header flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-white/5 bg-[#0a0a0a]/90 px-3 py-3 backdrop-blur-md sm:px-5 lg:px-8">
           <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <button
               onClick={() => setMenuAbierto(true)}
@@ -94,23 +109,24 @@ const RecepcionistaLayout = () => {
               <Bell size={20} className="text-gray-400 transition-colors hover:text-white" />
             </div>
 
-            <div className="flex cursor-pointer items-center gap-3 transition-opacity hover:opacity-90 lg:border-l lg:border-white/10 lg:pl-5">
+            <NavLink to="/recepcion/perfil" className="flex cursor-pointer items-center gap-3 transition-opacity hover:opacity-90 lg:border-l lg:border-white/10 lg:pl-5">
               <div className="rounded-full bg-[#2a0808] p-2 text-red-500 transition duration-300 hover:scale-105">
                 <User size={18} />
               </div>
               <div className="hidden md:block">
                 <p className="text-sm font-medium text-white">Recepcionista</p>
               </div>
-            </div>
+            </NavLink>
           </div>
         </header>
 
         <div className="min-w-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-screen-2xl px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
-          <Outlet />
+          <div key={ubicacionActual.pathname} className="page-transition-shell mx-auto w-full max-w-screen-2xl px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
+            <Outlet />
           </div>
         </div>
       </main>
+      <ControlSesion />
     </div>
   );
 };
@@ -129,6 +145,19 @@ const ElementoNavegacion = ({ icono, etiqueta, to, exact }) => (
   >
     {icono} <span>{etiqueta}</span>
   </NavLink>
+);
+
+const BotonCerrarSesion = ({ onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="group flex w-full items-center gap-3 rounded-lg p-2.5 text-sm font-bold text-red-500 transition-all duration-300 hover:bg-red-500/10"
+  >
+    <span className="rounded-lg p-1.5 transition-colors group-hover:bg-red-500/10">
+      <LogOut size={18} />
+    </span>
+    <span>Cerrar sesion</span>
+  </button>
 );
 
 export default RecepcionistaLayout;

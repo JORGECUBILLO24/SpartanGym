@@ -1,75 +1,219 @@
-import { User, Building2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Building2,
+  Mail,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  User,
+  Users,
+} from 'lucide-react';
+import {
+  EVENTO_PERSONAL,
+  leerPersonalCompartido,
+  obtenerNombrePersonal,
+} from '../../../utils/personalCompartido';
+import { leerCuentaActual, obtenerInicialesCuenta } from '../../../utils/cuentaActual';
+
+const perfilRecepcionBase = {
+  nombre: 'Jorge Rafael Cubillo',
+  correo: 'jorge@spartangym.com',
+  telefono: '+505 8888 8888',
+  rol: 'Recepcionista',
+  gimnasio: 'SpartanGym Central',
+  ubicacion: 'Managua, Nicaragua',
+  estado: 'Turno manana',
+};
+
+const obtenerRecepcionistas = () =>
+  leerPersonalCompartido().filter((persona) => persona.rol === 'Recepcionista');
 
 const Perfil = () => {
-  // Datos de ejemplo para los otros recepcionistas
-  const otrosRecepcionistas = [
-    { nombre: 'Anthony Flores', correo: 'anthony@spartangym.com', tel: '+505 7777 7777', sucursal: 'SpartanGym Masachapa', ubicacion: 'Masachapa, Nicaragua' }
-  ];
+  const [recepcionistas, setRecepcionistas] = useState(obtenerRecepcionistas);
+  const cuentaActual = leerCuentaActual();
+
+  useEffect(() => {
+    const actualizarRecepcionistas = () => setRecepcionistas(obtenerRecepcionistas());
+
+    window.addEventListener('storage', actualizarRecepcionistas);
+    window.addEventListener(EVENTO_PERSONAL, actualizarRecepcionistas);
+
+    return () => {
+      window.removeEventListener('storage', actualizarRecepcionistas);
+      window.removeEventListener(EVENTO_PERSONAL, actualizarRecepcionistas);
+    };
+  }, []);
+
+  const perfilActual = useMemo(() => {
+    const correoCuenta = cuentaActual.username || cuentaActual.email;
+    const recepcionistaActual = recepcionistas.find((persona) => persona.correo === correoCuenta);
+
+    if (recepcionistaActual) {
+      return {
+        ...recepcionistaActual,
+        nombre: obtenerNombrePersonal(recepcionistaActual),
+        ubicacion: recepcionistaActual.gimnasio,
+      };
+    }
+
+    return perfilRecepcionBase;
+  }, [cuentaActual.email, cuentaActual.username, recepcionistas]);
+
+  const recepcionistasVisibles = useMemo(() => {
+    const existePerfilActual = recepcionistas.some((persona) => persona.correo === perfilActual.correo);
+
+    return existePerfilActual
+      ? recepcionistas
+      : [
+          {
+            id: 'perfil-actual-local',
+            nombre: 'Jorge',
+            apellido: 'Cubillo',
+            correo: perfilRecepcionBase.correo,
+            telefono: perfilRecepcionBase.telefono,
+            rol: 'Recepcionista',
+            gimnasio: perfilRecepcionBase.gimnasio,
+            estado: perfilRecepcionBase.estado,
+          },
+          ...recepcionistas,
+        ];
+  }, [perfilActual.correo, recepcionistas]);
 
   return (
-    <div className="max-w-5xl p-6 pt-0 animate-in fade-in duration-500 space-y-8">
-      
-      {/* SECCIÓN 1: Tu Perfil (Tal cual lo tienes) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4 bg-[#0d0d0d] p-8 rounded-3xl border border-white/5 flex flex-col items-center justify-center text-center">
-          <div className="w-32 h-32 bg-[#171717] rounded-full flex items-center justify-center text-gray-500 border-2 border-white/5 shadow-xl mb-6">
-            <User size={64} className="opacity-50" />
-          </div>
-          <h3 className="text-lg font-bold text-white">Jorge Cubillo</h3>
-          <p className="text-red-500 text-xs font-medium uppercase tracking-widest mt-1">Recepcionista</p>
-          <div className="flex items-center gap-1.5 text-gray-500 text-xs mt-3">
-            <Building2 size={14} />
-            SpartanGym Central
-          </div>
-        </div>
-
-        <div className="lg:col-span-8 bg-[#0d0d0d] p-8 rounded-3xl border border-white/5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <DetailField label="Nombre Completo" value="Jorge Rafael Cubillo" />
-            <DetailField label="Correo Electrónico" value="jorge@spartangym.com" />
-            <DetailField label="Teléfono" value="+505 8888 8888" />
-            <DetailField label="Sucursal" value="SpartanGym Central" />
-            <DetailField label="Ubicación" value="Managua, Nicaragua" />
-          </div>
-        </div>
-      </div>
-
-      {/* SECCIÓN 2: Lista de otros recepcionistas con la MISMA estructura */}
-      {otrosRecepcionistas.map((recep, index) => (
-        <div key={index} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-4 bg-[#0d0d0d] p-8 rounded-3xl border border-white/5 flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 bg-[#171717] rounded-full flex items-center justify-center text-gray-500 border border-white/5 mb-4">
-              <User size={32} className="opacity-50" />
-            </div>
-            <h3 className="text-md font-bold text-white">{recep.nombre}</h3>
-            <p className="text-gray-500 text-[10px] font-medium uppercase tracking-widest mt-1">Recepcionista</p>
-            <div className="flex items-center gap-1.5 text-gray-500 text-xs mt-3">
-              <Building2 size={14} />
-              {recep.sucursal}
-            </div>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 pb-8 text-white sm:gap-6 lg:gap-8">
+      <section className="tarjeta-sistema overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 shadow-2xl sm:p-6 lg:p-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-400">Perfil de recepcion</p>
+            <h1 className="mt-2 break-words text-2xl font-black text-white sm:text-3xl">Equipo de recepcionistas</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-400">
+              Consulta tu perfil y la lista completa de recepcionistas asignados a los gimnasios.
+            </p>
           </div>
 
-          <div className="lg:col-span-8 bg-[#0d0d0d] p-8 rounded-3xl border border-white/5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <DetailField label="Nombre Completo" value={recep.nombre} />
-              <DetailField label="Correo Electrónico" value={recep.correo} />
-              <DetailField label="Teléfono" value={recep.tel} />
-              <DetailField label="Sucursal" value={recep.sucursal} />
-              <DetailField label="Ubicación" value={recep.ubicacion} />
-            </div>
+          <div className="grid grid-cols-2 gap-3 sm:min-w-[320px]">
+            <IndicadorPerfil titulo="Recepcionistas" valor={recepcionistasVisibles.length} />
+            <IndicadorPerfil titulo="Gimnasios" valor={new Set(recepcionistasVisibles.map((persona) => persona.gimnasio)).size} />
           </div>
         </div>
-      ))}
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+        <article className="tarjeta-sistema flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#0d0d0d] p-6 text-center shadow-2xl sm:p-8">
+          <div className="flex h-28 w-28 items-center justify-center rounded-full border border-red-500/20 bg-red-600/10 text-3xl font-black text-red-500 shadow-xl shadow-red-950/20 sm:h-32 sm:w-32">
+            {obtenerInicialesCuenta({ name: perfilActual.nombre, email: perfilActual.correo }, 'RC')}
+          </div>
+          <h2 className="mt-5 max-w-full break-words text-xl font-black text-white">{perfilActual.nombre}</h2>
+          <p className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-red-500">Recepcionista</p>
+          <div className="mt-4 inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-gray-400">
+            <Building2 size={14} className="shrink-0 text-red-500" />
+            <span className="truncate">{perfilActual.gimnasio}</span>
+          </div>
+        </article>
+
+        <article className="tarjeta-sistema rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 shadow-2xl sm:p-6 lg:p-8">
+          <div className="mb-6 flex items-center gap-3">
+            <span className="rounded-xl bg-red-600/10 p-3 text-red-500">
+              <ShieldCheck size={22} />
+            </span>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Cuenta activa</p>
+              <h3 className="text-lg font-black text-white">Datos del perfil</h3>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <DetallePerfil icono={User} etiqueta="Nombre completo" valor={perfilActual.nombre} />
+            <DetallePerfil icono={Mail} etiqueta="Correo electronico" valor={perfilActual.correo} />
+            <DetallePerfil icono={Phone} etiqueta="Telefono" valor={perfilActual.telefono || '+505 0000 0000'} />
+            <DetallePerfil icono={Building2} etiqueta="Gimnasio asignado" valor={perfilActual.gimnasio} />
+            <DetallePerfil icono={MapPin} etiqueta="Ubicacion" valor={perfilActual.ubicacion || perfilActual.gimnasio} />
+            <DetallePerfil icono={ShieldCheck} etiqueta="Estado" valor={perfilActual.estado || 'Activo'} />
+          </div>
+        </article>
+      </section>
+
+      <section className="tarjeta-sistema rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 shadow-2xl sm:p-6 lg:p-8">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">Listado completo</p>
+            <h2 className="mt-1 text-xl font-black text-white">Todos los recepcionistas</h2>
+            <p className="mt-1 text-sm text-gray-400">Personal visible y sincronizado con el panel administrativo.</p>
+          </div>
+          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-[10px] font-black uppercase text-red-500">
+            <Users size={14} />
+            {recepcionistasVisibles.length} activos
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {recepcionistasVisibles.map((recepcionista) => (
+            <TarjetaRecepcionista
+              key={recepcionista.id || recepcionista.correo}
+              recepcionista={recepcionista}
+              esActual={recepcionista.correo === perfilActual.correo}
+            />
+          ))}
+        </div>
+      </section>
     </div>
   );
 };
 
-const DetailField = ({ label, value }) => (
-  <div className="flex flex-col">
-    <label className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1.5">{label}</label>
-    <div className="text-sm text-white py-2 border-b border-white/10">
-      {value}
+const IndicadorPerfil = ({ titulo, valor }) => (
+  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+    <p className="text-[9px] font-black uppercase tracking-widest text-gray-500">{titulo}</p>
+    <p className="mt-1 text-2xl font-black text-white">{valor}</p>
+  </div>
+);
+
+const DetallePerfil = ({ icono: Icono, etiqueta, valor }) => (
+  <div className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-4">
+    <div className="mb-2 flex items-center gap-2 text-gray-500">
+      <Icono size={15} className="shrink-0 text-red-500" />
+      <p className="truncate text-[10px] font-black uppercase tracking-widest">{etiqueta}</p>
     </div>
+    <p className="break-words border-b border-white/10 pb-2 text-sm font-bold text-white">{valor}</p>
+  </div>
+);
+
+const TarjetaRecepcionista = ({ recepcionista, esActual }) => {
+  const nombre = obtenerNombrePersonal(recepcionista) || recepcionista.nombre;
+
+  return (
+    <article className={`rounded-2xl border p-4 shadow-xl transition-all hover:-translate-y-0.5 ${
+      esActual
+        ? 'border-red-500/40 bg-red-500/10'
+        : 'border-white/10 bg-white/5 hover:border-red-500/25'
+    }`}>
+      <div className="flex items-start gap-3">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-[#111111] text-sm font-black text-red-500">
+          {obtenerInicialesCuenta({ name: nombre, email: recepcionista.correo }, 'RC')}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="min-w-0 break-words text-sm font-black text-white">{nombre}</h3>
+            {esActual && (
+              <span className="rounded-full bg-red-600 px-2 py-0.5 text-[8px] font-black uppercase text-white">Tu perfil</span>
+            )}
+          </div>
+          <p className="mt-1 break-all text-[11px] font-medium text-gray-500">{recepcionista.correo || 'Sin correo'}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-2">
+        <MiniDato icono={Building2} valor={recepcionista.gimnasio} />
+        <MiniDato icono={Phone} valor={recepcionista.telefono || '+505 0000 0000'} />
+        <MiniDato icono={ShieldCheck} valor={recepcionista.estado || 'Activo'} />
+      </div>
+    </article>
+  );
+};
+
+const MiniDato = ({ icono: Icono, valor }) => (
+  <div className="flex min-w-0 items-center gap-2 rounded-xl bg-black/20 px-3 py-2 text-xs font-bold text-gray-400">
+    <Icono size={14} className="shrink-0 text-red-500" />
+    <span className="min-w-0 truncate">{valor}</span>
   </div>
 );
 

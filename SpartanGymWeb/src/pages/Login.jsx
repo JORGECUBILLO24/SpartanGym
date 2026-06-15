@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, User } from 'lucide-react';
 import LogoSpartan from '../assets/Logo SpartanGym.png'; 
+import { guardarCuentaActual } from '../utils/cuentaActual';
 
 const Login = () => {
   const [role, setRole] = useState('');
@@ -14,18 +15,16 @@ const Login = () => {
     if (!role) return;
 
     const username = usuario.trim() || (role === 'Administrador' ? 'admin@spartangym.com' : 'recepcion@spartangym.com');
-    localStorage.setItem(
-      'spartanGym.currentAccount',
-      JSON.stringify({ username, role, loggedAt: new Date().toISOString() })
-    );
+    guardarCuentaActual({ username, role, loggedAt: new Date().toISOString() });
 
     if (role === 'Administrador') navigate('/admin');
     else if (role === 'Recepcionista') navigate('/recepcion');
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-black relative p-4">
+    <div className="auth-screen relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-black p-4">
       <div className="absolute inset-0 bg-[url('/src/assets/fondo_login.png')] bg-cover bg-center opacity-20"></div>
+      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/80 to-black"></div>
       
       <Link to="/" className="relative z-10 mb-10" aria-label="Volver al inicio">
         <img 
@@ -35,7 +34,11 @@ const Login = () => {
         />
       </Link>
 
-      <div className="relative z-10 w-full max-w-sm bg-[#0c0c0d] p-8 rounded-3xl border border-red-900/30 shadow-2xl">
+      <div className="tarjeta-sistema relative z-10 w-full max-w-sm rounded-3xl border border-red-900/30 bg-[#0c0c0d] p-6 shadow-2xl sm:p-8">
+        <div className="mb-6 text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-red-500">Acceso Spartan</p>
+          <h1 className="mt-2 text-2xl font-black text-white">Iniciar sesion</h1>
+        </div>
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label className="text-xs text-gray-500 uppercase font-bold">Correo o usuario</label>

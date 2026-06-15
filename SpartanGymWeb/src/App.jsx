@@ -22,6 +22,8 @@ import Sucursales from "./pages/Admin/sub_pages/Sucursales.jsx";
 import MembresiasAdmin from "./pages/Admin/sub_pages/Membresias.jsx";
 import Configuracion from "./pages/Admin/sub_pages/Configuracion.jsx";
 import SocioAdm from "./pages/Admin/sub_pages/Socioadm.jsx";
+import MensajesGlobales from "./pages/Admin/sub_pages/MensajesGlobales.jsx";
+import PerfilAdmin from "./pages/Admin/sub_pages/PerfilAdmin.jsx";
 
 // Importación de sub-páginas de Recepcionista
 import InicioRecepcion from "./pages/Recepcionista/sub_pages/Inicio.jsx";
@@ -36,7 +38,7 @@ import Perfil from "./pages/Recepcionista/sub_pages/Perfil.jsx";
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-900 font-sans">
+      <div className="app-theme min-h-screen bg-[#050505] font-sans text-white transition-colors duration-300">
         <Routes>
           {/* Rutas Públicas */}
           <Route path="/" element={<Home />} />
@@ -57,6 +59,8 @@ function App() {
             <Route path="membresias" element={<MembresiasAdmin />} />
             <Route path="configuracion" element={<Configuracion />} />
             <Route path="registrar-socio" element={<SocioAdm />} />
+            <Route path="mensajes" element={<MensajesGlobales />} />
+            <Route path="perfil" element={<PerfilAdmin />} />
           </Route>
           
           {/* Rutas de Recepcionista */}

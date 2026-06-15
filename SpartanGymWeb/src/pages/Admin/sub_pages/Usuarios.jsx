@@ -1,25 +1,57 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   User, Mail, Phone, Save, CheckCircle2, 
   Camera, ShieldAlert, Key, Briefcase, 
-  Dumbbell, Headset, Lock
+  Dumbbell, Headset, Lock, Building2, AlertCircle, Trash2
 } from 'lucide-react';
+import {
+  leerGimnasiosDisponibles,
+  obtenerGimnasioPredeterminado,
+} from '../../../utils/gimnasiosCompartidos';
+import {
+  agregarPersonalCompartido,
+  eliminarPersonalCompartido,
+  EVENTO_PERSONAL,
+  leerPersonalCompartido,
+  obtenerNombrePersonal,
+  personalCreadoPorCuentaActual,
+} from '../../../utils/personalCompartido';
+
+const crearFormularioInicial = () => ({
+  nombre: '',
+  apellido: '',
+  correo: '',
+  telefono: '',
+  rol: '',
+  password: '',
+  gimnasio: obtenerGimnasioPredeterminado(),
+});
 
 const Usuarios = () => {
-  const [formData, setFormData] = useState({
-    nombre: '',
-    apellido: '',
-    correo: '',
-    telefono: '',
-    rol: '',
-    password: ''
-  });
-
+  const [formData, setFormData] = useState(crearFormularioInicial);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [errorRegistro, setErrorRegistro] = useState('');
+  const [mensajeGestion, setMensajeGestion] = useState(null);
+  const [personalCompartido, setPersonalCompartido] = useState(() => leerPersonalCompartido());
+  const gimnasios = leerGimnasiosDisponibles();
+
+  useEffect(() => {
+    const actualizarPersonal = () => setPersonalCompartido(leerPersonalCompartido());
+
+    window.addEventListener('storage', actualizarPersonal);
+    window.addEventListener(EVENTO_PERSONAL, actualizarPersonal);
+
+    return () => {
+      window.removeEventListener('storage', actualizarPersonal);
+      window.removeEventListener(EVENTO_PERSONAL, actualizarPersonal);
+    };
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setErrorRegistro('');
+    setMensajeGestion(null);
   };
 
   const generarPassword = () => {
@@ -32,13 +64,47 @@ const Usuarios = () => {
     setIsSubmitting(true);
     
     setTimeout(() => {
+      const resultado = agregarPersonalCompartido(formData);
+
+      if (!resultado.ok) {
+        setIsSubmitting(false);
+        setIsSaved(false);
+        setErrorRegistro(resultado.mensaje);
+        setPersonalCompartido(resultado.personal);
+        return;
+      }
+
+      setPersonalCompartido(resultado.personal);
       setIsSubmitting(false);
       setIsSaved(true);
       setTimeout(() => {
-        setFormData({ nombre: '', apellido: '', correo: '', telefono: '', rol: '', password: '' });
+        setFormData(crearFormularioInicial());
         setIsSaved(false);
       }, 3000);
     }, 1500);
+  };
+
+  const eliminarUsuario = (persona) => {
+    if (!personalCreadoPorCuentaActual(persona)) {
+      setMensajeGestion({
+        tipo: 'error',
+        texto: 'Solo puedes eliminar usuarios creados por tu cuenta.',
+      });
+      return;
+    }
+
+    const debeEliminar = typeof window === 'undefined'
+      ? true
+      : window.confirm(`Eliminar a ${obtenerNombrePersonal(persona)} del sistema?`);
+
+    if (!debeEliminar) return;
+
+    const resultado = eliminarPersonalCompartido(persona.id);
+    setPersonalCompartido(resultado.personal);
+    setMensajeGestion({
+      tipo: resultado.ok ? 'exito' : 'error',
+      texto: resultado.mensaje,
+    });
   };
 
   const getRoleDetails = (rol) => {
@@ -63,6 +129,12 @@ const Usuarios = () => {
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-50"></div>
 
           <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+          {errorRegistro && (
+              <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">
+                <AlertCircle size={15} />
+                {errorRegistro}
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -151,6 +223,24 @@ const Usuarios = () => {
               </div>
             </div>
 
+            <div>
+              <label className="text-xs text-gray-500 uppercase font-bold mb-2 block">Gimnasio asignado</label>
+              <div className="relative">
+                <Building2 className="absolute left-4 top-3.5 text-gray-500 z-10" size={18} />
+                <select
+                  name="gimnasio"
+                  required
+                  value={formData.gimnasio}
+                  onChange={handleChange}
+                  className="w-full cursor-pointer appearance-none rounded-xl border border-white/5 bg-[#111] py-3 pl-12 pr-4 text-white outline-none transition-all focus:border-red-600"
+                >
+                  {gimnasios.map((gimnasio) => (
+                    <option key={gimnasio.id} value={gimnasio.nombre}>{gimnasio.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="flex justify-stretch pt-6 sm:justify-end">
               <button 
                 type="submit" disabled={isSubmitting || isSaved}
@@ -215,6 +305,14 @@ const Usuarios = () => {
               </div>
             </div>
 
+            <div className="mt-4 w-full rounded-xl border border-white/5 bg-black/20 p-4">
+              <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Gimnasio asignado</p>
+              <div className="mt-2 flex items-center gap-2 text-sm font-bold text-white">
+                <Building2 size={16} className="text-red-500" />
+                <span className="min-w-0 break-words">{formData.gimnasio}</span>
+              </div>
+            </div>
+
             {/* Permisos */}
             <div className="w-full mt-4 flex items-center justify-between px-2">
               <div className="flex items-center gap-1.5 text-gray-500">
@@ -232,6 +330,84 @@ const Usuarios = () => {
         </div>
 
       </div>
+
+      <section className="rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">Personal global</p>
+            <h3 className="text-lg font-black text-white">Usuarios registrados por gimnasio</h3>
+            <p className="mt-1 text-xs text-gray-500">Administradores, recepcionistas y entrenadores quedan ligados al gimnasio seleccionado.</p>
+          </div>
+          <span className="w-fit rounded-full bg-white/5 px-3 py-1 text-[10px] font-black text-gray-400">
+            {personalCompartido.length} usuarios
+          </span>
+        </div>
+
+        {mensajeGestion && (
+          <div className={`mb-4 flex items-center gap-2 rounded-xl border p-3 text-xs font-bold ${
+            mensajeGestion.tipo === 'exito'
+              ? 'border-green-500/20 bg-green-500/10 text-green-500'
+              : 'border-red-500/20 bg-red-500/10 text-red-400'
+          }`}>
+            {mensajeGestion.tipo === 'exito' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+            {mensajeGestion.texto}
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-500">
+                <th className="pb-3 pr-4 font-bold">Usuario</th>
+                <th className="pb-3 pr-4 font-bold">Rol</th>
+                <th className="pb-3 pr-4 font-bold">Gimnasio asignado</th>
+                <th className="pb-3 pr-4 font-bold">Creado por</th>
+                <th className="pb-3 pr-4 font-bold">Estado</th>
+                <th className="pb-3 font-bold">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {personalCompartido.map((persona) => {
+                const puedeEliminar = personalCreadoPorCuentaActual(persona);
+
+                return (
+                  <tr key={persona.id} className="hover:bg-white/[0.03]">
+                    <td className="py-3 pr-4">
+                      <p className="font-black text-white">{obtenerNombrePersonal(persona)}</p>
+                      <p className="text-[10px] text-gray-500">{persona.correo || persona.telefono || 'Sin contacto'}</p>
+                    </td>
+                    <td className="py-3 pr-4 text-gray-400">{persona.rol}</td>
+                    <td className="py-3 pr-4 text-gray-400">{persona.gimnasio}</td>
+                    <td className="py-3 pr-4 text-gray-400">{persona.creadoPor}</td>
+                    <td className="py-3 pr-4">
+                      <span className="rounded-full border border-green-500/20 bg-green-500/10 px-2 py-1 text-[10px] font-black uppercase text-green-500">
+                        {persona.estado}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      <button
+                        type="button"
+                        disabled={!puedeEliminar}
+                        onClick={() => eliminarUsuario(persona)}
+                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[10px] font-black uppercase transition-all ${
+                          puedeEliminar
+                            ? 'border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-600 hover:text-white'
+                            : 'cursor-not-allowed border-white/5 bg-white/5 text-gray-600'
+                        }`}
+                        title={puedeEliminar ? 'Eliminar usuario creado por tu cuenta' : 'Solo puedes eliminar usuarios creados por tu cuenta'}
+                        aria-label={`Eliminar ${obtenerNombrePersonal(persona)}`}
+                      >
+                        <Trash2 size={13} />
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 };

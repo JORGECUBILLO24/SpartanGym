@@ -4,6 +4,7 @@ import {
   DollarSign, Layers, Save, CheckCircle2, 
   Tag, Image as ImageIcon, Edit, Trash2
 } from 'lucide-react';
+import TarjetaMetrica from '../../../components/TarjetaMetrica';
 
 const Inventario = () => {
   // Estado para el formulario
@@ -76,10 +77,10 @@ const Inventario = () => {
       
       {/* MÉTRICAS SUPERIORES */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Total de Productos" value={totalProductos} icon={Package} color="text-blue-500" desc="Artículos en catálogo" />
-        <MetricCard title="Valor del Inventario" value={`$${valorInventario.toFixed(2)}`} icon={DollarSign} color="text-green-500" desc="Capital invertido" />
-        <MetricCard title="Alertas de Stock" value={alertasStock} icon={AlertTriangle} color="text-orange-500" desc="Pocas unidades o agotado" />
-        <MetricCard title="Categorías" value="3" icon={Layers} color="text-gray-400" desc="Suplementos, Merch, etc." />
+        <TarjetaMetrica titulo="Total de Productos" valor={totalProductos} icono={Package} color="text-blue-500" detalle="Articulos en catalogo" />
+        <TarjetaMetrica titulo="Valor del Inventario" valor={`$${valorInventario.toFixed(2)}`} icono={DollarSign} color="text-green-500" detalle="Capital invertido" />
+        <TarjetaMetrica titulo="Alertas de Stock" valor={alertasStock} icono={AlertTriangle} color="text-orange-500" detalle="Pocas unidades o agotado" />
+        <TarjetaMetrica titulo="Categorias" valor="3" icono={Layers} color="text-gray-400" detalle="Suplementos, Merch, etc." />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -247,18 +248,6 @@ const Inventario = () => {
     </div>
   );
 };
-
-// Componente para las tarjetas de métricas
-const MetricCard = ({ title, value, icon: Icon, color, desc }) => (
-  <div className="bg-[#090909] border border-white/10 p-5 rounded-2xl relative overflow-hidden group">
-    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">{title}</p>
-    <h3 className="text-2xl font-black">{value}</h3>
-    <p className="text-[10px] text-gray-400 mt-1">{desc}</p>
-    <div className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/5 rounded-xl transition-transform group-hover:scale-110 ${color}`}>
-      <Icon size={22} />
-    </div>
-  </div>
-);
 
 // Componente para los botones de filtrado
 const FilterBtn = ({ label, value, current, setFiltro, activeColor }) => (

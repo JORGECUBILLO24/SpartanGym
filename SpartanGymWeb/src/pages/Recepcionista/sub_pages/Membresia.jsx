@@ -1,80 +1,105 @@
-import { Users, AlertCircle, CheckCircle2, PlusCircle, Calendar, ShieldCheck, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertCircle, Calendar, CheckCircle2, ShieldCheck, Users, Zap } from 'lucide-react';
+import {
+  EVENTO_MEMBRESIAS,
+  formatearPrecioMembresia,
+  leerMembresiasCompartidas,
+} from '../../../utils/membresiasCompartidas';
+import {
+  EVENTO_SOCIOS,
+  leerSociosCompartidos,
+  obtenerNombreSocio,
+} from '../../../utils/sociosCompartidos';
 
 const Membresias = () => {
-  const catalogo = [
-    { 
-      nombre: 'Básica', precio: '$30.00', duracion: '1 Mes', 
-      beneficios: ['Acceso ilimitado', 'Vestidores'], 
-      socios: 120, color: 'text-gray-400' 
-    },
-    { 
-      nombre: 'Premium', precio: '$80.00', duracion: '3 Meses', 
-      beneficios: ['Acceso ilimitado', 'Asesoría nutricional', 'Clases grupales'], 
-      socios: 85, color: 'text-red-500', popular: true 
-    },
-    { 
-      nombre: 'Elite', precio: '$150.00', duracion: '6 Meses', 
-      beneficios: ['Todo Premium', 'Acceso 24/7', 'Entrenador personal'], 
-      socios: 45, color: 'text-yellow-500' 
-    },
-  ];
+  const [catalogo, setCatalogo] = useState(() => leerMembresiasCompartidas());
+  const [socios, setSocios] = useState(() => leerSociosCompartidos());
 
-  const socios = [
-    { nombre: 'Carlos Ramírez', plan: 'Elite', vencimiento: '20/06/2026', estado: 'Activo' },
-    { nombre: 'Ana Torres', plan: 'Básica', vencimiento: '15/05/2026', estado: 'Vencida' },
-  ];
+  useEffect(() => {
+    const actualizarCatalogo = () => setCatalogo(leerMembresiasCompartidas());
+
+    window.addEventListener('storage', actualizarCatalogo);
+    window.addEventListener(EVENTO_MEMBRESIAS, actualizarCatalogo);
+
+    return () => {
+      window.removeEventListener('storage', actualizarCatalogo);
+      window.removeEventListener(EVENTO_MEMBRESIAS, actualizarCatalogo);
+    };
+  }, []);
+
+  useEffect(() => {
+    const actualizarSocios = () => setSocios(leerSociosCompartidos());
+
+    window.addEventListener('storage', actualizarSocios);
+    window.addEventListener(EVENTO_SOCIOS, actualizarSocios);
+
+    return () => {
+      window.removeEventListener('storage', actualizarSocios);
+      window.removeEventListener(EVENTO_SOCIOS, actualizarSocios);
+    };
+  }, []);
 
   return (
-    <div className="space-y-8 w-full max-w-6xl mx-auto p-4 animate-in fade-in duration-500">
-      
-      {/* Sección Catálogo: Diseño de tarjetas tipo "Pricing Table" */}
+    <div className="pagina-stack mx-auto w-full max-w-6xl space-y-8">
       <section>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Zap className="text-red-500" /> Planes de Membresía
-          </h2>
+        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-400">Catalogo activo</p>
+            <h2 className="mt-1 flex items-center gap-2 text-xl font-black text-white">
+              <Zap className="text-red-500" /> Planes de membresia
+            </h2>
+          </div>
+          <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black uppercase text-gray-400">
+            Sincronizado con admin
+          </span>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {catalogo.map((plan, i) => (
-            <div key={i} className={`relative bg-[#0d0d0d] p-6 rounded-3xl border ${plan.popular ? 'border-red-600/50 shadow-2xl shadow-red-900/10' : 'border-white/5'} hover:border-white/10 transition-all`}>
-              {plan.popular && <span className="absolute -top-3 left-6 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">Popular</span>}
-              
-              <h4 className="text-white font-bold text-lg">{plan.nombre}</h4>
-              <div className="mt-4 mb-6">
-                <span className={`text-3xl font-black ${plan.color}`}>{plan.precio}</span>
-                <span className="text-gray-500 text-sm ml-1">/ {plan.duracion}</span>
+
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {catalogo.map((plan) => (
+            <article
+              key={plan.id}
+              className={`tarjeta-sistema relative rounded-2xl border bg-[#0d0d0d] p-6 shadow-2xl ${
+                plan.popular ? 'border-red-600/50 shadow-red-900/10' : 'border-white/10'
+              }`}
+            >
+              {plan.popular && (
+                <span className="absolute -top-3 left-6 rounded-full bg-red-600 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white">
+                  Popular
+                </span>
+              )}
+
+              <h4 className="text-lg font-black text-white">{plan.nombrePlan}</h4>
+              <div className="mb-6 mt-4">
+                <span className="text-3xl font-black text-red-500">{formatearPrecioMembresia(plan.precio)}</span>
+                <span className="ml-1 text-sm font-bold text-gray-500">/ {plan.duracion}</span>
               </div>
-              
-              <ul className="space-y-3 mb-8">
-                {plan.beneficios.map((b, idx) => (
-                  <li key={idx} className="text-gray-400 text-sm flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-red-600" /> {b}
+
+              <ul className="mb-8 space-y-3">
+                {plan.beneficios.map((beneficio) => (
+                  <li key={beneficio} className="flex items-center gap-2 text-sm text-gray-400">
+                    <CheckCircle2 size={16} className="text-red-600" /> {beneficio}
                   </li>
                 ))}
               </ul>
 
-              <div className="flex items-center gap-2 text-xs text-gray-600 pt-6 border-t border-white/5">
-                <Users size={14} /> {plan.socios} socios activos
+              <div className="flex items-center gap-2 border-t border-white/5 pt-5 text-xs font-bold text-gray-500">
+                <Users size={14} /> Disponible para registro de socios
               </div>
-            </div>
+            </article>
           ))}
         </div>
       </section>
 
-      {/* Sección Tabla: Estilo moderno y limpio */}
-      <section className="bg-[#0d0d0d] rounded-3xl border border-white/5 p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="font-bold text-white text-lg">Estado de Socios</h3>
-          <button className="bg-white text-black px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-gray-200 transition-all">
-            <PlusCircle size={18} /> Nueva Membresía
-          </button>
+      <section className="tarjeta-sistema rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 shadow-2xl sm:p-6 lg:p-8">
+        <div className="mb-6">
+          <h3 className="text-lg font-black text-white">Estado de socios</h3>
+          <p className="mt-1 text-sm text-gray-500">Vista rapida de membresias activas y vencidas.</p>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-gray-300">
             <thead>
-              <tr className="text-gray-500 border-b border-white/10 uppercase tracking-wider text-[10px]">
+              <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-500">
                 <th className="pb-4 font-bold">Socio</th>
                 <th className="pb-4 font-bold">Plan</th>
                 <th className="pb-4 font-bold">Vencimiento</th>
@@ -82,15 +107,15 @@ const Membresias = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {socios.map((s, i) => (
-                <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
-                  <td className="py-5 text-white font-medium">{s.nombre}</td>
-                  <td className="py-5">{s.plan}</td>
-                  <td className="py-5 flex items-center gap-2 text-gray-400">
-                    <Calendar size={14} /> {s.vencimiento}
+              {socios.map((socio) => (
+                <tr key={socio.id} className="hover:bg-white/[0.02]">
+                  <td className="py-5 font-bold text-white">{obtenerNombreSocio(socio)}</td>
+                  <td className="py-5">{socio.membresia}</td>
+                  <td className="flex items-center gap-2 py-5 text-gray-400">
+                    <Calendar size={14} /> {new Date(socio.creadoEn).toLocaleDateString('es-NI')}
                   </td>
                   <td className="py-5">
-                    <StatusBadge estado={s.estado} />
+                    <EtiquetaEstado estado={socio.estado} />
                   </td>
                 </tr>
               ))}
@@ -102,14 +127,14 @@ const Membresias = () => {
   );
 };
 
-// Sub-componente para Badge de estado para limpiar el código principal
-const StatusBadge = ({ estado }) => {
-  const isActive = estado === 'Activo';
+const EtiquetaEstado = ({ estado }) => {
+  const activo = estado === 'Activo';
+
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide border ${
-      isActive ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-wide ${
+      activo ? 'border-green-500/20 bg-green-500/10 text-green-500' : 'border-red-500/20 bg-red-500/10 text-red-500'
     }`}>
-      {isActive ? <ShieldCheck size={12} /> : <AlertCircle size={12} />} {estado}
+      {activo ? <ShieldCheck size={12} /> : <AlertCircle size={12} />} {estado}
     </span>
   );
 };
