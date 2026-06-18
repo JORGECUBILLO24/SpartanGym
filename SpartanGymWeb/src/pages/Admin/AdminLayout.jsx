@@ -6,7 +6,6 @@ import {
   Key, Sliders, Menu, X, Building2, UserCircle, LogOut
 } from 'lucide-react';
 
-import LogoWeb from '../../assets/Logo Web.webp';
 import ControlSesion from '../../components/ControlSesion';
 import {
   cerrarSesionActual,
@@ -14,12 +13,14 @@ import {
   leerCuentaActual,
   obtenerInicialesCuenta,
 } from '../../utils/cuentaActual';
+import { useLogosApp } from '../../utils/logosApp';
 
 const AdminLayout = () => {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [cuentaActual, setCuentaActual] = useState(() => leerCuentaActual());
   const ubicacionActual = useLocation();
   const navigate = useNavigate();
+  const logos = useLogosApp();
 
   useEffect(() => {
     const actualizarCuenta = () => setCuentaActual(leerCuentaActual());
@@ -71,7 +72,7 @@ const AdminLayout = () => {
         <div className="flex shrink-0 items-center justify-between px-5 py-4 sm:py-5">
           <Link to="/admin" aria-label="Ir al inicio de administrador" className="inline-flex max-w-full">
             <img
-              src={LogoWeb}
+              src={logos.principal}
               alt="Spartan Gym"
               width="320"
               height="213"

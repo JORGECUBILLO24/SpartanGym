@@ -129,7 +129,7 @@ const Inicio = () => {
   return (
     <div className="inicio-admin flex min-h-full w-full flex-col gap-5 text-white sm:gap-6">
       <section className="panel-operativo relative overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6 lg:p-7">
-        <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-[linear-gradient(120deg,transparent,rgba(229,9,20,0.16),transparent)] lg:block" />
+        <div className="brillo-acento-operativo pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 lg:block" />
         <div className="relative z-10 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-red-400">

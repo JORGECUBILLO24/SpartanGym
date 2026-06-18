@@ -5,14 +5,15 @@ import {
   UserPlus, Menu, X, QrCode, ClipboardList, User, LogOut
 } from 'lucide-react';
 
-import LogoWeb from '../../assets/Logo Web.webp';
 import ControlSesion from '../../components/ControlSesion';
 import { cerrarSesionActual } from '../../utils/cuentaActual';
+import { useLogosApp } from '../../utils/logosApp';
 
 const RecepcionistaLayout = () => {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const ubicacionActual = useLocation();
   const navigate = useNavigate();
+  const logos = useLogosApp();
 
   const cerrarSesion = () => {
     cerrarSesionActual('manual');
@@ -47,7 +48,7 @@ const RecepcionistaLayout = () => {
         <div className="flex shrink-0 items-center justify-between px-5 py-4 sm:py-5">
           <NavLink to="/recepcion" aria-label="Ir al inicio de recepcion" className="inline-flex max-w-full">
             <img
-              src={LogoWeb}
+              src={logos.principal}
               alt="Logo Spartan Gym"
               width="320"
               height="213"

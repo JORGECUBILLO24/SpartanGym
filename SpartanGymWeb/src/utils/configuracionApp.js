@@ -30,6 +30,8 @@ export const CONFIGURACION_DEFECTO = {
   theme: 'system',
   themeSource: 'system',
   ...COLORES_APARIENCIA_DEFECTO,
+  logoPrincipal: '',
+  logoAcceso: '',
   emailAlerts: true,
   smsAlerts: false,
   dailyReports: true,
