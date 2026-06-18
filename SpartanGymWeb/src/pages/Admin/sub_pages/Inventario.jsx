@@ -5,6 +5,11 @@ import {
   Tag, Image as ImageIcon, Edit, Trash2
 } from 'lucide-react';
 import TarjetaMetrica from '../../../components/TarjetaMetrica';
+import {
+  formatearMoneda,
+  MONEDAS_DISPONIBLES,
+  useConfiguracionApp,
+} from '../../../utils/configuracionApp';
 
 const Inventario = () => {
   // Estado para el formulario
@@ -19,6 +24,9 @@ const Inventario = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState('todos');
+  const configuracion = useConfiguracionApp();
+  const monedaActual = MONEDAS_DISPONIBLES.find((moneda) => moneda.codigo === configuracion.currency) || MONEDAS_DISPONIBLES[1];
+  const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
 
   // Datos mock de inventario
   const [productos, setProductos] = useState([
@@ -78,7 +86,7 @@ const Inventario = () => {
       {/* MÉTRICAS SUPERIORES */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <TarjetaMetrica titulo="Total de Productos" valor={totalProductos} icono={Package} color="text-blue-500" detalle="Articulos en catalogo" />
-        <TarjetaMetrica titulo="Valor del Inventario" valor={`$${valorInventario.toFixed(2)}`} icono={DollarSign} color="text-green-500" detalle="Capital invertido" />
+        <TarjetaMetrica titulo="Valor del Inventario" valor={formatearMonto(valorInventario)} icono={DollarSign} color="text-green-500" detalle="Capital invertido" />
         <TarjetaMetrica titulo="Alertas de Stock" valor={alertasStock} icono={AlertTriangle} color="text-orange-500" detalle="Pocas unidades o agotado" />
         <TarjetaMetrica titulo="Categorias" valor="3" icono={Layers} color="text-gray-400" detalle="Suplementos, Merch, etc." />
       </div>
@@ -149,7 +157,7 @@ const Inventario = () => {
                         )}
                       </td>
                       <td className="p-4 text-right font-black text-green-500">
-                        ${p.precio.toFixed(2)}
+                        {formatearMonto(p.precio)}
                       </td>
                       <td className="p-4">
                         <div className="flex justify-center gap-2">
@@ -215,7 +223,7 @@ const Inventario = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Precio ($)</label>
+                <label className="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Precio ({monedaActual.simbolo})</label>
                 <input 
                   type="number" name="precio" step="0.01" required value={nuevoProducto.precio} onChange={handleChange}
                   placeholder="0.00"

@@ -12,12 +12,13 @@ import {
   UserPlus,
   Zap,
 } from 'lucide-react';
+import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
 
 const pagosRecientes = [
-  { id: 1, socio: 'Juan Perez', membresia: 'Premium', monto: '$600', fecha: '12/05/2026', estado: 'Pagado' },
-  { id: 2, socio: 'Maria Gomez', membresia: 'Basica', monto: '$450', fecha: '12/05/2026', estado: 'Pagado' },
-  { id: 3, socio: 'Carlos Ramirez', membresia: 'Premium', monto: '$600', fecha: '11/05/2026', estado: 'Pagado' },
-  { id: 4, socio: 'Ana Torres', membresia: 'Elite', monto: '$800', fecha: '11/05/2026', estado: 'Pagado' },
+  { id: 1, socio: 'Juan Perez', membresia: 'Premium', monto: 600, fecha: '12/05/2026', estado: 'Pagado' },
+  { id: 2, socio: 'Maria Gomez', membresia: 'Basica', monto: 450, fecha: '12/05/2026', estado: 'Pagado' },
+  { id: 3, socio: 'Carlos Ramirez', membresia: 'Premium', monto: 600, fecha: '11/05/2026', estado: 'Pagado' },
+  { id: 4, socio: 'Ana Torres', membresia: 'Elite', monto: 800, fecha: '11/05/2026', estado: 'Pagado' },
 ];
 
 const proximosVencimientos = [
@@ -29,13 +30,15 @@ const proximosVencimientos = [
 
 const indicadoresRecepcion = [
   { icono: QrCode, titulo: 'Check-ins', valor: '64', detalle: 'Hoy', ruta: '/recepcion/check-in' },
-  { icono: DollarSign, titulo: 'Pagos', valor: '$1,280', detalle: 'Turno actual', ruta: '/recepcion/pagos' },
+  { icono: DollarSign, titulo: 'Pagos', valorMonto: 1280, detalle: 'Turno actual', ruta: '/recepcion/pagos' },
   { icono: CalendarClock, titulo: 'Vencimientos', valor: '9', detalle: 'Proximos dias', ruta: '/recepcion/membresias' },
   { icono: UserPlus, titulo: 'Socios nuevos', valor: '6', detalle: 'Registrados', ruta: '/recepcion/registrar-socio' },
 ];
 
 const Inicio = () => {
   const navegar = useNavigate();
+  const configuracion = useConfiguracionApp();
+  const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
 
   return (
     <div className="pagina-stack flex flex-col gap-5 lg:gap-6">
@@ -68,6 +71,7 @@ const Inicio = () => {
           <TarjetaResumen
             key={indicador.titulo}
             {...indicador}
+            valor={indicador.valorMonto ? formatearMonto(indicador.valorMonto) : indicador.valor}
             onClick={() => navegar(indicador.ruta)}
           />
         ))}
@@ -112,7 +116,7 @@ const Inicio = () => {
                 {pago.socio}
               </td>
               <td className="py-3 pr-4 text-gray-400">{pago.membresia}</td>
-              <td className="py-3 pr-4 font-bold text-white">{pago.monto}</td>
+              <td className="py-3 pr-4 font-bold text-white">{formatearMonto(pago.monto)}</td>
               <td className="py-3 pr-4 text-gray-400">{pago.fecha}</td>
               <td className="py-3">
                 <span className="rounded-lg border border-green-500/20 bg-green-500/10 px-2 py-1 text-xs font-bold text-green-500">

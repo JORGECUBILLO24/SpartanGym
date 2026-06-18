@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, User } from 'lucide-react';
-import LogoSpartan from '../assets/Logo SpartanGym.png'; 
+import FondoLogin from '../assets/fondo_login.webp';
+import LogoSpartan from '../assets/Logo SpartanGym.webp'; 
 import { guardarCuentaActual } from '../utils/cuentaActual';
 
 const Login = () => {
@@ -23,13 +24,20 @@ const Login = () => {
 
   return (
     <div className="auth-screen relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-black p-4">
-      <div className="absolute inset-0 bg-[url('/src/assets/fondo_login.png')] bg-cover bg-center opacity-20"></div>
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-20"
+        style={{ backgroundImage: `url(${FondoLogin})` }}
+      ></div>
       <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/80 to-black"></div>
       
       <Link to="/" className="relative z-10 mb-10" aria-label="Volver al inicio">
         <img 
           src={LogoSpartan} 
           alt="Logo Spartan Gym" 
+          width="512"
+          height="512"
+          decoding="async"
+          fetchPriority="high"
           className="w-64 h-auto object-contain drop-shadow-[0_0_15px_rgba(220,38,38,0.7)]" 
         />
       </Link>

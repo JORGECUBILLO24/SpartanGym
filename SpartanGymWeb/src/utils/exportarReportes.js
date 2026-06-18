@@ -1,5 +1,5 @@
-import { jsPDF } from 'jspdf';
 import { leerDatoLocal } from './almacenamientoLocal';
+import { convertirTextoMoneda } from './configuracionApp';
 import { obtenerEtiquetaCuentaActual } from './cuentaActual';
 import { CLAVE_CONFIGURACION } from './tema';
 
@@ -228,7 +228,23 @@ const contenidoReportes = {
   },
 };
 
-export const crearContenidoReporte = (idReporte) => contenidoReportes[idReporte] || contenidoReportes.fin;
+const convertirCeldaMoneda = (valor) => (typeof valor === 'string' ? convertirTextoMoneda(valor) : valor);
+
+const convertirFilasMoneda = (filas = []) =>
+  filas.map((fila) => fila.map(convertirCeldaMoneda));
+
+const convertirContenidoMoneda = (contenido = {}) => ({
+  ...contenido,
+  rows: convertirFilasMoneda(contenido.rows || []),
+  summary: convertirFilasMoneda(contenido.summary || []),
+  detalles: (contenido.detalles || []).map((seccion) => ({
+    ...seccion,
+    rows: convertirFilasMoneda(seccion.rows || []),
+  })),
+});
+
+export const crearContenidoReporte = (idReporte) =>
+  convertirContenidoMoneda(contenidoReportes[idReporte] || contenidoReportes.fin);
 
 const escaparHtml = (valor) =>
   String(valor ?? '')
@@ -436,9 +452,11 @@ const dibujarTablaPdf = (pdf, { titulo, headers = [], rows = [], yInicial, marge
 };
 
 export const exportarReportePdf = async (reporte, logoUrl) => {
+  const { jsPDF } = await import('jspdf');
+  const reporteMoneda = convertirContenidoMoneda(reporte);
   const configuracion = leerConfiguracionGimnasio();
-  const creadoEn = formatearFechaReporte(reporte.createdAt);
-  const creadoPor = reporte.createdBy || obtenerEtiquetaCuentaActual();
+  const creadoEn = formatearFechaReporte(reporteMoneda.createdAt);
+  const creadoPor = reporteMoneda.createdBy || obtenerEtiquetaCuentaActual();
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   const anchoPagina = pdf.internal.pageSize.getWidth();
   const altoPagina = pdf.internal.pageSize.getHeight();
@@ -472,13 +490,13 @@ export const exportarReportePdf = async (reporte, logoUrl) => {
   pdf.setTextColor(17, 24, 39);
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(20);
-  pdf.text(reporte.titulo, margen, y, { maxWidth: anchoPagina - margen * 2 });
+  pdf.text(reporteMoneda.titulo, margen, y, { maxWidth: anchoPagina - margen * 2 });
 
   y += 26;
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(10);
   pdf.setTextColor(75, 85, 99);
-  pdf.text(`Tipo: ${reporte.tipo || 'General'}`, margen, y);
+  pdf.text(`Tipo: ${reporteMoneda.tipo || 'General'}`, margen, y);
   y += 28;
 
   pdf.setFillColor(249, 250, 251);
@@ -487,10 +505,10 @@ export const exportarReportePdf = async (reporte, logoUrl) => {
   pdf.setFontSize(9);
 
   [
-    ['Nombre del reporte', reporte.titulo],
+    ['Nombre del reporte', reporteMoneda.titulo],
     ['Fecha', creadoEn],
     ['Creado desde la cuenta', creadoPor],
-    ['Identificador', reporte.id],
+    ['Identificador', reporteMoneda.id],
   ].forEach(([etiqueta, valor], indice) => {
     const filaY = y + 20 + indice * 16;
     pdf.setFont('helvetica', 'bold');
@@ -503,14 +521,14 @@ export const exportarReportePdf = async (reporte, logoUrl) => {
 
   y += 116;
 
-  if (reporte.summary?.length) {
-    const columnasResumen = Math.min(3, reporte.summary.length);
-    const filasResumen = Math.ceil(reporte.summary.length / columnasResumen);
+  if (reporteMoneda.summary?.length) {
+    const columnasResumen = Math.min(3, reporteMoneda.summary.length);
+    const filasResumen = Math.ceil(reporteMoneda.summary.length / columnasResumen);
     const separacionTarjetas = 10;
     const anchoTarjeta = (anchoPagina - margen * 2 - separacionTarjetas * (columnasResumen - 1)) / columnasResumen;
     const altoTarjeta = 58;
 
-    reporte.summary.forEach(([etiqueta, valor], indice) => {
+    reporteMoneda.summary.forEach(([etiqueta, valor], indice) => {
       const columna = indice % columnasResumen;
       const fila = Math.floor(indice / columnasResumen);
       const x = margen + columna * (anchoTarjeta + separacionTarjetas);
@@ -534,15 +552,15 @@ export const exportarReportePdf = async (reporte, logoUrl) => {
 
   y = dibujarTablaPdf(pdf, {
     titulo: 'Detalle principal',
-    headers: reporte.headers || [],
-    rows: reporte.rows || [],
+    headers: reporteMoneda.headers || [],
+    rows: reporteMoneda.rows || [],
     yInicial: y,
     margen,
     anchoPagina,
     altoPagina,
   });
 
-  (reporte.detalles || []).forEach((seccion) => {
+  (reporteMoneda.detalles || []).forEach((seccion) => {
     y = dibujarTablaPdf(pdf, {
       titulo: seccion.titulo,
       headers: seccion.headers,
@@ -555,7 +573,7 @@ export const exportarReportePdf = async (reporte, logoUrl) => {
   });
 
   agregarPiePdf(pdf);
-  pdf.save(construirNombreArchivo(reporte, 'pdf'));
+  pdf.save(construirNombreArchivo(reporteMoneda, 'pdf'));
 };
 
 const crearFilaHtml = (fila, tipoCelda = 'td') =>
@@ -570,20 +588,21 @@ const crearTablaHtml = ({ titulo, headers = [], rows = [], clase = 'tabla-datos'
 `;
 
 export const exportarReporteExcel = (reporte) => {
+  const reporteMoneda = convertirContenidoMoneda(reporte);
   const configuracion = leerConfiguracionGimnasio();
-  const creadoEn = formatearFechaReporte(reporte.createdAt);
-  const creadoPor = reporte.createdBy || obtenerEtiquetaCuentaActual();
+  const creadoEn = formatearFechaReporte(reporteMoneda.createdAt);
+  const creadoPor = reporteMoneda.createdBy || obtenerEtiquetaCuentaActual();
 
   const tablaMetadatos = crearTablaHtml({
     titulo: 'Informacion del reporte',
     headers: ['Campo', 'Valor'],
     rows: [
       ['Gimnasio', configuracion.gymName],
-      ['Nombre del reporte', reporte.titulo],
+      ['Nombre del reporte', reporteMoneda.titulo],
       ['Fecha', creadoEn],
       ['Creado desde la cuenta', creadoPor],
-      ['Identificador', reporte.id],
-      ['Tipo', reporte.tipo || 'General'],
+      ['Identificador', reporteMoneda.id],
+      ['Tipo', reporteMoneda.tipo || 'General'],
     ],
     clase: 'tabla-meta',
   });
@@ -591,17 +610,17 @@ export const exportarReporteExcel = (reporte) => {
   const tablaResumen = crearTablaHtml({
     titulo: 'Resumen ejecutivo',
     headers: ['Indicador', 'Valor'],
-    rows: reporte.summary || [],
+    rows: reporteMoneda.summary || [],
     clase: 'tabla-resumen',
   });
 
   const tablaPrincipal = crearTablaHtml({
     titulo: 'Detalle principal',
-    headers: reporte.headers || [],
-    rows: reporte.rows || [],
+    headers: reporteMoneda.headers || [],
+    rows: reporteMoneda.rows || [],
   });
 
-  const tablasDetalle = (reporte.detalles || [])
+  const tablasDetalle = (reporteMoneda.detalles || [])
     .map((seccion) => crearTablaHtml({
       titulo: seccion.titulo,
       headers: seccion.headers,
@@ -631,7 +650,7 @@ export const exportarReporteExcel = (reporte) => {
       </head>
       <body>
         <div class="encabezado">
-          <h1>${escaparHtml(reporte.titulo)}</h1>
+          <h1>${escaparHtml(reporteMoneda.titulo)}</h1>
           <p>${escaparHtml(configuracion.gymName)} | ${escaparHtml(creadoEn)} | ${escaparHtml(creadoPor)}</p>
         </div>
         ${tablaMetadatos}
@@ -643,5 +662,5 @@ export const exportarReporteExcel = (reporte) => {
     </html>
   `;
 
-  descargarBlob(new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8;' }), construirNombreArchivo(reporte, 'xls'));
+  descargarBlob(new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8;' }), construirNombreArchivo(reporteMoneda, 'xls'));
 };

@@ -26,6 +26,7 @@ import {
   leerGimnasiosDisponibles,
   obtenerGimnasioPredeterminado,
 } from '../utils/gimnasiosCompartidos';
+import { useConfiguracionApp } from '../utils/configuracionApp';
 
 const formularioInicial = {
   nombre: '',
@@ -48,6 +49,7 @@ const RegistroSocioCompartido = ({
   const [planesMembresia, setPlanesMembresia] = useState(() => leerMembresiasCompartidas());
   const [sociosCompartidos, setSociosCompartidos] = useState(() => leerSociosCompartidos());
   const gimnasios = leerGimnasiosDisponibles();
+  useConfiguracionApp();
 
   useEffect(() => {
     const actualizarPlanes = () => setPlanesMembresia(leerMembresiasCompartidas());

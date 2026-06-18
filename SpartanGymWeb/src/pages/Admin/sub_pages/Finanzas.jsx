@@ -4,6 +4,11 @@ import {
   Plus, Save, CheckCircle2, FileText
 } from 'lucide-react';
 import TarjetaMetrica from '../../../components/TarjetaMetrica';
+import {
+  formatearMoneda,
+  MONEDAS_DISPONIBLES,
+  useConfiguracionApp,
+} from '../../../utils/configuracionApp';
 
 const categoriasFinancieras = ['Membresía', 'Suplemento', 'Servicios', 'Mantenimiento'];
 
@@ -21,6 +26,9 @@ const Finanzas = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [filtro, setFiltro] = useState('todos');
   const busqueda = '';
+  const configuracion = useConfiguracionApp();
+  const monedaActual = MONEDAS_DISPONIBLES.find((moneda) => moneda.codigo === configuracion.currency) || MONEDAS_DISPONIBLES[1];
+  const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
 
   // Datos mock de transacciones
   const [transacciones, setTransacciones] = useState([
@@ -87,17 +95,17 @@ const Finanzas = () => {
       
       {/* MÉTRICAS SUPERIORES */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <TarjetaMetrica titulo="Balance" valor="$4,114.50" icono={DollarSign} color="text-gray-400" detalle="+12%" />
-        <TarjetaMetrica titulo="Ingresos" valor="$4,850.00" icono={TrendingUp} color="text-green-500" detalle="84 Trx" />
-        <TarjetaMetrica titulo="Egresos" valor="$735.50" icono={TrendingDown} color="text-red-500" detalle="Gastos" />
-        <TarjetaMetrica titulo="Pendiente" valor="$320.00" icono={CreditCard} color="text-orange-500" detalle="17 Socios" />
+        <TarjetaMetrica titulo="Balance" valor={formatearMonto(4114.5)} icono={DollarSign} color="text-gray-400" detalle="+12%" />
+        <TarjetaMetrica titulo="Ingresos" valor={formatearMonto(4850)} icono={TrendingUp} color="text-green-500" detalle="84 Trx" />
+        <TarjetaMetrica titulo="Egresos" valor={formatearMonto(735.5)} icono={TrendingDown} color="text-red-500" detalle="Gastos" />
+        <TarjetaMetrica titulo="Pendiente" valor={formatearMonto(320)} icono={CreditCard} color="text-orange-500" detalle="17 Socios" />
       </div>
 
       <div className="grid grid-cols-1 gap-3 rounded-2xl border border-white/10 bg-[#090909] p-4 shadow-2xl sm:grid-cols-2 xl:grid-cols-4">
         {resumenCategorias.map((item) => (
           <div key={item.categoria} className="rounded-xl border border-white/5 bg-[#111]/60 p-4 transition-all hover:-translate-y-0.5 hover:border-white/15">
             <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">{item.categoria}</p>
-            <h3 className="mt-1 text-xl font-black text-white">${item.total.toFixed(2)}</h3>
+            <h3 className="mt-1 text-xl font-black text-white">{formatearMonto(item.total)}</h3>
             <p className="mt-1 text-[10px] font-bold text-gray-500">{item.cantidad} movimientos</p>
           </div>
         ))}
@@ -150,7 +158,7 @@ const Finanzas = () => {
                           <span className="px-2 py-0.5 bg-red-500/10 rounded text-[9px] font-bold text-red-500">{t.categoria}</span>
                         </td>
                         <td className={`p-4 text-right font-black ${t.tipo === 'ingreso' ? 'text-green-500' : 'text-red-500'}`}>
-                          {t.tipo === 'ingreso' ? '+' : '-'} ${t.monto.toFixed(2)}
+                          {t.tipo === 'ingreso' ? '+' : '-'} {formatearMonto(t.monto)}
                         </td>
                       </tr>
                     ))}
@@ -210,7 +218,7 @@ const Finanzas = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Monto ($)</label>
+                <label className="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Monto ({monedaActual.simbolo})</label>
                 <input 
                   type="number" name="monto" required value={nuevoMovimiento.monto} onChange={handleChange}
                   placeholder="0.00"

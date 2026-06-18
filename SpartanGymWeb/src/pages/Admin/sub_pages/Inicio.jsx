@@ -20,14 +20,15 @@ import {
   Zap,
 } from 'lucide-react';
 
-import imgLaptop from '../../../assets/ComputadoraSpartan.png';
-import imgEstadisticas from '../../../assets/EstadisticasSpartan.png';
-import imgMembresia from '../../../assets/MembresiaSpartan.png';
-import imgSuplementos from '../../../assets/SuplementosSpartan.png';
+import imgLaptop from '../../../assets/ComputadoraSpartan.webp';
+import imgEstadisticas from '../../../assets/EstadisticasSpartan.webp';
+import imgMembresia from '../../../assets/MembresiaSpartan.webp';
+import imgSuplementos from '../../../assets/SuplementosSpartan.webp';
+import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
 
 const indicadoresRapidos = [
   { titulo: 'Socios activos', valor: '128', detalle: '+18 este mes', icono: Users, color: 'text-blue-500' },
-  { titulo: 'Ingresos mes', valor: '$4,850', detalle: '82.4% margen', icono: DollarSign, color: 'text-green-500' },
+  { titulo: 'Ingresos mes', valorMonto: 4850, detalle: '82.4% margen', icono: DollarSign, color: 'text-green-500' },
   { titulo: 'Por vencer', valor: '17', detalle: 'Requieren seguimiento', icono: Calendar, color: 'text-red-500' },
   { titulo: 'Personal', valor: '12', detalle: 'Turnos cubiertos', icono: UserCheck, color: 'text-orange-500' },
 ];
@@ -66,7 +67,7 @@ const modulosAdministracion = [
     imagen: imgEstadisticas,
     icono: BarChart3,
     ruta: '/admin/finanzas',
-    metrica: '$4,850 mes',
+    metricaMonto: 4850,
     estado: 'En linea',
   },
   {
@@ -122,6 +123,9 @@ const modulosAdministracion = [
 ];
 
 const Inicio = () => {
+  const configuracion = useConfiguracionApp();
+  const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
+
   return (
     <div className="inicio-admin flex min-h-full w-full flex-col gap-5 text-white sm:gap-6">
       <section className="panel-operativo relative overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6 lg:p-7">
@@ -150,13 +154,21 @@ const Inicio = () => {
 
       <div className="grid [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))] gap-3 sm:gap-4">
         {indicadoresRapidos.map((indicador) => (
-          <TarjetaIndicador key={indicador.titulo} {...indicador} />
+          <TarjetaIndicador
+            key={indicador.titulo}
+            {...indicador}
+            valor={indicador.valorMonto ? formatearMonto(indicador.valorMonto) : indicador.valor}
+          />
         ))}
       </div>
 
       <div className="grid flex-grow grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-2">
         {modulosAdministracion.map((modulo) => (
-          <TarjetaModulo key={modulo.titulo} {...modulo} />
+          <TarjetaModulo
+            key={modulo.titulo}
+            {...modulo}
+            metrica={modulo.metricaMonto ? `${formatearMonto(modulo.metricaMonto)} mes` : modulo.metrica}
+          />
         ))}
       </div>
 
@@ -197,6 +209,8 @@ const TarjetaModulo = ({ titulo, descripcion, boton, imagen, icono: Icono, ruta,
       <img
         src={imagen}
         alt={titulo}
+        loading="lazy"
+        decoding="async"
         className="imagen-modulo-admin module-card-image absolute inset-y-0 right-0 h-full w-full object-cover opacity-35 grayscale transition-all duration-700 group-hover:scale-105 group-hover:opacity-70 group-hover:grayscale-0 sm:w-[72%] sm:opacity-55"
       />
       <div className="module-card-overlay absolute inset-0 bg-gradient-to-r from-[#090909] via-[#090909]/92 to-[#090909]/25" />

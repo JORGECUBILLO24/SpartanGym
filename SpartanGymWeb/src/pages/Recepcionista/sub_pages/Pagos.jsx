@@ -4,13 +4,19 @@ import {
   CheckCircle2, Clock, CreditCard, ArrowUpRight,
   TrendingUp, User, Calendar, Download, Filter, X, Save
 } from 'lucide-react';
+import {
+  formatearMoneda as formatearMonedaConfigurada,
+  MONEDAS_DISPONIBLES,
+  obtenerMontoNumerico,
+  useConfiguracionApp,
+} from '../../../utils/configuracionApp';
 
 const pagosIniciales = [
-  { id: 1, socio: 'Carlos Andrés Ramírez', membresia: 'Spartan Anual', monto: '$250.00', fecha: 'Hoy, 09:09 AM', metodo: 'Tarjeta de Crédito', estado: 'Completado' },
-  { id: 2, socio: 'Juan Pérez', membresia: 'Premium (3 Meses)', monto: '$80.00', fecha: '12/05/2026', metodo: 'Transferencia', estado: 'Completado' },
-  { id: 3, socio: 'María Gómez', membresia: 'Básica (1 Mes)', monto: '$30.00', fecha: '12/05/2026', metodo: 'Efectivo', estado: 'Completado' },
-  { id: 4, socio: 'Ana Torres', membresia: 'Elite (6 Meses)', monto: '$150.00', fecha: '11/05/2026', metodo: 'Tarjeta de Débito', estado: 'Completado' },
-  { id: 5, socio: 'Luis Hernández', membresia: 'Básica (1 Mes)', monto: '$30.00', fecha: '10/05/2026', metodo: 'Efectivo', estado: 'Pendiente' },
+  { id: 1, socio: 'Carlos Andrés Ramírez', membresia: 'Spartan Anual', monto: 250, fecha: 'Hoy, 09:09 AM', metodo: 'Tarjeta de Crédito', estado: 'Completado' },
+  { id: 2, socio: 'Juan Pérez', membresia: 'Premium (3 Meses)', monto: 80, fecha: '12/05/2026', metodo: 'Transferencia', estado: 'Completado' },
+  { id: 3, socio: 'María Gómez', membresia: 'Básica (1 Mes)', monto: 30, fecha: '12/05/2026', metodo: 'Efectivo', estado: 'Completado' },
+  { id: 4, socio: 'Ana Torres', membresia: 'Elite (6 Meses)', monto: 150, fecha: '11/05/2026', metodo: 'Tarjeta de Débito', estado: 'Completado' },
+  { id: 5, socio: 'Luis Hernández', membresia: 'Básica (1 Mes)', monto: 30, fecha: '10/05/2026', metodo: 'Efectivo', estado: 'Pendiente' },
 ];
 
 const pagoVacio = {
@@ -54,14 +60,6 @@ const categoriasPago = [
   },
 ];
 
-const obtenerMontoNumerico = (monto) => Number(String(monto).replace(/[^0-9.-]+/g, '')) || 0;
-
-const formatearMoneda = (valor) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(valor);
-
 const obtenerCategoriaPago = (metodo = '') => {
   const metodoNormalizado = metodo.toLowerCase();
 
@@ -80,6 +78,9 @@ const Pagos = () => {
   const [datosPago, setDatosPago] = useState(pagoVacio);
   const [pagoGuardado, setPagoGuardado] = useState(false);
   const [categoriaActiva, setCategoriaActiva] = useState('todos');
+  const configuracion = useConfiguracionApp();
+  const monedaActual = MONEDAS_DISPONIBLES.find((moneda) => moneda.codigo === configuracion.currency) || MONEDAS_DISPONIBLES[1];
+  const formatearMonto = (valor) => formatearMonedaConfigurada(valor, configuracion.currency);
 
   const generarReporte = () => {
     setGenerandoReporte(true);
@@ -101,7 +102,7 @@ const Pagos = () => {
       id: Date.now(),
       socio: datosPago.socio.trim(),
       membresia: datosPago.membresia.trim(),
-      monto: `$${Number(datosPago.monto).toFixed(2)}`,
+      monto: Number(datosPago.monto),
       fecha: 'Ahora mismo',
       metodo: datosPago.metodo,
       estado: datosPago.estado,
@@ -136,7 +137,7 @@ const Pagos = () => {
     resumenPorCategoria[0]
   );
 
-  const totalRecaudado = formatearMoneda(
+  const totalRecaudado = formatearMonto(
     historialPagos
       .filter((pago) => pago.estado === 'Completado')
       .reduce((suma, pago) => suma + obtenerMontoNumerico(pago.monto), 0)
@@ -275,7 +276,7 @@ const Pagos = () => {
                   <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">{categoria.descripcion}</span>
                   <h4 className="mt-1 text-sm font-black text-white">{categoria.nombre}</h4>
                   <p className="mt-2 text-base font-black text-white">
-                    {formatearMoneda(categoria.total)}
+                    {formatearMonto(categoria.total)}
                   </p>
                   <p className="mt-1 text-xs text-gray-500">
                     {categoria.cantidad} pagos - {categoria.pendientes} pendientes
@@ -351,7 +352,7 @@ const Pagos = () => {
                             {grupo.nombre}
                           </span>
                           <span className="text-[10px] font-bold text-gray-500">
-                            {grupo.pagos.length} pagos - {formatearMoneda(totalGrupo)}
+                            {grupo.pagos.length} pagos - {formatearMonto(totalGrupo)}
                           </span>
                         </div>
                       </td>
@@ -365,7 +366,7 @@ const Pagos = () => {
                           <span className="font-medium text-white">{pago.socio}</span>
                         </td>
                         <td className="py-3.5 pr-4 text-gray-300">{pago.membresia}</td>
-                        <td className="py-3.5 pr-4 font-bold text-white">{pago.monto}</td>
+                        <td className="py-3.5 pr-4 font-bold text-white">{formatearMonto(obtenerMontoNumerico(pago.monto))}</td>
                         <td className="py-3.5 pr-4 text-gray-400">
                           <div className="flex items-center gap-1.5">
                             <Calendar size={12} className="text-gray-600" />
@@ -437,7 +438,7 @@ const Pagos = () => {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase text-gray-500">Monto</label>
+                  <label className="mb-2 block text-xs font-bold uppercase text-gray-500">Monto ({monedaActual.simbolo})</label>
                   <input
                     type="number"
                     name="monto"

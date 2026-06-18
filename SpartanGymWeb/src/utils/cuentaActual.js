@@ -2,16 +2,24 @@ import { guardarDatoLocal, leerDatoLocal } from './almacenamientoLocal';
 
 export const CLAVE_CUENTA_ACTUAL = 'spartanGym.currentAccount';
 export const EVENTO_CUENTA_ACTUAL = 'spartanGym.currentAccountChanged';
+export const CLAVE_ULTIMO_CIERRE = 'spartanGym.lastLogout';
 
-export const leerCuentaActual = () => leerDatoLocal(CLAVE_CUENTA_ACTUAL, {
+const CUENTA_DEMO_ADMIN = {
   username: 'admin@spartangym.com',
   role: 'Administrador',
-});
+};
+
+export const leerCuentaActiva = () => leerDatoLocal(CLAVE_CUENTA_ACTUAL, null);
+
+export const haySesionActiva = () => Boolean(leerCuentaActiva()?.role);
+
+export const leerCuentaActual = () => leerCuentaActiva() || CUENTA_DEMO_ADMIN;
 
 export const guardarCuentaActual = (cuenta) => {
   const cuentaGuardada = guardarDatoLocal(CLAVE_CUENTA_ACTUAL, cuenta);
 
   if (typeof window !== 'undefined') {
+    window.localStorage.removeItem(CLAVE_ULTIMO_CIERRE);
     window.dispatchEvent(new Event(EVENTO_CUENTA_ACTUAL));
   }
 
@@ -23,7 +31,7 @@ export const cerrarSesionActual = (motivo = 'manual') => {
 
   window.localStorage.removeItem(CLAVE_CUENTA_ACTUAL);
   window.localStorage.setItem(
-    'spartanGym.lastLogout',
+    CLAVE_ULTIMO_CIERRE,
     JSON.stringify({ motivo, fecha: new Date().toISOString() })
   );
   window.dispatchEvent(new Event(EVENTO_CUENTA_ACTUAL));

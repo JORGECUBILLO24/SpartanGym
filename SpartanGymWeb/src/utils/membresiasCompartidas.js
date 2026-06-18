@@ -1,4 +1,5 @@
 import { guardarDatoLocal, leerDatoLocal } from './almacenamientoLocal';
+import { formatearMoneda } from './configuracionApp';
 
 export const CLAVE_MEMBRESIAS = 'spartanGym.memberships';
 export const EVENTO_MEMBRESIAS = 'spartanGym.membershipsChanged';
@@ -81,7 +82,7 @@ export const eliminarMembresiaCompartida = (id) => {
 export const formatearPrecioMembresia = (precio) => {
   const precioNumerico = Number(precio);
 
-  return Number.isFinite(precioNumerico) ? `$${precioNumerico.toFixed(2)}` : '$0.00';
+  return formatearMoneda(Number.isFinite(precioNumerico) ? precioNumerico : 0);
 };
 
 export const obtenerEtiquetaMembresia = (membresia) =>

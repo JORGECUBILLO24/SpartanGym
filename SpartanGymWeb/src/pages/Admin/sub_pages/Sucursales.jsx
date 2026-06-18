@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 
 // Reutilizamos la imagen de estadísticas o laptop como fondo de tarjeta, o puedes cambiarla por una de la infraestructura
-import imgGymCard from "../../../assets/EstadisticasSpartan.png";
+import imgGymCard from "../../../assets/EstadisticasSpartan.webp";
 
 const Sucursales = () => {
   const [formData, setFormData] = useState({
@@ -183,7 +183,13 @@ const Sucursales = () => {
           
           {/* Tarjeta de Sucursal Digital */}
           <div className="w-full max-w-sm bg-gradient-to-b from-[#151515] to-[#050505] rounded-2xl border border-white/10 p-6 flex flex-col justify-between shadow-[0_15px_40px_rgba(0,0,0,0.8)] relative overflow-hidden transition-all duration-300 h-auto">
-            <img src={imgGymCard} className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none" alt="" />
+            <img
+              src={imgGymCard}
+              className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none"
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
             <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/70 to-black pointer-events-none" />
             
             {/* Header de tarjeta */}
