@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Check, Dumbbell, Plus, Save, Trash2, X } from 'lucide-react';
-import imgMembresiaCard from '../../../assets/MembresiaSpartan.png';
+import imgMembresiaCard from '../../../assets/MembresiaSpartan.webp';
 import {
   agregarMembresiaCompartida,
   eliminarMembresiaCompartida,
   formatearPrecioMembresia,
   leerMembresiasCompartidas,
 } from '../../../utils/membresiasCompartidas';
+import { MONEDAS_DISPONIBLES, useConfiguracionApp } from '../../../utils/configuracionApp';
 
 const formularioInicial = {
   nombrePlan: '',
@@ -20,6 +21,8 @@ const opcionesDuracion = ['1 Dia', '15 Dias', '1 Mes', '3 Meses', '6 Meses', '1 
 const Membresias = () => {
   const [formData, setFormData] = useState(formularioInicial);
   const [listaMembresias, setListaMembresias] = useState(() => leerMembresiasCompartidas());
+  const configuracion = useConfiguracionApp();
+  const monedaActual = MONEDAS_DISPONIBLES.find((moneda) => moneda.codigo === configuracion.currency) || MONEDAS_DISPONIBLES[1];
 
   const actualizarBeneficio = (indice, valor) => {
     const beneficios = [...formData.beneficios];
@@ -73,7 +76,7 @@ const Membresias = () => {
                 min="0"
                 step="0.01"
                 type="number"
-                placeholder="Precio ($)"
+                placeholder={`Precio (${monedaActual.simbolo})`}
                 value={formData.precio}
                 className="campo-sistema w-full rounded-xl border border-white/10 bg-[#151515] p-3 text-white outline-none"
                 onChange={(evento) => setFormData({ ...formData, precio: evento.target.value })}
@@ -168,7 +171,13 @@ const TarjetaMembresia = ({ data }) => {
 
   return (
     <article className="relative flex aspect-[16/10] w-full max-w-[320px] flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-black p-5 shadow-2xl">
-      <img src={imgMembresiaCard} className="absolute inset-0 h-full w-full object-cover opacity-80" alt="" />
+      <img
+        src={imgMembresiaCard}
+        className="absolute inset-0 h-full w-full object-cover opacity-80"
+        alt=""
+        loading="lazy"
+        decoding="async"
+      />
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/20" />
 
       <div className="relative z-10 flex justify-between gap-3">

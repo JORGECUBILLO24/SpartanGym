@@ -10,10 +10,12 @@ import {
   leerSociosCompartidos,
   obtenerNombreSocio,
 } from '../../../utils/sociosCompartidos';
+import { useConfiguracionApp } from '../../../utils/configuracionApp';
 
 const Membresias = () => {
   const [catalogo, setCatalogo] = useState(() => leerMembresiasCompartidas());
   const [socios, setSocios] = useState(() => leerSociosCompartidos());
+  useConfiguracionApp();
 
   useEffect(() => {
     const actualizarCatalogo = () => setCatalogo(leerMembresiasCompartidas());

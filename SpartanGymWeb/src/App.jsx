@@ -1,83 +1,79 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
+import Home from './pages/Home.jsx';
 
-// Importación de Layouts Principales
-import Home from "./pages/Home.jsx"; 
-import Login from "./pages/Login.jsx";
-import AdminLayout from "./pages/Admin/AdminLayout.jsx";
-import RecepcionistaLayout from "./pages/Recepcionista/RecepcionistaLayout.jsx";
+const Login = lazy(() => import('./pages/Login.jsx'));
+const Registro = lazy(() => import('./pages/Registro.jsx'));
+const DetalleBeneficio = lazy(() => import('./pages/DetalleBeneficio.jsx'));
 
-// Pantalla de Detalles del Beneficio
-import DetalleBeneficio from "./pages/DetalleBeneficio.jsx"; 
+const AdminLayout = lazy(() => import('./pages/Admin/AdminLayout.jsx'));
+const InicioAdmin = lazy(() => import('./pages/Admin/sub_pages/Inicio.jsx'));
+const Usuarios = lazy(() => import('./pages/Admin/sub_pages/Usuarios.jsx'));
+const Finanzas = lazy(() => import('./pages/Admin/sub_pages/Finanzas.jsx'));
+const Inventario = lazy(() => import('./pages/Admin/sub_pages/Inventario.jsx'));
+const Reportes = lazy(() => import('./pages/Admin/sub_pages/Reportes.jsx'));
+const Sucursales = lazy(() => import('./pages/Admin/sub_pages/Sucursales.jsx'));
+const MembresiasAdmin = lazy(() => import('./pages/Admin/sub_pages/Membresias.jsx'));
+const Configuracion = lazy(() => import('./pages/Admin/sub_pages/Configuracion.jsx'));
+const SocioAdm = lazy(() => import('./pages/Admin/sub_pages/Socioadm.jsx'));
+const MensajesGlobales = lazy(() => import('./pages/Admin/sub_pages/MensajesGlobales.jsx'));
+const PerfilAdmin = lazy(() => import('./pages/Admin/sub_pages/PerfilAdmin.jsx'));
 
-// Pantalla de Registro
-import Registro from "./pages/Registro.jsx"; 
+const RecepcionistaLayout = lazy(() => import('./pages/Recepcionista/RecepcionistaLayout.jsx'));
+const InicioRecepcion = lazy(() => import('./pages/Recepcionista/sub_pages/Inicio.jsx'));
+const CheckIn = lazy(() => import('./pages/Recepcionista/sub_pages/CheckIn.jsx'));
+const RegistrarSocio = lazy(() => import('./pages/Recepcionista/sub_pages/RegistrarSocio.jsx'));
+const Pagos = lazy(() => import('./pages/Recepcionista/sub_pages/Pagos.jsx'));
+const MembresiasRecepcion = lazy(() => import('./pages/Recepcionista/sub_pages/Membresia.jsx'));
+const Asistencias = lazy(() => import('./pages/Recepcionista/sub_pages/Asistencias.jsx'));
+const Notificaciones = lazy(() => import('./pages/Recepcionista/sub_pages/Notificaciones.jsx'));
+const Perfil = lazy(() => import('./pages/Recepcionista/sub_pages/Perfil.jsx'));
 
-// Importación de sub-páginas de Admin
-import InicioAdmin from "./pages/Admin/sub_pages/Inicio.jsx";
-import Usuarios from "./pages/Admin/sub_pages/Usuarios.jsx";
-import Finanzas from "./pages/Admin/sub_pages/Finanzas.jsx";
-import Inventario from "./pages/Admin/sub_pages/Inventario.jsx";
-import Reportes from "./pages/Admin/sub_pages/Reportes.jsx";
-import Sucursales from "./pages/Admin/sub_pages/Sucursales.jsx";
-import MembresiasAdmin from "./pages/Admin/sub_pages/Membresias.jsx";
-import Configuracion from "./pages/Admin/sub_pages/Configuracion.jsx";
-import SocioAdm from "./pages/Admin/sub_pages/Socioadm.jsx";
-import MensajesGlobales from "./pages/Admin/sub_pages/MensajesGlobales.jsx";
-import PerfilAdmin from "./pages/Admin/sub_pages/PerfilAdmin.jsx";
-
-// Importación de sub-páginas de Recepcionista
-import InicioRecepcion from "./pages/Recepcionista/sub_pages/Inicio.jsx";
-import CheckIn from "./pages/Recepcionista/sub_pages/CheckIn.jsx";
-import RegistrarSocio from "./pages/Recepcionista/sub_pages/RegistrarSocio.jsx";
-import Pagos from "./pages/Recepcionista/sub_pages/Pagos.jsx";
-import MembresiasRecepcion from "./pages/Recepcionista/sub_pages/Membresia.jsx";
-import Asistencias from "./pages/Recepcionista/sub_pages/Asistencias.jsx";
-import Notificaciones from "./pages/Recepcionista/sub_pages/Notificaciones.jsx";
-import Perfil from "./pages/Recepcionista/sub_pages/Perfil.jsx";
+const PantallaCarga = () => (
+  <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-red-500">
+    Cargando Spartan Gym
+  </div>
+);
 
 function App() {
   return (
     <Router>
       <div className="app-theme min-h-screen bg-[#050505] font-sans text-white transition-colors duration-300">
-        <Routes>
-          {/* Rutas Públicas */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/registro" element={<Registro />} />
-          
-          {/* Ruta Dinámica para los detalles de cada beneficio */}
-          <Route path="/beneficios/:slug" element={<DetalleBeneficio />} />
-          
-          {/* Rutas de Administrador */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<InicioAdmin />} />
-            <Route path="usuarios" element={<Usuarios />} />
-            <Route path="finanzas" element={<Finanzas />} />
-            <Route path="inventario" element={<Inventario />} />
-            <Route path="reportes" element={<Reportes />} />
-            <Route path="sucursales" element={<Sucursales />} />
-            <Route path="membresias" element={<MembresiasAdmin />} />
-            <Route path="configuracion" element={<Configuracion />} />
-            <Route path="registrar-socio" element={<SocioAdm />} />
-            <Route path="mensajes" element={<MensajesGlobales />} />
-            <Route path="perfil" element={<PerfilAdmin />} />
-          </Route>
-          
-          {/* Rutas de Recepcionista */}
-          <Route path="/recepcion" element={<RecepcionistaLayout />}>
-            <Route index element={<InicioRecepcion />} />
-            <Route path="check-in" element={<CheckIn />} />
-            <Route path="registrar-socio" element={<RegistrarSocio />} />
-            <Route path="pagos" element={<Pagos />} />
-            <Route path="membresias" element={<MembresiasRecepcion />} />
-            <Route path="asistencias" element={<Asistencias />} />
-            <Route path="notificaciones" element={<Notificaciones />} />
-            <Route path="perfil" element={<Perfil />} />
-          </Route>
-          
-          {/* Redirección automática si escriben una ruta inválida */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<PantallaCarga />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/registro" element={<Registro />} />
+            <Route path="/beneficios/:slug" element={<DetalleBeneficio />} />
+
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<InicioAdmin />} />
+              <Route path="usuarios" element={<Usuarios />} />
+              <Route path="finanzas" element={<Finanzas />} />
+              <Route path="inventario" element={<Inventario />} />
+              <Route path="reportes" element={<Reportes />} />
+              <Route path="sucursales" element={<Sucursales />} />
+              <Route path="membresias" element={<MembresiasAdmin />} />
+              <Route path="configuracion" element={<Configuracion />} />
+              <Route path="registrar-socio" element={<SocioAdm />} />
+              <Route path="mensajes" element={<MensajesGlobales />} />
+              <Route path="perfil" element={<PerfilAdmin />} />
+            </Route>
+
+            <Route path="/recepcion" element={<RecepcionistaLayout />}>
+              <Route index element={<InicioRecepcion />} />
+              <Route path="check-in" element={<CheckIn />} />
+              <Route path="registrar-socio" element={<RegistrarSocio />} />
+              <Route path="pagos" element={<Pagos />} />
+              <Route path="membresias" element={<MembresiasRecepcion />} />
+              <Route path="asistencias" element={<Asistencias />} />
+              <Route path="notificaciones" element={<Notificaciones />} />
+              <Route path="perfil" element={<Perfil />} />
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </div>
     </Router>
   );

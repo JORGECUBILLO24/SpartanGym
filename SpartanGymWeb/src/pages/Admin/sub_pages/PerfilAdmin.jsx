@@ -32,6 +32,7 @@ import {
   obtenerNombrePersonal,
   personalCreadoPorCuentaActual,
 } from '../../../utils/personalCompartido';
+import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
 
 const CLAVE_PERFIL_ADMIN = 'spartanGym.adminProfile';
 
@@ -395,13 +396,6 @@ const TarjetaResumenPerfil = ({ titulo, valor, detalle, icono: Icono, color }) =
   </article>
 );
 
-const formatearMonedaPanel = (valor) =>
-  new Intl.NumberFormat('es-NI', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  }).format(valor);
-
 const TarjetaGimnasio = ({ gimnasio, activo, onClick }) => (
   <button
     type="button"
@@ -437,42 +431,47 @@ const TarjetaGimnasio = ({ gimnasio, activo, onClick }) => (
   </button>
 );
 
-const PanelGimnasioGlobal = ({ gimnasio }) => (
-  <div className="panel-gimnasio-global mt-5 rounded-2xl border border-white/5 bg-[#111]/60 p-4">
-    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-400">Vista global</p>
-        <h3 className="mt-1 text-lg font-black text-white">{gimnasio.nombre}</h3>
-        <p className="mt-1 text-xs font-bold text-gray-500">{gimnasio.ciudad} - {gimnasio.estado}</p>
-      </div>
-      <span className="w-fit rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-[10px] font-black uppercase text-green-500">
-        Datos sincronizados
-      </span>
-    </div>
+const PanelGimnasioGlobal = ({ gimnasio }) => {
+  const configuracion = useConfiguracionApp();
+  const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
 
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <DatoGimnasio titulo="Socios" valor={gimnasio.usuarios} detalle="Activos" />
-      <DatoGimnasio titulo="Efectivo dia" valor={formatearMonedaPanel(gimnasio.efectivoDia)} detalle="Caja actual" />
-      <DatoGimnasio titulo="Ventas" valor={formatearMonedaPanel(gimnasio.ventas)} detalle="Mes actual" />
-      <DatoGimnasio titulo="Asistencias" valor={gimnasio.asistencias} detalle="Hoy" />
-    </div>
+  return (
+    <div className="panel-gimnasio-global mt-5 rounded-2xl border border-white/5 bg-[#111]/60 p-4">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-400">Vista global</p>
+          <h3 className="mt-1 text-lg font-black text-white">{gimnasio.nombre}</h3>
+          <p className="mt-1 text-xs font-bold text-gray-500">{gimnasio.ciudad} - {gimnasio.estado}</p>
+        </div>
+        <span className="w-fit rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-[10px] font-black uppercase text-green-500">
+          Datos sincronizados
+        </span>
+      </div>
 
-    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <div className="dato-gimnasio-global rounded-xl bg-white/5 p-3">
-        <p className="text-[9px] font-black uppercase text-gray-500">Personal</p>
-        <p className="mt-1 text-lg font-black text-white">{gimnasio.personal}</p>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <DatoGimnasio titulo="Socios" valor={gimnasio.usuarios} detalle="Activos" />
+        <DatoGimnasio titulo="Efectivo dia" valor={formatearMonto(gimnasio.efectivoDia)} detalle="Caja actual" />
+        <DatoGimnasio titulo="Ventas" valor={formatearMonto(gimnasio.ventas)} detalle="Mes actual" />
+        <DatoGimnasio titulo="Asistencias" valor={gimnasio.asistencias} detalle="Hoy" />
       </div>
-      <div className="dato-gimnasio-global rounded-xl bg-white/5 p-3">
-        <p className="text-[9px] font-black uppercase text-gray-500">Pagos pendientes</p>
-        <p className="mt-1 text-lg font-black text-orange-400">{gimnasio.pagosPendientes}</p>
-      </div>
-      <div className="dato-gimnasio-global rounded-xl bg-white/5 p-3">
-        <p className="text-[9px] font-black uppercase text-gray-500">Estado global</p>
-        <p className="mt-1 text-lg font-black text-green-500">{gimnasio.estado}</p>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="dato-gimnasio-global rounded-xl bg-white/5 p-3">
+          <p className="text-[9px] font-black uppercase text-gray-500">Personal</p>
+          <p className="mt-1 text-lg font-black text-white">{gimnasio.personal}</p>
+        </div>
+        <div className="dato-gimnasio-global rounded-xl bg-white/5 p-3">
+          <p className="text-[9px] font-black uppercase text-gray-500">Pagos pendientes</p>
+          <p className="mt-1 text-lg font-black text-orange-400">{gimnasio.pagosPendientes}</p>
+        </div>
+        <div className="dato-gimnasio-global rounded-xl bg-white/5 p-3">
+          <p className="text-[9px] font-black uppercase text-gray-500">Estado global</p>
+          <p className="mt-1 text-lg font-black text-green-500">{gimnasio.estado}</p>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const DatoGimnasio = ({ titulo, valor, detalle }) => (
   <div className="dato-gimnasio-global rounded-xl border border-white/5 bg-[#090909]/70 p-3">

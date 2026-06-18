@@ -6,7 +6,7 @@ import {
   Key, Sliders, Menu, X, Building2, UserCircle, LogOut
 } from 'lucide-react';
 
-import LogoWeb from '../../assets/Logo Web.png';
+import LogoWeb from '../../assets/Logo Web.webp';
 import ControlSesion from '../../components/ControlSesion';
 import {
   cerrarSesionActual,
@@ -73,6 +73,9 @@ const AdminLayout = () => {
             <img
               src={LogoWeb}
               alt="Spartan Gym"
+              width="320"
+              height="213"
+              decoding="async"
               className="h-auto w-44 max-w-full object-contain drop-shadow-[0_0_14px_rgba(220,38,38,0.45)] transition duration-300 hover:scale-[1.02]"
             />
           </Link>

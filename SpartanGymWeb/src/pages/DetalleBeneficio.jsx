@@ -1,6 +1,7 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Flame, ShieldCheck } from 'lucide-react';
-import LogoSpartan from '../assets/Logo Web.png';
+import FondoLogin from '../assets/fondo_login.webp';
+import LogoSpartan from '../assets/Logo Web.webp';
 import { beneficiosInicio } from '../data/homeBenefits';
 
 const DetalleBeneficio = () => {
@@ -15,14 +16,20 @@ const DetalleBeneficio = () => {
 
   return (
     <div className="benefit-detail min-h-screen bg-black text-white">
-      <div className="fixed inset-0 -z-10 bg-[url('/src/assets/fondo_login.png')] bg-cover bg-center opacity-20" />
-      <div className="fixed inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.82),rgba(0,0,0,0.96))]" />
+      <div
+        className="benefit-detail-bg fixed inset-0 -z-10 bg-cover bg-center opacity-20"
+        style={{ backgroundImage: `url(${FondoLogin})` }}
+      />
+      <div className="benefit-detail-overlay fixed inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.82),rgba(0,0,0,0.96))]" />
 
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
         <Link to="/" aria-label="Volver al inicio">
           <img
             src={LogoSpartan}
             alt="Logo Spartan Gym Web"
+            width="320"
+            height="213"
+            decoding="async"
             className="h-auto w-40 object-contain drop-shadow-[0_0_14px_rgba(220,38,38,0.55)] transition duration-300 hover:scale-[1.02] sm:w-52"
           />
         </Link>
@@ -73,6 +80,7 @@ const DetalleBeneficio = () => {
               <img
                 src={beneficio.imagen}
                 alt={beneficio.imagenAlt}
+                decoding="async"
                 className="h-full w-full object-cover object-center opacity-85 transition-transform duration-700 hover:scale-105"
               />
             </div>

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDown, ArrowRight, CheckCircle2, Sparkles, Users } from 'lucide-react';
-import LogoSpartan from '../assets/Logo Web.png';
+import FondoLogin from '../assets/fondo_login.webp';
+import LogoSpartan from '../assets/Logo Web.webp';
 import { beneficiosInicio } from '../data/homeBenefits';
 
 const frases = [
@@ -14,6 +15,7 @@ const frases = [
 
 const Home = () => {
   const [indiceFrase, setIndiceFrase] = useState(0);
+  const claseAnimacionFrase = indiceFrase === 0 ? '' : 'animate-[phraseSwap_700ms_ease]';
 
   useEffect(() => {
     const temporizador = setInterval(() => {
@@ -26,14 +28,21 @@ const Home = () => {
   return (
     <div className="home-page min-h-screen overflow-x-hidden bg-black text-white">
       <section className="relative isolate flex min-h-screen flex-col overflow-hidden">
-        <div className="absolute inset-0 -z-20 bg-[url('/src/assets/fondo_login.png')] bg-cover bg-center opacity-25" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.76),rgba(0,0,0,0.82)_55%,#050505_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 -z-10 h-44 bg-[linear-gradient(180deg,rgba(0,0,0,0),#050505)]" />
+        <div
+          className="home-hero-bg absolute inset-0 -z-20 bg-cover bg-center opacity-25"
+          style={{ backgroundImage: `url(${FondoLogin})` }}
+        />
+        <div className="home-hero-overlay absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.76),rgba(0,0,0,0.82)_55%,#050505_100%)]" />
+        <div className="home-hero-fade absolute inset-x-0 bottom-0 -z-10 h-44 bg-[linear-gradient(180deg,rgba(0,0,0,0),#050505)]" />
 
         <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
           <img
             src={LogoSpartan}
             alt="Logo Spartan Gym Web"
+            width="320"
+            height="213"
+            decoding="async"
+            fetchPriority="high"
             className="h-auto w-40 max-w-[44vw] object-contain drop-shadow-[0_0_18px_rgba(220,38,38,0.7)] transition duration-300 hover:scale-[1.02] sm:w-56 lg:w-64"
           />
 
@@ -66,13 +75,13 @@ const Home = () => {
         </header>
 
         <main className="mx-auto flex w-full max-w-7xl flex-1 items-center justify-center px-4 pb-8 pt-2 text-center sm:px-6 lg:px-8">
-          <div className="w-full max-w-5xl animate-[homeReveal_650ms_ease_both]">
+          <div className="w-full max-w-5xl">
             <p className="mb-4 text-[0.7rem] font-extrabold uppercase tracking-[0.22em] text-red-400 sm:text-sm">
               Bienvenido a Spartan Gym
             </p>
             <h1
               key={indiceFrase}
-              className="mx-auto min-h-[8.5rem] max-w-5xl animate-[phraseSwap_700ms_ease] text-balance text-[clamp(2.25rem,10vw,4.8rem)] font-black uppercase leading-[0.98] text-white drop-shadow-[0_0_25px_rgba(220,38,38,0.42)] sm:min-h-[9.5rem] lg:min-h-[10rem]"
+              className={`mx-auto min-h-[8.5rem] max-w-5xl text-balance text-[clamp(2.25rem,10vw,4.8rem)] font-black uppercase leading-[0.98] text-white drop-shadow-[0_0_25px_rgba(220,38,38,0.42)] sm:min-h-[9.5rem] lg:min-h-[10rem] ${claseAnimacionFrase}`}
             >
               {frases[indiceFrase]}
             </h1>
@@ -136,8 +145,12 @@ const Home = () => {
           <div className="relative w-full lg:w-1/2">
             <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border border-white/10 shadow-2xl shadow-black/50">
               <img
-                src="/src/assets/fondo_login.png"
+                src={FondoLogin}
                 alt="Instalaciones Spartan Gym"
+                width="941"
+                height="1672"
+                loading="lazy"
+                decoding="async"
                 className="h-full w-full object-cover object-center opacity-80 transition-transform duration-700 hover:scale-105"
               />
             </div>
@@ -149,9 +162,9 @@ const Home = () => {
 
       <section
         id="beneficios"
-        className="relative isolate flex min-h-screen items-center overflow-hidden bg-[#050505] px-4 py-14 sm:px-6 sm:py-16 lg:px-8"
+        className="home-benefits-section relative isolate flex min-h-screen items-center overflow-hidden bg-[#050505] px-4 py-14 sm:px-6 sm:py-16 lg:px-8"
       >
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(220,38,38,0.08),transparent_28%,transparent_72%,rgba(220,38,38,0.08))]" />
+        <div className="home-benefits-glow absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(220,38,38,0.08),transparent_28%,transparent_72%,rgba(220,38,38,0.08))]" />
 
         <div className="mx-auto w-full max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
@@ -181,6 +194,8 @@ const Home = () => {
                     <img
                       src={beneficio.imagen}
                       alt={beneficio.imagenAlt}
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover object-center opacity-80 transition-transform duration-700 group-hover:scale-105 group-hover:opacity-95"
                     />
                     <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.1),rgba(0,0,0,0.7))]" />

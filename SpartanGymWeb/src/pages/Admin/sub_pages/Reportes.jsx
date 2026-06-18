@@ -14,7 +14,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import LogoWeb from '../../../assets/Logo Web.png';
+import LogoWeb from '../../../assets/Logo Web.webp';
 import TarjetaMetrica from '../../../components/TarjetaMetrica';
 import {
   crearContenidoReporte,
@@ -23,6 +23,7 @@ import {
   formatearFechaCortaReporte,
   obtenerEtiquetaCuentaActual,
 } from '../../../utils/exportarReportes';
+import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
 
 const tiposReportes = [
   {
@@ -76,7 +77,7 @@ const crearReporteHistorial = ({ id, titulo, tipo, fecha, kind, createdAt, creat
   ...crearContenidoReporte(kind),
 });
 
-const historialInicial = [
+const crearHistorialInicial = () => [
   crearReporteHistorial({
     id: 'REP-2026-001',
     titulo: 'Cierre Financiero Mayo 2026',
@@ -107,11 +108,13 @@ const historialInicial = [
 ];
 
 const Reportes = () => {
+  const configuracion = useConfiguracionApp();
   const [generandoId, setGenerandoId] = useState(null);
   const [reportesDescargados, setReportesDescargados] = useState([]);
   const [descargandoId, setDescargandoId] = useState(null);
   const [errorDescarga, setErrorDescarga] = useState('');
-  const [historialReportes, setHistorialReportes] = useState(historialInicial);
+  const [historialReportes, setHistorialReportes] = useState(crearHistorialInicial);
+  const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
 
   const simularGeneracionReporte = (reporteBase) => {
     setGenerandoId(reporteBase.id);
@@ -161,10 +164,10 @@ const Reportes = () => {
   return (
     <div className="flex min-h-screen flex-col gap-6 pb-10 text-white">
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <TarjetaMetrica titulo="Efectivo" valor="$1,180" detalle="32 pagos cobrados" icono={DollarSign} color="text-green-500" />
-        <TarjetaMetrica titulo="Tarjetas" valor="$2,910" detalle="71 pagos credito/debito" icono={FileSpreadsheet} color="text-red-500" />
-        <TarjetaMetrica titulo="Ventas" valor="$4,850" detalle="184 ventas totales" icono={TrendingUp} color="text-orange-500" />
-        <TarjetaMetrica titulo="Balance Neto" valor="$4,114.50" detalle="Ingresos menos egresos" icono={BarChart3} color="text-blue-500" />
+        <TarjetaMetrica titulo="Efectivo" valor={formatearMonto(1180)} detalle="32 pagos cobrados" icono={DollarSign} color="text-green-500" />
+        <TarjetaMetrica titulo="Tarjetas" valor={formatearMonto(2910)} detalle="71 pagos credito/debito" icono={FileSpreadsheet} color="text-red-500" />
+        <TarjetaMetrica titulo="Ventas" valor={formatearMonto(4850)} detalle="184 ventas totales" icono={TrendingUp} color="text-orange-500" />
+        <TarjetaMetrica titulo="Balance Neto" valor={formatearMonto(4114.5)} detalle="Ingresos menos egresos" icono={BarChart3} color="text-blue-500" />
       </div>
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">

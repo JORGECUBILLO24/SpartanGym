@@ -1,7 +1,7 @@
 import { CalendarCheck, Dumbbell, UsersRound } from 'lucide-react';
-import ImagenEntrenador from '../assets/beneficio-entrenador.jpg';
-import ImagenInstalaciones from '../assets/fondo_login.png';
-import ImagenComunidad from '../assets/MembresiaSpartan.png';
+import ImagenEntrenador from '../assets/beneficio-entrenador.webp';
+import ImagenInstalaciones from '../assets/fondo_login.webp';
+import ImagenComunidad from '../assets/MembresiaSpartan.webp';
 
 export const beneficiosInicio = [
   {
