@@ -5,6 +5,7 @@ import {
   CreditCard,
   Database,
   Globe,
+  Image as ImageIcon,
   Lock,
   Mail,
   MonitorSmartphone,
@@ -17,6 +18,7 @@ import {
   Smartphone,
   Store,
   Sun,
+  UploadCloud,
 } from 'lucide-react';
 import {
   aplicarApariencia,
@@ -25,6 +27,7 @@ import {
   leerConfiguracionApp,
   MONEDAS_DISPONIBLES,
 } from '../../../utils/configuracionApp';
+import { LOGOS_APP_DEFECTO } from '../../../utils/logosApp';
 import { aplicarPreferenciaTema, obtenerPreferenciaTemaGuardada } from '../../../utils/tema';
 
 const cargarConfigInicial = () => {
@@ -39,10 +42,58 @@ const cargarConfigInicial = () => {
   };
 };
 
+const TAMANO_MAXIMO_LOGO = 4 * 1024 * 1024;
+
+const leerArchivoComoDataUrl = (archivo) =>
+  new Promise((resolver, rechazar) => {
+    const lector = new FileReader();
+    lector.onload = () => resolver(lector.result);
+    lector.onerror = rechazar;
+    lector.readAsDataURL(archivo);
+  });
+
+const cargarImagenDesdeDataUrl = (dataUrl) =>
+  new Promise((resolver, rechazar) => {
+    const imagen = new window.Image();
+    imagen.onload = () => resolver(imagen);
+    imagen.onerror = rechazar;
+    imagen.src = dataUrl;
+  });
+
+const prepararLogo = async (archivo, { maxWidth, maxHeight }) => {
+  if (!archivo?.type?.startsWith('image/')) {
+    throw new Error('El archivo debe ser una imagen.');
+  }
+
+  if (archivo.size > TAMANO_MAXIMO_LOGO) {
+    throw new Error('La imagen no debe superar 4 MB.');
+  }
+
+  const dataUrl = await leerArchivoComoDataUrl(archivo);
+
+  if (archivo.type === 'image/svg+xml' || typeof document === 'undefined') {
+    return dataUrl;
+  }
+
+  const imagen = await cargarImagenDesdeDataUrl(dataUrl);
+  const escala = Math.min(1, maxWidth / imagen.width, maxHeight / imagen.height);
+  const ancho = Math.max(1, Math.round(imagen.width * escala));
+  const alto = Math.max(1, Math.round(imagen.height * escala));
+  const canvas = document.createElement('canvas');
+  const contexto = canvas.getContext('2d');
+
+  canvas.width = ancho;
+  canvas.height = alto;
+  contexto.drawImage(imagen, 0, 0, ancho, alto);
+
+  return canvas.toDataURL('image/webp', 0.9);
+};
+
 const Configuracion = () => {
   const [activeTab, setActiveTab] = useState('general');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [logoError, setLogoError] = useState('');
   const [config, setConfig] = useState(cargarConfigInicial);
   const monedaSeleccionada = MONEDAS_DISPONIBLES.find((moneda) => moneda.codigo === config.currency) || MONEDAS_DISPONIBLES[1];
   const {
@@ -98,19 +149,43 @@ const Configuracion = () => {
     });
   };
 
+  const actualizarLogo = async (clave, archivo, dimensiones) => {
+    if (!archivo) return;
+
+    setLogoError('');
+
+    try {
+      const dataUrl = await prepararLogo(archivo, dimensiones);
+      setConfig((configActual) => ({ ...configActual, [clave]: dataUrl }));
+    } catch (error) {
+      setLogoError(error.message || 'No se pudo cargar el logo.');
+    }
+  };
+
+  const restaurarLogo = (clave) => {
+    setLogoError('');
+    setConfig((configActual) => ({ ...configActual, [clave]: CONFIGURACION_DEFECTO[clave] }));
+  };
+
   const handleSave = (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    guardarConfiguracionApp({
-      ...config,
-      themeSource: config.theme === 'system' ? 'system' : 'user',
-    });
 
-    setTimeout(() => {
+    try {
+      guardarConfiguracionApp({
+        ...config,
+        themeSource: config.theme === 'system' ? 'system' : 'user',
+      });
+
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setIsSaved(true);
+        setTimeout(() => setIsSaved(false), 3000);
+      }, 900);
+    } catch {
       setIsSubmitting(false);
-      setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 3000);
-    }, 900);
+      setLogoError('No se pudo guardar. Usa logos mas livianos e intenta otra vez.');
+    }
   };
 
   return (
@@ -178,6 +253,43 @@ const Configuracion = () => {
                         className="w-full rounded-xl border border-white/5 bg-[#111] py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-red-600"
                       />
                     </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-white/5 bg-[#111] p-4">
+                  <div className="mb-4 flex items-center gap-3">
+                    <span className="rounded-xl bg-red-600/10 p-2 text-red-500">
+                      <ImageIcon size={20} />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-black text-white">Logos de la app</h3>
+                      <p className="mt-0.5 text-[11px] text-gray-500">Actualiza la imagen principal y el logo de acceso.</p>
+                    </div>
+                  </div>
+
+                  {logoError && (
+                    <p className="mb-3 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-[11px] font-bold text-red-400">
+                      {logoError}
+                    </p>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <SelectorLogo
+                      titulo="Logo principal"
+                      descripcion="Se usa en inicio, menus laterales y reportes PDF."
+                      valor={config.logoPrincipal}
+                      respaldo={LOGOS_APP_DEFECTO.principal}
+                      onChange={(archivo) => actualizarLogo('logoPrincipal', archivo, { maxWidth: 900, maxHeight: 520 })}
+                      onReset={() => restaurarLogo('logoPrincipal')}
+                    />
+                    <SelectorLogo
+                      titulo="Logo de acceso"
+                      descripcion="Se usa en login y registro."
+                      valor={config.logoAcceso}
+                      respaldo={LOGOS_APP_DEFECTO.acceso}
+                      onChange={(archivo) => actualizarLogo('logoAcceso', archivo, { maxWidth: 640, maxHeight: 640 })}
+                      onReset={() => restaurarLogo('logoAcceso')}
+                    />
                   </div>
                 </div>
               </div>
@@ -413,6 +525,48 @@ const SelectorColor = ({ label, name, value, onChange }) => (
       className="sr-only"
     />
   </label>
+);
+
+const SelectorLogo = ({ titulo, descripcion, valor, respaldo, onChange, onReset }) => (
+  <article className="rounded-xl border border-white/10 bg-[#090909] p-4">
+    <div className="flex h-36 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20 p-4">
+      <img
+        src={valor || respaldo}
+        alt={titulo}
+        className="max-h-full max-w-full object-contain drop-shadow-[0_0_14px_rgba(0,0,0,0.45)]"
+      />
+    </div>
+
+    <div className="mt-4">
+      <h4 className="text-sm font-black text-white">{titulo}</h4>
+      <p className="mt-1 min-h-8 text-[11px] leading-4 text-gray-500">{descripcion}</p>
+    </div>
+
+    <div className="mt-4 flex flex-wrap gap-2">
+      <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-[10px] font-black uppercase tracking-wide text-white transition-all hover:bg-red-700">
+        <UploadCloud size={14} />
+        Subir logo
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          className="sr-only"
+          onChange={(evento) => {
+            onChange(evento.currentTarget.files?.[0]);
+            evento.currentTarget.value = '';
+          }}
+        />
+      </label>
+      <button
+        type="button"
+        onClick={onReset}
+        disabled={!valor}
+        className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-gray-300 transition-all hover:border-red-500/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
+      >
+        <RotateCcw size={14} />
+        Original
+      </button>
+    </div>
+  </article>
 );
 
 export default Configuracion;

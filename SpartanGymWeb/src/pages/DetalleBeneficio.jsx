@@ -1,12 +1,13 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Flame, ShieldCheck } from 'lucide-react';
 import FondoLogin from '../assets/fondo_login.webp';
-import LogoSpartan from '../assets/Logo Web.webp';
 import { beneficiosInicio } from '../data/homeBenefits';
+import { useLogosApp } from '../utils/logosApp';
 
 const DetalleBeneficio = () => {
   const { slug: rutaBeneficio } = useParams();
   const beneficio = beneficiosInicio.find((elemento) => elemento.ruta === rutaBeneficio);
+  const logos = useLogosApp();
 
   if (!beneficio) {
     return <Navigate to="/#beneficios" replace />;
@@ -25,7 +26,7 @@ const DetalleBeneficio = () => {
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
         <Link to="/" aria-label="Volver al inicio">
           <img
-            src={LogoSpartan}
+            src={logos.principal}
             alt="Logo Spartan Gym Web"
             width="320"
             height="213"

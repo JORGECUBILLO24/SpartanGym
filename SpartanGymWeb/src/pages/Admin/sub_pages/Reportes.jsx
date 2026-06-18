@@ -14,7 +14,6 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import LogoWeb from '../../../assets/Logo Web.webp';
 import TarjetaMetrica from '../../../components/TarjetaMetrica';
 import {
   crearContenidoReporte,
@@ -24,6 +23,7 @@ import {
   obtenerEtiquetaCuentaActual,
 } from '../../../utils/exportarReportes';
 import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
+import { obtenerLogosApp } from '../../../utils/logosApp';
 
 const tiposReportes = [
   {
@@ -115,6 +115,7 @@ const Reportes = () => {
   const [errorDescarga, setErrorDescarga] = useState('');
   const [historialReportes, setHistorialReportes] = useState(crearHistorialInicial);
   const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
+  const logos = obtenerLogosApp(configuracion);
 
   const simularGeneracionReporte = (reporteBase) => {
     setGenerandoId(reporteBase.id);
@@ -149,7 +150,7 @@ const Reportes = () => {
 
     try {
       if (formato === 'pdf') {
-        await exportarReportePdf(reporte, LogoWeb);
+        await exportarReportePdf(reporte, logos.principal);
       } else {
         exportarReporteExcel(reporte);
       }

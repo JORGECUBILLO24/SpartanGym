@@ -1,10 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Mail, Phone, UserPlus, User } from 'lucide-react';
 import FondoLogin from '../assets/fondo_login.webp';
-import LogoSpartan from '../assets/Logo SpartanGym.webp';
+import { useLogosApp } from '../utils/logosApp';
 
 const Registro = () => {
   const navigate = useNavigate();
+  const logos = useLogosApp();
 
   const handleRegister = (e) => {
     e.preventDefault();
@@ -25,7 +26,7 @@ const Registro = () => {
         aria-label="Volver al inicio"
       >
         <img
-          src={LogoSpartan}
+          src={logos.acceso}
           alt="Logo Spartan Gym"
           width="512"
           height="512"

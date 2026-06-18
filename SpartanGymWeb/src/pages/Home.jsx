@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDown, ArrowRight, CheckCircle2, Sparkles, Users } from 'lucide-react';
 import FondoLogin from '../assets/fondo_login.webp';
-import LogoSpartan from '../assets/Logo Web.webp';
 import { beneficiosInicio } from '../data/homeBenefits';
+import { useLogosApp } from '../utils/logosApp';
 
 const frases = [
   'Entrena como guerrero. Vive como campeón.',
@@ -15,6 +15,7 @@ const frases = [
 
 const Home = () => {
   const [indiceFrase, setIndiceFrase] = useState(0);
+  const logos = useLogosApp();
   const claseAnimacionFrase = indiceFrase === 0 ? '' : 'animate-[phraseSwap_700ms_ease]';
 
   useEffect(() => {
@@ -37,7 +38,7 @@ const Home = () => {
 
         <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
           <img
-            src={LogoSpartan}
+            src={logos.principal}
             alt="Logo Spartan Gym Web"
             width="320"
             height="213"

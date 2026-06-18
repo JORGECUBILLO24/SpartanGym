@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, User } from 'lucide-react';
 import FondoLogin from '../assets/fondo_login.webp';
-import LogoSpartan from '../assets/Logo SpartanGym.webp'; 
 import { guardarCuentaActual } from '../utils/cuentaActual';
+import { useLogosApp } from '../utils/logosApp';
 
 const Login = () => {
   const [role, setRole] = useState('');
   const [usuario, setUsuario] = useState('');
   const navigate = useNavigate();
+  const logos = useLogosApp();
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -32,7 +33,7 @@ const Login = () => {
       
       <Link to="/" className="relative z-10 mb-10" aria-label="Volver al inicio">
         <img 
-          src={LogoSpartan} 
+          src={logos.acceso} 
           alt="Logo Spartan Gym" 
           width="512"
           height="512"
