@@ -5,11 +5,7 @@ plugins {
 
 android {
     namespace = "com.example.spartangymapp"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.spartangymapp"
@@ -40,10 +36,7 @@ android {
 }
 
 dependencies {
-    // 1. BOM de Jetpack Compose (Version Catalog)
     implementation(platform(libs.androidx.compose.bom))
-
-    // 2. Dependencias de UI y Material 3 originales
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
@@ -51,23 +44,19 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-
-    // 3. ESTA ES LA DEPENDENCIA EXTRA PARA LOS ICONOS
     implementation("androidx.compose.material:material-icons-extended")
-
-    // 4. LIBRERÍAS PARA CONECTAR CON LA API (Retrofit y Gson)
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
-
-    // 5. LIBRERÍAS PARA ARQUITECTURA MVVM
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
     implementation("androidx.navigation:navigation-compose:2.7.5")
-
-    // 6. DATASTORE (Para guardar el Token JWT en el teléfono)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
+    // Testing
     testImplementation(libs.junit)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("io.mockk:mockk:1.13.8")
+
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -4,7 +4,29 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7f9d475a-938c-4101-b814-60739347b7c9" name="Changes" comment="Tests 8-13 creados, tests 14-16 pendientes" />
+    <list default="true" id="7f9d475a-938c-4101-b814-60739347b7c9" name="Changes" comment="Tests 8-13 creados, tests 14-16 pendientes">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/checksums/checksums.lock" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/checksums/checksums.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/checksums/md5-checksums.bin" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/checksums/md5-checksums.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/checksums/sha1-checksums.bin" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/checksums/sha1-checksums.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/executionHistory/executionHistory.bin" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/executionHistory/executionHistory.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/executionHistory/executionHistory.lock" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/executionHistory/executionHistory.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/fileHashes/fileHashes.bin" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/fileHashes/fileHashes.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/fileHashes/fileHashes.lock" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/fileHashes/fileHashes.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/fileHashes/resourceHashesCache.bin" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.gradle/9.4.1/fileHashes/resourceHashesCache.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.gradle/buildOutputCleanup/buildOutputCleanup.lock" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.gradle/buildOutputCleanup/buildOutputCleanup.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.gradle/buildOutputCleanup/outputFiles.bin" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.gradle/buildOutputCleanup/outputFiles.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.gradle/file-system.probe" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.gradle/file-system.probe" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.idea/caches/deviceStreaming.xml" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.idea/caches/deviceStreaming.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.idea/deploymentTargetSelector.xml" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.idea/deploymentTargetSelector.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.idea/gradle.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/app/src/main/java/com/example/spartangymapp/ui/screen/PantallaInicio.kt" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/app/src/main/java/com/example/spartangymapp/ui/screen/PantallaInicio.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/gradle/libs.versions.toml" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/gradle/libs.versions.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SpartanGymApp/local.properties" beforeDir="false" afterPath="$PROJECT_DIR$/SpartanGymApp/local.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Tests_Postman_QA.docx" beforeDir="false" afterPath="$PROJECT_DIR$/Tests_Postman_QA.docx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/~$sts_Postman_QA.docx" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -103,6 +125,9 @@
       <workItem from="1781139663235" duration="1431000" />
       <workItem from="1781141217443" duration="149000" />
       <workItem from="1781142894986" duration="275000" />
+      <workItem from="1781573099445" duration="169000" />
+      <workItem from="1782007392011" duration="1195000" />
+      <workItem from="1782099762287" duration="1444000" />
     </task>
     <task id="LOCAL-00001" summary="Documento QA creado, tests 1-7 realizados, test 8 en adelante pendiente.">
       <option name="closed" value="true" />
@@ -128,7 +153,15 @@
       <option name="project" value="LOCAL" />
       <updated>1781143151572</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Tests 8-13 creados, tests 14-16 pendientes">
+      <option name="closed" value="true" />
+      <created>1781573191780</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1781573191780</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
