@@ -25,6 +25,9 @@ public class Pago {
     @Column(name = "metodo_pago", nullable = false, length = 50)
     private String metodoPago;
 
+    @Column(name = "numero_factura", length = 40)
+    private String numeroFactura;
+
     @Column(name = "fecha_transaccion", updatable = false)
     private LocalDateTime fechaTransaccion = LocalDateTime.now();
 }

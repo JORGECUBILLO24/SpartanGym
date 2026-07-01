@@ -8,76 +8,92 @@ import {
   User,
   Users,
 } from 'lucide-react';
-import {
-  EVENTO_PERSONAL,
-  leerPersonalCompartido,
-  obtenerNombrePersonal,
-} from '../../../utils/personalCompartido';
-import { leerCuentaActual, obtenerInicialesCuenta } from '../../../utils/cuentaActual';
+import { obtenerInicialesCuenta } from '../../../utils/cuentaActual';
+import { operacionApi, personalApi } from '../../../services/api';
 
 const perfilRecepcionBase = {
-  nombre: 'Jorge Rafael Cubillo',
-  correo: 'jorge@spartangym.com',
-  telefono: '+505 8888 8888',
+  nombre: 'Recepcionista',
+  correo: '',
+  telefono: '+505 0000 0000',
   rol: 'Recepcionista',
-  gimnasio: 'SpartanGym Central',
-  ubicacion: 'Managua, Nicaragua',
-  estado: 'Turno manana',
+  gimnasio: 'Base de datos',
+  ubicacion: 'Base de datos',
+  estado: 'Activo',
 };
 
-const obtenerRecepcionistas = () =>
-  leerPersonalCompartido().filter((persona) => persona.rol === 'Recepcionista');
+const nombreCompleto = (persona) =>
+  [persona.nombres, persona.apellidos].filter(Boolean).join(' ') || persona.email || 'Sin nombre';
+
+const mapearRecepcionista = (persona) => ({
+  id: persona.id,
+  nombre: persona.nombres || '',
+  apellido: persona.apellidos || '',
+  correo: persona.email || '',
+  telefono: '+505 0000 0000',
+  rol: 'Recepcionista',
+  gimnasio: 'Base de datos',
+  estado: persona.activo ? 'Activo' : 'Inactivo',
+});
 
 const Perfil = () => {
-  const [recepcionistas, setRecepcionistas] = useState(obtenerRecepcionistas);
-  const cuentaActual = leerCuentaActual();
+  const [recepcionistas, setRecepcionistas] = useState([]);
+  const [perfilActualApi, setPerfilActualApi] = useState(perfilRecepcionBase);
+  const [errorApi, setErrorApi] = useState('');
 
   useEffect(() => {
-    const actualizarRecepcionistas = () => setRecepcionistas(obtenerRecepcionistas());
+    Promise.allSettled([
+      operacionApi.perfil(),
+      personalApi.listar(),
+    ]).then(([perfil, personal]) => {
+      if (perfil.status === 'fulfilled') {
+        const datos = perfil.value;
+        setPerfilActualApi({
+          ...perfilRecepcionBase,
+          nombre: nombreCompleto(datos),
+          correo: datos.email || '',
+          telefono: datos.telefono || '+505 0000 0000',
+          rol: datos.rol || 'Recepcionista',
+          estado: datos.activo ? 'Activo' : 'Inactivo',
+        });
+      } else {
+        setErrorApi('No se pudo cargar el perfil desde la API.');
+      }
 
-    window.addEventListener('storage', actualizarRecepcionistas);
-    window.addEventListener(EVENTO_PERSONAL, actualizarRecepcionistas);
-
-    return () => {
-      window.removeEventListener('storage', actualizarRecepcionistas);
-      window.removeEventListener(EVENTO_PERSONAL, actualizarRecepcionistas);
-    };
+      if (personal.status === 'fulfilled') {
+        setRecepcionistas(
+          personal.value
+            .filter((persona) => persona.rol === 'ROLE_RECEPCIONISTA')
+            .map(mapearRecepcionista)
+        );
+      }
+    });
   }, []);
 
   const perfilActual = useMemo(() => {
-    const correoCuenta = cuentaActual.username || cuentaActual.email;
-    const recepcionistaActual = recepcionistas.find((persona) => persona.correo === correoCuenta);
-
-    if (recepcionistaActual) {
-      return {
-        ...recepcionistaActual,
-        nombre: obtenerNombrePersonal(recepcionistaActual),
-        ubicacion: recepcionistaActual.gimnasio,
-      };
-    }
-
-    return perfilRecepcionBase;
-  }, [cuentaActual.email, cuentaActual.username, recepcionistas]);
+    const recepcionistaActual = recepcionistas.find((persona) => persona.correo === perfilActualApi.correo);
+    return recepcionistaActual
+      ? { ...recepcionistaActual, nombre: [recepcionistaActual.nombre, recepcionistaActual.apellido].filter(Boolean).join(' '), ubicacion: recepcionistaActual.gimnasio }
+      : perfilActualApi;
+  }, [perfilActualApi, recepcionistas]);
 
   const recepcionistasVisibles = useMemo(() => {
     const existePerfilActual = recepcionistas.some((persona) => persona.correo === perfilActual.correo);
+    if (existePerfilActual || !perfilActual.correo) return recepcionistas;
 
-    return existePerfilActual
-      ? recepcionistas
-      : [
-          {
-            id: 'perfil-actual-local',
-            nombre: 'Jorge',
-            apellido: 'Cubillo',
-            correo: perfilRecepcionBase.correo,
-            telefono: perfilRecepcionBase.telefono,
-            rol: 'Recepcionista',
-            gimnasio: perfilRecepcionBase.gimnasio,
-            estado: perfilRecepcionBase.estado,
-          },
-          ...recepcionistas,
-        ];
-  }, [perfilActual.correo, recepcionistas]);
+    return [
+      {
+        id: 'perfil-actual',
+        nombre: perfilActual.nombre,
+        apellido: '',
+        correo: perfilActual.correo,
+        telefono: perfilActual.telefono,
+        rol: 'Recepcionista',
+        gimnasio: perfilActual.gimnasio,
+        estado: perfilActual.estado,
+      },
+      ...recepcionistas,
+    ];
+  }, [perfilActual, recepcionistas]);
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 pb-8 text-white sm:gap-6 lg:gap-8">
@@ -145,6 +161,11 @@ const Perfil = () => {
             {recepcionistasVisibles.length} activos
           </span>
         </div>
+        {errorApi && (
+          <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">
+            {errorApi}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {recepcionistasVisibles.map((recepcionista) => (
@@ -178,7 +199,7 @@ const DetallePerfil = ({ icono: Icono, etiqueta, valor }) => (
 );
 
 const TarjetaRecepcionista = ({ recepcionista, esActual }) => {
-  const nombre = obtenerNombrePersonal(recepcionista) || recepcionista.nombre;
+  const nombre = [recepcionista.nombre, recepcionista.apellido].filter(Boolean).join(' ') || recepcionista.nombre;
 
   return (
     <article className={`rounded-2xl border p-4 shadow-xl transition-all hover:-translate-y-0.5 ${

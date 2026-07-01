@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Politica de red centralizada de Spartan Gym.
+        Permite HTTP (cleartext) hacia la red local: emulador (10.0.2.2) o la IP
+        del servidor en la misma Wi-Fi (ej. 192.168.1.X), que es como se conecta
+        la app en un celular real durante la defensa/demo.
+
+        Para produccion con un dominio propio y HTTPS, cambiar
+        cleartextTrafficPermitted a "false" y servir la API por https.
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

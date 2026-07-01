@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  AlertCircle,
   CalendarClock,
   CheckCircle2,
   ChevronRight,
@@ -13,35 +15,61 @@ import {
   Zap,
 } from 'lucide-react';
 import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
+import { operacionApi } from '../../../services/api';
 
-const pagosRecientes = [
-  { id: 1, socio: 'Juan Perez', membresia: 'Premium', monto: 600, fecha: '12/05/2026', estado: 'Pagado' },
-  { id: 2, socio: 'Maria Gomez', membresia: 'Basica', monto: 450, fecha: '12/05/2026', estado: 'Pagado' },
-  { id: 3, socio: 'Carlos Ramirez', membresia: 'Premium', monto: 600, fecha: '11/05/2026', estado: 'Pagado' },
-  { id: 4, socio: 'Ana Torres', membresia: 'Elite', monto: 800, fecha: '11/05/2026', estado: 'Pagado' },
-];
+const estadoInicialRecepcion = {
+  sociosActivos: 0,
+  membresiasActivas: 0,
+  pagosRecientes: [],
+  proximosVencimientos: [],
+};
 
-const proximosVencimientos = [
-  { id: 1, socio: 'Luis Hernandez', membresia: 'Basica', vence: '18/05/2026', dias: '6 dias' },
-  { id: 2, socio: 'Fernanda Lopez', membresia: 'Premium', vence: '20/05/2026', dias: '8 dias' },
-  { id: 3, socio: 'Roberto Silva', membresia: 'Elite', vence: '23/05/2026', dias: '11 dias' },
-  { id: 4, socio: 'Daniela Castro', membresia: 'Basica', vence: '25/05/2026', dias: '13 dias' },
-];
+const formatearFecha = (fecha) => {
+  if (!fecha) return 'N/A';
+  return new Date(fecha).toLocaleDateString('es-NI');
+};
 
-const indicadoresRecepcion = [
-  { icono: QrCode, titulo: 'Check-ins', valor: '64', detalle: 'Hoy', ruta: '/recepcion/check-in' },
-  { icono: DollarSign, titulo: 'Pagos', valorMonto: 1280, detalle: 'Turno actual', ruta: '/recepcion/pagos' },
-  { icono: CalendarClock, titulo: 'Vencimientos', valor: '9', detalle: 'Proximos dias', ruta: '/recepcion/membresias' },
-  { icono: UserPlus, titulo: 'Socios nuevos', valor: '6', detalle: 'Registrados', ruta: '/recepcion/registrar-socio' },
-];
+const calcularDiasRestantes = (fecha) => {
+  if (!fecha) return 'N/A';
+  const hoy = new Date();
+  const vence = new Date(fecha);
+  const dias = Math.ceil((vence.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+  if (dias <= 0) return 'Hoy';
+  return `${dias} dias`;
+};
 
 const Inicio = () => {
   const navegar = useNavigate();
   const configuracion = useConfiguracionApp();
   const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
+  const [datosInicio, setDatosInicio] = useState(estadoInicialRecepcion);
+  const [errorApi, setErrorApi] = useState('');
+
+  useEffect(() => {
+    operacionApi.inicioRecepcion()
+      .then((datos) => setDatosInicio({ ...estadoInicialRecepcion, ...datos }))
+      .catch(() => setErrorApi('No se pudo cargar el resumen de recepcion desde la API.'));
+  }, []);
+
+  const pagosRecientes = datosInicio.pagosRecientes || [];
+  const proximosVencimientos = datosInicio.proximosVencimientos || [];
+  const totalPagos = pagosRecientes.reduce((total, pago) => total + Number(pago.monto || 0), 0);
+  const indicadoresRecepcion = [
+    { icono: QrCode, titulo: 'Check-ins', valor: String(pagosRecientes.length), detalle: 'Recientes', ruta: '/recepcion/check-in' },
+    { icono: DollarSign, titulo: 'Pagos', valorMonto: totalPagos, detalle: 'Registrados', ruta: '/recepcion/pagos' },
+    { icono: CalendarClock, titulo: 'Vencimientos', valor: String(proximosVencimientos.length), detalle: 'Proximos dias', ruta: '/recepcion/membresias' },
+    { icono: UserPlus, titulo: 'Socios activos', valor: String(datosInicio.sociosActivos || 0), detalle: 'Base de datos', ruta: '/recepcion/registrar-socio' },
+  ];
 
   return (
     <div className="pagina-stack flex flex-col gap-5 lg:gap-6">
+      {errorApi && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">
+          <AlertCircle size={15} />
+          {errorApi}
+        </div>
+      )}
+
       <section className="tarjeta-sistema relative overflow-hidden rounded-2xl border border-white/10 bg-[#111111] p-5 shadow-2xl sm:p-6 lg:p-7">
         <div className="brillo-panel" />
         <div className="relative z-10 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
@@ -115,16 +143,23 @@ const Inicio = () => {
                 <AvatarSocio />
                 {pago.socio}
               </td>
-              <td className="py-3 pr-4 text-gray-400">{pago.membresia}</td>
+              <td className="py-3 pr-4 text-gray-400">{pago.membresia || pago.tipoMembresia || 'Pago registrado'}</td>
               <td className="py-3 pr-4 font-bold text-white">{formatearMonto(pago.monto)}</td>
-              <td className="py-3 pr-4 text-gray-400">{pago.fecha}</td>
+              <td className="py-3 pr-4 text-gray-400">{formatearFecha(pago.fechaTransaccion)}</td>
               <td className="py-3">
                 <span className="rounded-lg border border-green-500/20 bg-green-500/10 px-2 py-1 text-xs font-bold text-green-500">
-                  {pago.estado}
+                  Pagado
                 </span>
               </td>
             </tr>
           ))}
+          {pagosRecientes.length === 0 && (
+            <tr>
+              <td colSpan="5" className="py-8 text-center text-sm text-gray-500">
+                No hay pagos registrados.
+              </td>
+            </tr>
+          )}
         </TablaInicio>
 
         <TablaInicio
@@ -140,11 +175,18 @@ const Inicio = () => {
                 <AvatarSocio />
                 {vencimiento.socio}
               </td>
-              <td className="py-3 pr-4 text-gray-400">{vencimiento.membresia}</td>
-              <td className="py-3 pr-4 text-gray-400">{vencimiento.vence}</td>
-              <td className="py-3 text-right font-bold text-orange-400">{vencimiento.dias}</td>
+              <td className="py-3 pr-4 text-gray-400">{vencimiento.tipoMembresia}</td>
+              <td className="py-3 pr-4 text-gray-400">{formatearFecha(vencimiento.fechaVencimiento)}</td>
+              <td className="py-3 text-right font-bold text-orange-400">{calcularDiasRestantes(vencimiento.fechaVencimiento)}</td>
             </tr>
           ))}
+          {proximosVencimientos.length === 0 && (
+            <tr>
+              <td colSpan="4" className="py-8 text-center text-sm text-gray-500">
+                No hay vencimientos proximos.
+              </td>
+            </tr>
+          )}
         </TablaInicio>
       </div>
     </div>
@@ -208,13 +250,12 @@ const TarjetaAccion = ({ icono: Icono, titulo, descripcion, boton, onClick, chil
 
 const VisualQr = () => (
   <div className="flex h-full min-h-40 flex-col items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-[#050505]">
-    <p className="mb-4 text-xs font-bold text-gray-500">Escanear codigo QR</p>
+    <p className="mb-4 text-xs font-bold text-gray-500">Mostrar QR web</p>
     <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-xl border-2 border-red-600/40 bg-red-500/5">
-      <div className="absolute inset-x-2 h-0.5 bg-red-500 shadow-[0_0_14px_3px_rgba(239,68,68,0.45)] escaneo-linea" />
       <QrCode size={48} className="text-white/70" />
     </div>
     <div className="mt-4 flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs text-green-500">
-      <CheckCircle2 size={12} /> Membresia activa
+      <CheckCircle2 size={12} /> App movil valida
     </div>
   </div>
 );

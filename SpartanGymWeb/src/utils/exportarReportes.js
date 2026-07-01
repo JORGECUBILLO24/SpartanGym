@@ -1,21 +1,9 @@
-import { leerDatoLocal } from './almacenamientoLocal';
-import { convertirTextoMoneda } from './configuracionApp';
+import { convertirTextoMoneda, leerConfiguracionApp } from './configuracionApp';
 import { obtenerEtiquetaCuentaActual } from './cuentaActual';
-import { CLAVE_CONFIGURACION } from './tema';
 
 export { leerCuentaActual, obtenerEtiquetaCuentaActual } from './cuentaActual';
 
-const configuracionPorDefecto = {
-  gymName: 'Spartan Gym',
-  email: 'admin@spartangym.com',
-  currency: 'USD',
-  theme: 'system',
-};
-
-export const leerConfiguracionGimnasio = () => ({
-  ...configuracionPorDefecto,
-  ...leerDatoLocal(CLAVE_CONFIGURACION, {}),
-});
+export const leerConfiguracionGimnasio = () => leerConfiguracionApp();
 
 const normalizarFecha = (fechaEntrada) => {
   const fecha = fechaEntrada ? new Date(fechaEntrada) : new Date();
@@ -38,196 +26,6 @@ export const formatearFechaCortaReporte = (fechaEntrada = new Date()) =>
     minute: '2-digit',
   }).format(normalizarFecha(fechaEntrada));
 
-const contenidoReportes = {
-  fin: {
-    headers: ['Categoria', 'Periodo', 'Cantidad', 'Total', 'Detalle'],
-    rows: [
-      ['Efectivo cobrado', 'Mes actual', '32 pagos', '$1,180.00', 'Caja fisica conciliada por recepcion y validada en cierre diario'],
-      ['Tarjeta de credito', 'Mes actual', '46 pagos', '$1,940.00', 'Operaciones POS con voucher y lote aprobado'],
-      ['Tarjeta de debito', 'Mes actual', '25 pagos', '$970.00', 'Operaciones POS debitadas y conciliadas'],
-      ['Tarjetas total', 'Mes actual', '71 pagos', '$2,910.00', 'Credito y debito agrupados para control bancario'],
-      ['Transferencias', 'Mes actual', '18 pagos', '$760.00', 'Depositos, apps bancarias y comprobantes validados'],
-      ['Ventas cobradas', 'Mes actual', '184 ventas', '$4,850.00', 'Membresias, productos, inscripciones y servicios adicionales'],
-      ['Pagos pendientes', 'Corte actual', '17 pagos', '$320.00', 'Socios con comprobante pendiente o validacion de caja'],
-      ['Egresos operativos', 'Mes actual', '14 movimientos', '$735.50', 'Mantenimiento, servicios, compras y ajustes aprobados'],
-      ['Balance neto', 'Mes actual', 'Corte consolidado', '$4,114.50', 'Ingresos cobrados menos egresos operativos'],
-    ],
-    summary: [
-      ['Ingresos cobrados', '$4,850.00'],
-      ['Transacciones cobradas', '121 pagos'],
-      ['Efectivo', '$1,180.00 / 32 pagos'],
-      ['Tarjetas', '$2,910.00 / 71 pagos'],
-      ['Ventas', '$4,850.00 / 184 ventas'],
-      ['Balance neto', '$4,114.50'],
-    ],
-    detalles: [
-      {
-        titulo: 'Resumen por metodo de pago',
-        headers: ['Metodo', 'Cantidad', 'Total cobrado', 'Promedio', 'Estado'],
-        rows: [
-          ['Efectivo', '32', '$1,180.00', '$36.88', 'Conciliado'],
-          ['Tarjeta de credito', '46', '$1,940.00', '$42.17', 'Lote POS aprobado'],
-          ['Tarjeta de debito', '25', '$970.00', '$38.80', 'Lote POS aprobado'],
-          ['Tarjetas total', '71', '$2,910.00', '$40.99', 'Credito + debito'],
-          ['Transferencias', '18', '$760.00', '$42.22', 'Comprobante validado'],
-          ['Total pagos cobrados', '121', '$4,850.00', '$40.08', 'Cierre consolidado'],
-        ],
-      },
-      {
-        titulo: 'Ventas por concepto',
-        headers: ['Concepto', 'Cantidad', 'Total vendido', 'Participacion', 'Detalle'],
-        rows: [
-          ['Membresias', '94 ventas', '$3,270.00', '67.4%', 'Planes mensuales, trimestrales, semestrales y anuales'],
-          ['Venta de productos', '61 ventas', '$920.00', '19.0%', 'Suplementos, bebidas, accesorios y merch'],
-          ['Inscripciones', '18 ventas', '$420.00', '8.7%', 'Altas de socios nuevos'],
-          ['Servicios adicionales', '11 ventas', '$240.00', '4.9%', 'Evaluaciones, clases y servicios puntuales'],
-          ['Total ventas', '184 ventas', '$4,850.00', '100%', 'Total cobrado del periodo'],
-        ],
-      },
-      {
-        titulo: 'Detalle de efectivo',
-        headers: ['Caja / Turno', 'Pagos', 'Total', 'Responsable', 'Resultado'],
-        rows: [
-          ['Caja manana', '14', '$515.00', 'Recepcion turno manana', 'Cuadrada'],
-          ['Caja tarde', '18', '$665.00', 'Recepcion turno tarde', 'Cuadrada'],
-          ['Deposito preparado', '32', '$1,180.00', 'Administrador de caja', 'Listo para banco'],
-        ],
-      },
-      {
-        titulo: 'Detalle de tarjetas',
-        headers: ['Tipo', 'Pagos', 'Total', 'Referencia', 'Resultado'],
-        rows: [
-          ['Credito', '46', '$1,940.00', 'Lote POS 0426', 'Aprobado'],
-          ['Debito', '25', '$970.00', 'Lote POS 0427', 'Aprobado'],
-          ['Total tarjetas', '71', '$2,910.00', 'POS consolidado', 'Listo para conciliacion bancaria'],
-        ],
-      },
-      {
-        titulo: 'Control operativo',
-        headers: ['Punto', 'Estado', 'Monto / Conteo', 'Accion'],
-        rows: [
-          ['Caja recepcion', 'Cuadrada', '$1,180.00 / 32 pagos', 'Mantener corte diario firmado'],
-          ['POS tarjetas', 'Conciliado', '$2,910.00 / 71 pagos', 'Archivar lote POS y voucher digital'],
-          ['Transferencias', 'Validado', '$760.00 / 18 pagos', 'Adjuntar comprobantes al cierre'],
-          ['Pagos pendientes', 'Atencion', '$320.00 / 17 pagos', 'Enviar recordatorio por SMS y correo'],
-          ['Gastos aprobados', 'Controlado', '$735.50 / 14 movimientos', 'Adjuntar soportes en cierre semanal'],
-        ],
-      },
-    ],
-  },
-  soc: {
-    headers: ['Metrica', 'Resultado', 'Tendencia', 'Observacion'],
-    rows: [
-      ['Socios activos', '1,248', '+9.2%', 'Crecimiento sobre el mes anterior'],
-      ['Nuevos registros', '86', '+24%', 'Alta respuesta a promociones'],
-      ['Retencion', '92.3%', '+1.8%', 'Renovaciones por encima del objetivo'],
-      ['Membresias renovadas', '312', '+7.4%', 'Plan anual con mayor estabilidad'],
-      ['Bajas registradas', '18', '-3.1%', 'Principal motivo reportado: horarios'],
-      ['Socios en riesgo', '44', 'Atencion', 'Sin asistencia en los ultimos 10 dias'],
-    ],
-    summary: [
-      ['Retencion', '92.3%'],
-      ['Altas', '86'],
-      ['Bajas', '18'],
-    ],
-    detalles: [
-      {
-        titulo: 'Socios por sucursal',
-        headers: ['Sucursal', 'Socios activos', 'Nuevos', 'Por vencer'],
-        rows: [
-          ['SpartanGym Central', '520', '34', '21'],
-          ['SpartanGym Carretera Sur', '316', '19', '13'],
-          ['SpartanGym Masaya', '248', '18', '9'],
-          ['SpartanGym Leon', '164', '15', '7'],
-        ],
-      },
-      {
-        titulo: 'Membresias por plan',
-        headers: ['Plan', 'Activas', 'Renovadas', 'Ingreso'],
-        rows: [
-          ['Mensual', '704', '178', '$2,640.00'],
-          ['Anual', '286', '76', '$1,430.00'],
-          ['Quincenal', '188', '46', '$540.00'],
-          ['Diaria', '70', '12', '$240.00'],
-        ],
-      },
-    ],
-  },
-  inv: {
-    headers: ['Producto', 'Stock', 'Rotacion', 'Accion sugerida'],
-    rows: [
-      ['Proteina Spartan Whey', '18 unidades', 'Alta', 'Reabastecer en 7 dias'],
-      ['Creatina Monohidratada', '9 unidades', 'Media', 'Mantener seguimiento semanal'],
-      ['Bebidas energeticas', '42 unidades', 'Alta', 'Preparar promocion por volumen'],
-      ['Guantes entrenamiento', '6 unidades', 'Baja', 'Revisar precio y ubicacion'],
-      ['Cinturones de fuerza', '4 unidades', 'Media', 'Comprar reposicion preventiva'],
-      ['Shaker Spartan', '0 unidades', 'Agotado', 'Bloquear venta hasta reabastecer'],
-    ],
-    summary: [
-      ['Rotacion promedio', '4.2x'],
-      ['Productos criticos', '3'],
-      ['Margen inventario', '38%'],
-    ],
-    detalles: [
-      {
-        titulo: 'Stock por categoria',
-        headers: ['Categoria', 'Productos', 'Unidades', 'Valor'],
-        rows: [
-          ['Suplementos', '4', '84', '$1,680.00'],
-          ['Accesorios', '3', '28', '$420.00'],
-          ['Merch', '2', '36', '$540.00'],
-          ['Bebidas', '1', '42', '$126.00'],
-        ],
-      },
-      {
-        titulo: 'Alertas de compra',
-        headers: ['Producto', 'Nivel', 'Proveedor', 'Fecha sugerida'],
-        rows: [
-          ['Shaker Spartan', 'Agotado', 'Proveedor Local', 'Hoy'],
-          ['Cinturones de fuerza', 'Critico', 'Iron Supply', '72 horas'],
-          ['Guantes entrenamiento', 'Bajo', 'Fit Pro', '7 dias'],
-        ],
-      },
-    ],
-  },
-  asi: {
-    headers: ['Bloque horario', 'Asistencias', 'Capacidad', 'Nota operativa'],
-    rows: [
-      ['05:00 - 07:00', '112', 'Alta', 'Refuerzo de recepcion recomendado'],
-      ['07:00 - 10:00', '86', 'Media', 'Flujo estable'],
-      ['12:00 - 14:00', '64', 'Media', 'Buen horario para clases express'],
-      ['17:00 - 20:00', '178', 'Critica', 'Pico principal del dia'],
-      ['20:00 - 22:00', '74', 'Media', 'Cierre sin saturacion'],
-    ],
-    summary: [
-      ['Horas pico', '17:00 - 20:00'],
-      ['Asistencias', '514'],
-      ['Capacidad critica', '1 bloque'],
-    ],
-    detalles: [
-      {
-        titulo: 'Asistencia por sucursal',
-        headers: ['Sucursal', 'Asistencias', 'Pico', 'Observacion'],
-        rows: [
-          ['SpartanGym Central', '214', '18:30', 'Mayor demanda de peso libre'],
-          ['SpartanGym Carretera Sur', '126', '17:45', 'Refuerzo en recepcion'],
-          ['SpartanGym Masaya', '98', '19:00', 'Flujo estable'],
-          ['SpartanGym Leon', '76', '06:15', 'Buen movimiento matutino'],
-        ],
-      },
-      {
-        titulo: 'Personal en turno',
-        headers: ['Rol', 'Presentes', 'Ausencias', 'Accion'],
-        rows: [
-          ['Recepcion', '4', '0', 'Cobertura completa'],
-          ['Entrenadores', '7', '1', 'Reasignar rutina de fuerza'],
-          ['Limpieza', '3', '0', 'Mantener rondas por bloque'],
-        ],
-      },
-    ],
-  },
-};
-
 const convertirCeldaMoneda = (valor) => (typeof valor === 'string' ? convertirTextoMoneda(valor) : valor);
 
 const convertirFilasMoneda = (filas = []) =>
@@ -242,9 +40,6 @@ const convertirContenidoMoneda = (contenido = {}) => ({
     rows: convertirFilasMoneda(seccion.rows || []),
   })),
 });
-
-export const crearContenidoReporte = (idReporte) =>
-  convertirContenidoMoneda(contenidoReportes[idReporte] || contenidoReportes.fin);
 
 const escaparHtml = (valor) =>
   String(valor ?? '')
@@ -304,40 +99,8 @@ const cargarLogoParaPdf = async (urlImagen) => {
     const blob = await respuesta.blob();
     const dataUrl = await leerBlobComoDataUrl(blob);
     const imagen = await cargarElementoImagen(dataUrl);
-    const debeRecortarLogo = imagen.width / imagen.height < 2.2;
 
-    if (!debeRecortarLogo) {
-      return { dataUrl, width: imagen.width, height: imagen.height };
-    }
-
-    const recorte = {
-      sx: imagen.width * 0.06,
-      sy: imagen.height * 0.17,
-      sw: imagen.width * 0.88,
-      sh: imagen.height * 0.52,
-    };
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(recorte.sw);
-    canvas.height = Math.round(recorte.sh);
-    const contexto = canvas.getContext('2d');
-
-    contexto.drawImage(
-      imagen,
-      recorte.sx,
-      recorte.sy,
-      recorte.sw,
-      recorte.sh,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-    return {
-      dataUrl: canvas.toDataURL('image/png'),
-      width: canvas.width,
-      height: canvas.height,
-    };
+    return { dataUrl, width: imagen.width, height: imagen.height };
   } catch {
     return null;
   }
@@ -377,37 +140,22 @@ const agregarPiePdf = (pdf) => {
   }
 };
 
+const asegurarPagina = (pdf, y, altoNecesario, altoPagina) => {
+  if (y + altoNecesario <= altoPagina - 58) return y;
+
+  pdf.addPage();
+  return 54;
+};
+
 const dibujarTablaPdf = (pdf, { titulo, headers = [], rows = [], yInicial, margen, anchoPagina, altoPagina }) => {
+  if (!headers.length && !rows.length) return yInicial;
+
   let y = yInicial;
   const anchoDisponible = anchoPagina - margen * 2;
   const anchoColumna = anchoDisponible / Math.max(headers.length, 1);
 
-  const asegurarEspacio = (altura) => {
-    if (y + altura > altoPagina - 58) {
-      pdf.addPage();
-      y = 54;
-    }
-  };
-
-  const dibujarEncabezado = () => {
-    asegurarEspacio(30);
-    pdf.setFillColor(229, 9, 20);
-    pdf.rect(margen, y, anchoDisponible, 28, 'F');
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(8);
-
-    headers.forEach((encabezado, indice) => {
-      pdf.text(String(encabezado).toUpperCase(), margen + indice * anchoColumna + 8, y + 18, {
-        maxWidth: anchoColumna - 14,
-      });
-    });
-
-    y += 28;
-  };
-
   if (titulo) {
-    asegurarEspacio(44);
+    y = asegurarPagina(pdf, y, 36, altoPagina);
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(13);
     pdf.setTextColor(17, 24, 39);
@@ -415,25 +163,29 @@ const dibujarTablaPdf = (pdf, { titulo, headers = [], rows = [], yInicial, marge
     y += 22;
   }
 
-  dibujarEncabezado();
+  if (headers.length) {
+    y = asegurarPagina(pdf, y, 30, altoPagina);
+    pdf.setFillColor(229, 9, 20);
+    pdf.rect(margen, y, anchoDisponible, 28, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8);
+    headers.forEach((encabezado, indice) => {
+      pdf.text(String(encabezado).toUpperCase(), margen + indice * anchoColumna + 8, y + 18, {
+        maxWidth: anchoColumna - 14,
+      });
+    });
+    y += 28;
+  }
 
   rows.forEach((fila, indiceFila) => {
     const lineasCelda = headers.map((_, indiceColumna) =>
       pdf.splitTextToSize(String(fila[indiceColumna] ?? ''), anchoColumna - 14)
     );
-    const altoFila = Math.max(34, Math.max(...lineasCelda.map((lineas) => lineas.length)) * 11 + 18);
+    const altoFila = Math.max(34, Math.max(1, ...lineasCelda.map((lineas) => lineas.length)) * 11 + 18);
 
-    if (y + altoFila > altoPagina - 58) {
-      pdf.addPage();
-      y = 54;
-      dibujarEncabezado();
-    }
-
-    if (indiceFila % 2 === 0) {
-      pdf.setFillColor(255, 255, 255);
-    } else {
-      pdf.setFillColor(249, 250, 251);
-    }
+    y = asegurarPagina(pdf, y, altoFila, altoPagina);
+    pdf.setFillColor(indiceFila % 2 === 0 ? 255 : 249, indiceFila % 2 === 0 ? 255 : 250, indiceFila % 2 === 0 ? 255 : 251);
     pdf.rect(margen, y, anchoDisponible, altoFila, 'F');
     pdf.setDrawColor(229, 231, 235);
     pdf.line(margen, y + altoFila, anchoPagina - margen, y + altoFila);
@@ -499,55 +251,33 @@ export const exportarReportePdf = async (reporte, logoUrl) => {
   pdf.text(`Tipo: ${reporteMoneda.tipo || 'General'}`, margen, y);
   y += 28;
 
-  pdf.setFillColor(249, 250, 251);
-  pdf.setDrawColor(229, 231, 235);
-  pdf.roundedRect(margen, y, anchoPagina - margen * 2, 84, 8, 8, 'FD');
-  pdf.setFontSize(9);
-
-  [
+  const metadatos = [
     ['Nombre del reporte', reporteMoneda.titulo],
     ['Fecha', creadoEn],
     ['Creado desde la cuenta', creadoPor],
     ['Identificador', reporteMoneda.id],
-  ].forEach(([etiqueta, valor], indice) => {
-    const filaY = y + 20 + indice * 16;
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(31, 41, 55);
-    pdf.text(`${etiqueta}:`, margen + 18, filaY);
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(75, 85, 99);
-    pdf.text(String(valor), margen + 142, filaY, { maxWidth: anchoPagina - margen * 2 - 160 });
+  ];
+
+  y = dibujarTablaPdf(pdf, {
+    titulo: 'Informacion del reporte',
+    headers: ['Campo', 'Valor'],
+    rows: metadatos,
+    yInicial: y,
+    margen,
+    anchoPagina,
+    altoPagina,
   });
 
-  y += 116;
-
   if (reporteMoneda.summary?.length) {
-    const columnasResumen = Math.min(3, reporteMoneda.summary.length);
-    const filasResumen = Math.ceil(reporteMoneda.summary.length / columnasResumen);
-    const separacionTarjetas = 10;
-    const anchoTarjeta = (anchoPagina - margen * 2 - separacionTarjetas * (columnasResumen - 1)) / columnasResumen;
-    const altoTarjeta = 58;
-
-    reporteMoneda.summary.forEach(([etiqueta, valor], indice) => {
-      const columna = indice % columnasResumen;
-      const fila = Math.floor(indice / columnasResumen);
-      const x = margen + columna * (anchoTarjeta + separacionTarjetas);
-      const tarjetaY = y + fila * (altoTarjeta + separacionTarjetas);
-
-      pdf.setFillColor(255, 255, 255);
-      pdf.setDrawColor(229, 231, 235);
-      pdf.roundedRect(x, tarjetaY, anchoTarjeta, altoTarjeta, 8, 8, 'FD');
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(8);
-      pdf.setTextColor(107, 114, 128);
-      pdf.text(String(etiqueta).toUpperCase(), x + 12, tarjetaY + 18, { maxWidth: anchoTarjeta - 24 });
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(12);
-      pdf.setTextColor(17, 24, 39);
-      pdf.text(String(valor), x + 12, tarjetaY + 42, { maxWidth: anchoTarjeta - 24 });
+    y = dibujarTablaPdf(pdf, {
+      titulo: 'Resumen ejecutivo',
+      headers: ['Indicador', 'Valor'],
+      rows: reporteMoneda.summary,
+      yInicial: y,
+      margen,
+      anchoPagina,
+      altoPagina,
     });
-
-    y += filasResumen * (altoTarjeta + separacionTarjetas) + 18;
   }
 
   y = dibujarTablaPdf(pdf, {
@@ -657,7 +387,7 @@ export const exportarReporteExcel = (reporte) => {
         ${tablaResumen}
         ${tablaPrincipal}
         ${tablasDetalle}
-        <p class="nota">Archivo generado desde Spartan Gym Web. Las tablas estan separadas por seccion para facilitar filtros y revisiones en Excel.</p>
+        <p class="nota">Archivo generado desde Spartan Gym Web con datos devueltos por la API.</p>
       </body>
     </html>
   `;

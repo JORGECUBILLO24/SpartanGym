@@ -3,15 +3,14 @@ package ni.edu.uam.SpartanGymAPI.services;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.AuthResponse;
 import ni.edu.uam.SpartanGymAPI.dto.LoginRequest;
-import ni.edu.uam.SpartanGymAPI.dto.RegisterPersonalRequest;
 import ni.edu.uam.SpartanGymAPI.dto.RegisterRequest;
-import ni.edu.uam.SpartanGymAPI.models.Personal;
 import ni.edu.uam.SpartanGymAPI.models.Rol;
 import ni.edu.uam.SpartanGymAPI.models.Socio;
+import ni.edu.uam.SpartanGymAPI.models.Sucursal;
 import ni.edu.uam.SpartanGymAPI.models.Usuario;
-import ni.edu.uam.SpartanGymAPI.repositories.PersonalRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.RolRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.SocioRepository;
+import ni.edu.uam.SpartanGymAPI.repositories.SucursalRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.UsuarioRepository;
 import ni.edu.uam.SpartanGymAPI.security.JwtService;
 import ni.edu.uam.SpartanGymAPI.security.UserDetailsImpl;
@@ -27,7 +26,7 @@ public class AuthService {
 
     private final UsuarioRepository usuarioRepository;
     private final SocioRepository socioRepository;
-    private final PersonalRepository personalRepository;
+    private final SucursalRepository sucursalRepository;
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -54,6 +53,11 @@ public class AuthService {
         socio.setApellidos(request.getApellidos());
         socio.setTelefono(request.getTelefono());
         socio.setEstadoAcceso("Activo");
+        if (request.getSucursalId() != null) {
+            Sucursal sucursal = sucursalRepository.findById(request.getSucursalId())
+                    .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
+            socio.setSucursal(sucursal);
+        }
 
         socioRepository.save(socio);
 
@@ -66,40 +70,10 @@ public class AuthService {
 
         // Hacemos el ÚNICO return correcto al final
         return AuthResponse.builder()
+                .id(usuario.getId().toString())
                 .token(token)
                 .email(usuario.getEmail())
                 .rol(rolSocio.getNombre())
-                .build();
-    }
-
-    @Transactional
-    public AuthResponse registerPersonal(RegisterPersonalRequest request) {
-        Rol rolPersonal = rolRepository.findByNombre("ROLE_ENTRENADOR")
-                .orElseThrow(() -> new RuntimeException("Error: Rol ROLE_ENTRENADOR no encontrado en BD."));
-
-        Usuario usuario = new Usuario();
-        usuario.setEmail(request.getEmail());
-        usuario.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        usuario.setRol(rolPersonal);
-        usuario.setActivo(true);
-
-        usuario = usuarioRepository.save(usuario);
-
-        Personal personal = new Personal();
-        personal.setUsuario(usuario);
-        personal.setNombres(request.getNombres());
-        personal.setApellidos(request.getApellidos());
-        personal.setEspecialidad(request.getEspecialidad());
-
-        personalRepository.save(personal);
-
-        UserDetailsImpl userDetails = new UserDetailsImpl(usuario);
-        String token = jwtService.generateToken(userDetails);
-
-        return AuthResponse.builder()
-                .token(token)
-                .email(usuario.getEmail())
-                .rol(rolPersonal.getNombre())
                 .build();
     }
 
@@ -115,6 +89,7 @@ public class AuthService {
         String token = jwtService.generateToken(userDetails);
 
         return AuthResponse.builder()
+                .id(usuario.getId().toString())
                 .token(token)
                 .email(usuario.getEmail())
                 .rol(usuario.getRol().getNombre())

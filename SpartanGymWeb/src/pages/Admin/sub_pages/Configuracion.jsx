@@ -26,9 +26,11 @@ import {
   guardarConfiguracionApp,
   leerConfiguracionApp,
   MONEDAS_DISPONIBLES,
+  sincronizarConfiguracionRemota,
 } from '../../../utils/configuracionApp';
 import { LOGOS_APP_DEFECTO } from '../../../utils/logosApp';
 import { aplicarPreferenciaTema, obtenerPreferenciaTemaGuardada } from '../../../utils/tema';
+import { configuracionApi } from '../../../services/api';
 
 const cargarConfigInicial = () => {
   const configuracionGuardada = leerConfiguracionApp();
@@ -109,6 +111,17 @@ const Configuracion = () => {
     String(accentSoftColor).toLowerCase() === CONFIGURACION_DEFECTO.accentSoftColor;
 
   useEffect(() => {
+    sincronizarConfiguracionRemota().then((configuracion) => {
+      setConfig((configActual) => ({
+        ...configActual,
+        ...configuracion,
+        theme: configuracion.theme || configActual.theme,
+        themeSource: configuracion.themeSource || configActual.themeSource,
+      }));
+    });
+  }, []);
+
+  useEffect(() => {
     const apariencia = {
       theme,
       accentColor,
@@ -167,24 +180,23 @@ const Configuracion = () => {
     setConfig((configActual) => ({ ...configActual, [clave]: CONFIGURACION_DEFECTO[clave] }));
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      guardarConfiguracionApp({
+      const configuracionGuardada = guardarConfiguracionApp({
         ...config,
         themeSource: config.theme === 'system' ? 'system' : 'user',
       });
 
-      setTimeout(() => {
-        setIsSubmitting(false);
-        setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 3000);
-      }, 900);
+      await configuracionApi.guardar(configuracionGuardada);
+      setIsSubmitting(false);
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
     } catch {
       setIsSubmitting(false);
-      setLogoError('No se pudo guardar. Usa logos mas livianos e intenta otra vez.');
+      setLogoError('No se pudo guardar en la API. Revisa la sesion o usa logos mas livianos.');
     }
   };
 
@@ -262,8 +274,8 @@ const Configuracion = () => {
                       <ImageIcon size={20} />
                     </span>
                     <div>
-                      <h3 className="text-sm font-black text-white">Logos de la app</h3>
-                      <p className="mt-0.5 text-[11px] text-gray-500">Actualiza la imagen principal y el logo de acceso.</p>
+                      <h3 className="text-sm font-black text-white">Imagenes de la app</h3>
+                      <p className="mt-0.5 text-[11px] text-gray-500">Actualiza logos y fondo de acceso compartidos por web y movil.</p>
                     </div>
                   </div>
 
@@ -273,7 +285,7 @@ const Configuracion = () => {
                     </p>
                   )}
 
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                     <SelectorLogo
                       titulo="Logo principal"
                       descripcion="Se usa en inicio, menus laterales y reportes PDF."
@@ -289,6 +301,14 @@ const Configuracion = () => {
                       respaldo={LOGOS_APP_DEFECTO.acceso}
                       onChange={(archivo) => actualizarLogo('logoAcceso', archivo, { maxWidth: 640, maxHeight: 640 })}
                       onReset={() => restaurarLogo('logoAcceso')}
+                    />
+                    <SelectorLogo
+                      titulo="Fondo de acceso"
+                      descripcion="Se usa como fondo de login, registro y bienvenida movil."
+                      valor={config.fondoLogin}
+                      respaldo={LOGOS_APP_DEFECTO.fondoLogin}
+                      onChange={(archivo) => actualizarLogo('fondoLogin', archivo, { maxWidth: 1440, maxHeight: 1800 })}
+                      onReset={() => restaurarLogo('fondoLogin')}
                     />
                   </div>
                 </div>

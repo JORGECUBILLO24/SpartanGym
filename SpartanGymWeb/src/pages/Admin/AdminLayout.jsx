@@ -3,7 +3,7 @@ import { Link, Outlet, NavLink, useLocation, useNavigate } from 'react-router-do
 import {
   LayoutDashboard, Users, CreditCard, DollarSign, Box,
   BarChart3, Settings, Bell, UserPlus, ShoppingCart,
-  Key, Sliders, Menu, X, Building2, UserCircle, LogOut
+  Key, Sliders, Menu, X, Building2, UserCircle, LogOut, Dumbbell
 } from 'lucide-react';
 
 import ControlSesion from '../../components/ControlSesion';
@@ -14,6 +14,7 @@ import {
   obtenerInicialesCuenta,
 } from '../../utils/cuentaActual';
 import { useLogosApp } from '../../utils/logosApp';
+import { SucursalProvider } from '../../context/SucursalContext';
 
 const AdminLayout = () => {
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -55,12 +56,15 @@ const AdminLayout = () => {
       case '/admin/registrar-socio': return 'Registro de Socio';
       case '/admin/mensajes': return 'Mensajes Globales';
       case '/admin/perfil': return 'Perfil del Administrador';
+      case '/admin/rutinas': return 'Gestión de Rutinas';
+      case '/admin/ventas': return 'Venta de Productos';
       default: return 'Administración';
     }
   };
 
   return (
-    <div className="admin-theme flex min-h-dvh overflow-hidden bg-[#050505] font-sans text-white transition-colors duration-300">
+    <SucursalProvider>
+      <div className="admin-theme flex min-h-dvh overflow-hidden bg-[#050505] font-sans text-white transition-colors duration-300">
       {menuAbierto && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
@@ -97,8 +101,10 @@ const AdminLayout = () => {
         >
           <ElementoNavegacion to="/admin" icono={<LayoutDashboard size={18} />} etiqueta="Inicio" exact />
           <ElementoNavegacion to="/admin/usuarios" icono={<Users size={18} />} etiqueta="Usuarios" />
+          <ElementoNavegacion to="/admin/rutinas" icono={<Dumbbell size={18} />} etiqueta="Rutinas" />
           <ElementoNavegacion to="/admin/finanzas" icono={<DollarSign size={18} />} etiqueta="Finanzas" />
           <ElementoNavegacion to="/admin/inventario" icono={<Box size={18} />} etiqueta="Inventario" />
+          <ElementoNavegacion to="/admin/ventas" icono={<ShoppingCart size={18} />} etiqueta="Ventas" />
           <ElementoNavegacion to="/admin/reportes" icono={<BarChart3 size={18} />} etiqueta="Reportes" />
           <ElementoNavegacion to="/admin/sucursales" icono={<Building2 size={18} />} etiqueta="Sucursales" />
           <ElementoNavegacion to="/admin/membresias" icono={<CreditCard size={18} />} etiqueta="Membresías" />
@@ -156,7 +162,8 @@ const AdminLayout = () => {
         </main>
       </div>
       <ControlSesion />
-    </div>
+      </div>
+    </SucursalProvider>
   );
 };
 

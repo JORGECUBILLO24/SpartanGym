@@ -47,6 +47,12 @@ public class MembresiaScheduler {
             contador++;
             log.info("Membresía vencida para el socio: {} {}", socio.getNombres(), socio.getApellidos());
 
+            notificacionService.registrarNotificacion(
+                    socio.getUsuario(),
+                    "alerta",
+                    "Membresía vencida",
+                    "Tu membresía ha vencido. Acércate a recepción para renovarla."
+            );
             notificacionService.enviarCorreoVencimiento(socio.getUsuario().getEmail(), socio.getNombres());
         }
 

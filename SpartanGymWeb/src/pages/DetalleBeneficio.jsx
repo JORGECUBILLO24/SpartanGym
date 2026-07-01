@@ -1,6 +1,5 @@
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Flame, ShieldCheck } from 'lucide-react';
-import FondoLogin from '../assets/fondo_login.webp';
 import { beneficiosInicio } from '../data/homeBenefits';
 import { useLogosApp } from '../utils/logosApp';
 
@@ -19,7 +18,7 @@ const DetalleBeneficio = () => {
     <div className="benefit-detail min-h-screen bg-black text-white">
       <div
         className="benefit-detail-bg fixed inset-0 -z-10 bg-cover bg-center opacity-20"
-        style={{ backgroundImage: `url(${FondoLogin})` }}
+        style={{ backgroundImage: `url(${logos.fondoLogin})` }}
       />
       <div className="benefit-detail-overlay fixed inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.82),rgba(0,0,0,0.96))]" />
 

@@ -16,10 +16,12 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
-    @Value("${jwt.secret}")
+    private static final String DEFAULT_SECRET = "VGhpc0lzQVNlY3JldEtleUZvclNwYXJ0YW5HeW1BUEkyMDI2MTIzNDU2Nzg5";
+
+    @Value("${jwt.secret:" + DEFAULT_SECRET + "}")
     private String secretKey;
 
-    @Value("${jwt.expiration}")
+    @Value("${jwt.expiration:86400000}")
     private long jwtExpiration;
 
     // Genera el token a partir de los datos del usuario
