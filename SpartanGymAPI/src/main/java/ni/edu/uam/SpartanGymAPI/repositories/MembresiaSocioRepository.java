@@ -17,4 +17,12 @@ public interface MembresiaSocioRepository extends JpaRepository<MembresiaSocio, 
 
     // NUEVO: Para el Cron Job (Busca las membresías activas cuya fecha ya expiró)
     List<MembresiaSocio> findByEstadoAndFechaVencimientoBefore(String estado, LocalDate fecha);
+
+    long countByEstado(String estado);
+
+    List<MembresiaSocio> findAllByOrderByFechaVencimientoAsc();
+
+    List<MembresiaSocio> findBySocioUsuarioIdOrderByFechaInicioDesc(UUID socioId);
+
+    List<MembresiaSocio> findByEstadoAndFechaVencimientoBetweenOrderByFechaVencimientoAsc(String estado, LocalDate inicio, LocalDate fin);
 }

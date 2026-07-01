@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Configuracion local con credenciales (Neon, etc.) - NO subir a git ###
+src/main/resources/application-local.properties

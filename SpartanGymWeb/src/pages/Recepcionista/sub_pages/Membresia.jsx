@@ -1,48 +1,39 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, Calendar, CheckCircle2, ShieldCheck, Users, Zap } from 'lucide-react';
-import {
-  EVENTO_MEMBRESIAS,
-  formatearPrecioMembresia,
-  leerMembresiasCompartidas,
-} from '../../../utils/membresiasCompartidas';
-import {
-  EVENTO_SOCIOS,
-  leerSociosCompartidos,
-  obtenerNombreSocio,
-} from '../../../utils/sociosCompartidos';
-import { useConfiguracionApp } from '../../../utils/configuracionApp';
+import { AlertCircle, Calendar, ShieldCheck, Users, Zap } from 'lucide-react';
+import { membresiasApi, operacionApi } from '../../../services/api';
+import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
 
 const Membresias = () => {
-  const [catalogo, setCatalogo] = useState(() => leerMembresiasCompartidas());
-  const [socios, setSocios] = useState(() => leerSociosCompartidos());
-  useConfiguracionApp();
+  const [catalogo, setCatalogo] = useState([]);
+  const [membresiasSocios, setMembresiasSocios] = useState([]);
+  const [error, setError] = useState('');
+  const configuracion = useConfiguracionApp();
+  const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
+
+  const cargarDatos = async () => {
+    const [tipos, membresias] = await Promise.all([
+      membresiasApi.tipos(),
+      operacionApi.membresias(),
+    ]);
+    setCatalogo(tipos);
+    setMembresiasSocios(membresias);
+  };
 
   useEffect(() => {
-    const actualizarCatalogo = () => setCatalogo(leerMembresiasCompartidas());
-
-    window.addEventListener('storage', actualizarCatalogo);
-    window.addEventListener(EVENTO_MEMBRESIAS, actualizarCatalogo);
-
-    return () => {
-      window.removeEventListener('storage', actualizarCatalogo);
-      window.removeEventListener(EVENTO_MEMBRESIAS, actualizarCatalogo);
-    };
-  }, []);
-
-  useEffect(() => {
-    const actualizarSocios = () => setSocios(leerSociosCompartidos());
-
-    window.addEventListener('storage', actualizarSocios);
-    window.addEventListener(EVENTO_SOCIOS, actualizarSocios);
-
-    return () => {
-      window.removeEventListener('storage', actualizarSocios);
-      window.removeEventListener(EVENTO_SOCIOS, actualizarSocios);
-    };
+    Promise.resolve()
+      .then(cargarDatos)
+      .catch(() => setError('No se pudieron cargar membresias desde la API.'));
   }, []);
 
   return (
     <div className="pagina-stack mx-auto w-full max-w-6xl space-y-8">
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">
+          <AlertCircle size={15} />
+          {error}
+        </div>
+      )}
+
       <section>
         <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -52,40 +43,20 @@ const Membresias = () => {
             </h2>
           </div>
           <span className="w-fit rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black uppercase text-gray-400">
-            Sincronizado con admin
+            Base de datos
           </span>
         </div>
 
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
           {catalogo.map((plan) => (
-            <article
-              key={plan.id}
-              className={`tarjeta-sistema relative rounded-2xl border bg-[#0d0d0d] p-6 shadow-2xl ${
-                plan.popular ? 'border-red-600/50 shadow-red-900/10' : 'border-white/10'
-              }`}
-            >
-              {plan.popular && (
-                <span className="absolute -top-3 left-6 rounded-full bg-red-600 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white">
-                  Popular
-                </span>
-              )}
-
-              <h4 className="text-lg font-black text-white">{plan.nombrePlan}</h4>
+            <article key={plan.id} className="tarjeta-sistema relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-6 shadow-2xl">
+              <h4 className="text-lg font-black text-white">{plan.nombre}</h4>
               <div className="mb-6 mt-4">
-                <span className="text-3xl font-black text-red-500">{formatearPrecioMembresia(plan.precio)}</span>
-                <span className="ml-1 text-sm font-bold text-gray-500">/ {plan.duracion}</span>
+                <span className="text-3xl font-black text-red-500">{formatearMonto(plan.precio)}</span>
+                <span className="ml-1 text-sm font-bold text-gray-500">/ {plan.duracionDias} dias</span>
               </div>
-
-              <ul className="mb-8 space-y-3">
-                {plan.beneficios.map((beneficio) => (
-                  <li key={beneficio} className="flex items-center gap-2 text-sm text-gray-400">
-                    <CheckCircle2 size={16} className="text-red-600" /> {beneficio}
-                  </li>
-                ))}
-              </ul>
-
               <div className="flex items-center gap-2 border-t border-white/5 pt-5 text-xs font-bold text-gray-500">
-                <Users size={14} /> Disponible para registro de socios
+                <Users size={14} /> Disponible para pagos y registro
               </div>
             </article>
           ))}
@@ -95,7 +66,7 @@ const Membresias = () => {
       <section className="tarjeta-sistema rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 shadow-2xl sm:p-6 lg:p-8">
         <div className="mb-6">
           <h3 className="text-lg font-black text-white">Estado de socios</h3>
-          <p className="mt-1 text-sm text-gray-500">Vista rapida de membresias activas y vencidas.</p>
+          <p className="mt-1 text-sm text-gray-500">Vista de membresias activas y vencimientos desde la API.</p>
         </div>
 
         <div className="overflow-x-auto">
@@ -109,18 +80,25 @@ const Membresias = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {socios.map((socio) => (
-                <tr key={socio.id} className="hover:bg-white/[0.02]">
-                  <td className="py-5 font-bold text-white">{obtenerNombreSocio(socio)}</td>
-                  <td className="py-5">{socio.membresia}</td>
+              {membresiasSocios.map((membresia) => (
+                <tr key={membresia.id} className="hover:bg-white/[0.02]">
+                  <td className="py-5 font-bold text-white">{membresia.socio}</td>
+                  <td className="py-5">{membresia.tipoMembresia}</td>
                   <td className="flex items-center gap-2 py-5 text-gray-400">
-                    <Calendar size={14} /> {new Date(socio.creadoEn).toLocaleDateString('es-NI')}
+                    <Calendar size={14} /> {membresia.fechaVencimiento || 'N/A'}
                   </td>
                   <td className="py-5">
-                    <EtiquetaEstado estado={socio.estado} />
+                    <EtiquetaEstado estado={membresia.estado} />
                   </td>
                 </tr>
               ))}
+              {!membresiasSocios.length && (
+                <tr>
+                  <td colSpan="4" className="py-10 text-center text-sm text-gray-500">
+                    No hay membresias registradas.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -130,7 +108,7 @@ const Membresias = () => {
 };
 
 const EtiquetaEstado = ({ estado }) => {
-  const activo = estado === 'Activo';
+  const activo = estado === 'Activa';
 
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-wide ${

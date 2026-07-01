@@ -24,6 +24,13 @@ public class Personal {
     @Column(nullable = false, length = 100)
     private String apellidos;
 
+    @Column(length = 20)
+    private String telefono;
+
     @Column(length = 100)
     private String especialidad;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "sucursal_id")
+    private Sucursal sucursal;
 }

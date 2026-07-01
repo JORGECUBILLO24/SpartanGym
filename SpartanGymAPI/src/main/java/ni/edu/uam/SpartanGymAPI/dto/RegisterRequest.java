@@ -2,6 +2,8 @@ package ni.edu.uam.SpartanGymAPI.dto;
 
 import lombok.Data;
 
+import java.util.UUID;
+
 @Data
 public class RegisterRequest {
     private String nombres;
@@ -9,4 +11,5 @@ public class RegisterRequest {
     private String email;
     private String password;
     private String telefono;
+    private UUID sucursalId;
 }

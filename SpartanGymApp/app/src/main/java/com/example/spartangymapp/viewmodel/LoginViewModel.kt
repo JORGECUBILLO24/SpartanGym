@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.spartangymapp.network.LoginRequest
-import com.example.spartangymapp.network.RegisterRequest
+import com.example.spartangymapp.network.PasswordRecoveryRequest
 import com.example.spartangymapp.network.RetrofitClient
 import kotlinx.coroutines.launch
 
@@ -15,12 +15,13 @@ class LoginViewModel : ViewModel() {
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf<String?>(null)
     var loginSuccess by mutableStateOf(false)
-    var registerSuccess by mutableStateOf(false)
+    var recoveryMessage by mutableStateOf<String?>(null)
 
     var userRole by mutableStateOf("")
     var userEmail by mutableStateOf("")
+    var userId by mutableStateOf("")
 
-    fun iniciarSesion(email: String, pass: String, rolSeleccionado: String) {
+    fun iniciarSesion(email: String, pass: String) {
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
@@ -38,7 +39,9 @@ class LoginViewModel : ViewModel() {
                     val authResponse = response.body()!!
 
                     userEmail = authResponse.email ?: email.trim()
-                    userRole = authResponse.rol ?: rolSeleccionado
+                    userRole = authResponse.rol.orEmpty()
+                    userId = authResponse.id.orEmpty()
+                    RetrofitClient.setAuthToken(authResponse.token)
 
                     loginSuccess = true
                 } else {
@@ -52,39 +55,24 @@ class LoginViewModel : ViewModel() {
         }
     }
 
-    fun crearCuenta(
-        nombre: String,
-        email: String,
-        password: String,
-        rolSeleccionado: String
-    ) {
+    fun solicitarRecuperacion(email: String) {
         viewModelScope.launch {
             isLoading = true
             errorMessage = null
-            registerSuccess = false
+            recoveryMessage = null
 
             try {
-                val request = RegisterRequest(
-                    nombreCompleto = nombre.trim(),
-                    email = email.trim(),
-                    password = password,
-                    rol = rolSeleccionado
+                val response = RetrofitClient.apiService.solicitarRestablecimiento(
+                    PasswordRecoveryRequest(email = email.trim())
                 )
 
-                val response = if (rolSeleccionado.contains("ENTRENADOR", ignoreCase = true)) {
-                    RetrofitClient.apiService.registrarEntrenador(request)
-                } else {
-                    RetrofitClient.apiService.registrarSocio(request)
-                }
-
                 if (response.isSuccessful) {
-                    registerSuccess = true
-                    errorMessage = "Cuenta creada correctamente. Ahora inicia sesión."
+                    recoveryMessage = "Hemos enviado un correo de recuperacion."
                 } else {
-                    errorMessage = "No se pudo crear la cuenta. Revisa los datos."
+                    errorMessage = "No se pudo solicitar la recuperacion."
                 }
             } catch (e: Exception) {
-                errorMessage = "Error al crear cuenta: ${e.message}"
+                errorMessage = "No se pudo conectar con la API: ${e.message}"
             } finally {
                 isLoading = false
             }
@@ -93,7 +81,7 @@ class LoginViewModel : ViewModel() {
 
     fun limpiarEstado() {
         loginSuccess = false
-        registerSuccess = false
         errorMessage = null
+        recoveryMessage = null
     }
 }

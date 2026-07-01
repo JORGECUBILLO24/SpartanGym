@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Building2, MapPin, Clock, Users2, Phone, 
-  Save, CheckCircle2, Activity, ShieldCheck, Dumbbell
+  Save, CheckCircle2, Activity, ShieldCheck, Dumbbell, AlertCircle, Trash2
 } from 'lucide-react';
+import { sucursalesApi } from '../../../services/api';
 
 // Reutilizamos la imagen de estadísticas o laptop como fondo de tarjeta, o puedes cambiarla por una de la infraestructura
 import imgGymCard from "../../../assets/EstadisticasSpartan.webp";
@@ -20,17 +21,40 @@ const Sucursales = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [sucursales, setSucursales] = useState([]);
+  const [errorApi, setErrorApi] = useState('');
+
+  const cargarSucursales = async () => {
+    setSucursales(await sucursalesApi.listar());
+  };
+
+  useEffect(() => {
+    Promise.resolve()
+      .then(cargarSucursales)
+      .catch(() => setErrorApi('No se pudieron cargar las sucursales desde la API.'));
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setErrorApi('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorApi('');
     
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      await sucursalesApi.crear({
+        nombre: formData.nombreSucursal,
+        ubicacion: formData.ubicacion,
+        telefono: formData.telefono,
+        capacidad: Number(formData.capacidad),
+        horarioApertura: formData.horarioApertura,
+        horarioCierre: formData.horarioCierre,
+        estado: formData.estado,
+      });
+      await cargarSucursales();
       setIsSaved(true);
       setTimeout(() => {
         setFormData({
@@ -44,11 +68,31 @@ const Sucursales = () => {
         });
         setIsSaved(false);
       }, 3000);
-    }, 1500);
+    } catch (error) {
+      setErrorApi(error.message || 'No se pudo guardar la sucursal en la API.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const eliminarSucursal = async (id) => {
+    setErrorApi('');
+    try {
+      await sucursalesApi.eliminar(id);
+      await cargarSucursales();
+    } catch (error) {
+      setErrorApi(error.message || 'No se pudo eliminar la sucursal.');
+    }
   };
 
   return (
     <div className="flex flex-col gap-6 h-full text-white">
+      {errorApi && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">
+          <AlertCircle size={15} />
+          {errorApi}
+        </div>
+      )}
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
         
@@ -252,8 +296,63 @@ const Sucursales = () => {
         </div>
 
       </div>
+
+      <section className="rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">Base de datos</p>
+            <h3 className="text-lg font-black text-white">Sucursales registradas</h3>
+            <p className="mt-1 text-xs text-gray-500">Gimnasios disponibles para administracion y operacion.</p>
+          </div>
+          <span className="w-fit rounded-full bg-white/5 px-3 py-1 text-[10px] font-black text-gray-400">
+            {sucursales.length} sucursales
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {sucursales.map((sucursal) => (
+            <article key={sucursal.id} className="rounded-2xl border border-white/10 bg-[#111]/60 p-4 transition-all hover:border-white/20">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h4 className="break-words text-sm font-black text-white">{sucursal.nombre}</h4>
+                  <p className="mt-1 flex items-center gap-1 text-[10px] font-bold text-gray-500">
+                    <MapPin size={11} />
+                    <span className="truncate">{sucursal.ubicacion}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => eliminarSucursal(sucursal.id)}
+                  className="shrink-0 rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-500 transition-colors hover:bg-red-600 hover:text-white"
+                  aria-label={`Eliminar ${sucursal.nombre}`}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <DatoSucursal etiqueta="Capacidad" valor={`${sucursal.capacidad} socios`} />
+                <DatoSucursal etiqueta="Estado" valor={sucursal.estado} />
+                <DatoSucursal etiqueta="Apertura" valor={sucursal.horarioApertura} />
+                <DatoSucursal etiqueta="Cierre" valor={sucursal.horarioCierre} />
+              </div>
+            </article>
+          ))}
+          {!sucursales.length && (
+            <div className="rounded-2xl border border-white/5 bg-[#111]/60 p-8 text-center text-sm text-gray-500 md:col-span-2 xl:col-span-3">
+              No hay sucursales registradas en la base de datos.
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 };
+
+const DatoSucursal = ({ etiqueta, valor }) => (
+  <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+    <p className="text-[9px] font-black uppercase tracking-widest text-gray-500">{etiqueta}</p>
+    <p className="mt-1 truncate font-bold text-white">{valor}</p>
+  </div>
+);
 
 export default Sucursales;

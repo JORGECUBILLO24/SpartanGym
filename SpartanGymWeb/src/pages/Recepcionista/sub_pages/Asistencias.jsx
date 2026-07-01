@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Calendar, Filter, CheckCircle2, XCircle, Clock, User } from 'lucide-react';
-
-const listaAsistencias = [
-  { nombre: 'Carlos Ramírez', hora: '08:30 AM', estado: 'Presente', plan: 'Elite' },
-  { nombre: 'Ana Torres', hora: '-', estado: 'Ausente', plan: 'Básica' },
-  { nombre: 'Luis Mejía', hora: '09:15 AM', estado: 'Presente', plan: 'Premium' },
-];
+import { operacionApi } from '../../../services/api';
 
 const opcionesFiltro = ['Todos', 'Presente', 'Ausente'];
 
 const Asistencias = () => {
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
+  const [listaAsistencias, setListaAsistencias] = useState([]);
+  const [errorApi, setErrorApi] = useState('');
+
+  useEffect(() => {
+    operacionApi.asistenciasRecientes()
+      .then(setListaAsistencias)
+      .catch(() => setErrorApi('No se pudieron cargar las asistencias desde la API.'));
+  }, []);
 
   const fechaActual = new Intl.DateTimeFormat('es-NI', {
     weekday: 'long',
@@ -20,8 +23,10 @@ const Asistencias = () => {
   }).format(new Date());
 
   const asistenciasFiltradas = listaAsistencias.filter((asistencia) => {
-    const coincideBusqueda = asistencia.nombre.toLowerCase().includes(busqueda.toLowerCase().trim());
-    const coincideEstado = filtroEstado === 'Todos' || asistencia.estado === filtroEstado;
+    const nombreSocio = asistencia.socio || '';
+    const estado = asistencia.estado || 'Presente';
+    const coincideBusqueda = nombreSocio.toLowerCase().includes(busqueda.toLowerCase().trim());
+    const coincideEstado = filtroEstado === 'Todos' || estado === filtroEstado;
     return coincideBusqueda && coincideEstado;
   });
 
@@ -64,6 +69,13 @@ const Asistencias = () => {
       </div>
 
       <section className="bg-[#0d0d0d] rounded-3xl border border-white/5 p-8">
+        {errorApi && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">
+            <XCircle size={15} />
+            {errorApi}
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-gray-300">
             <thead>
@@ -76,25 +88,25 @@ const Asistencias = () => {
             </thead>
             <tbody className="divide-y divide-white/5">
               {asistenciasFiltradas.map((asistencia) => (
-                <tr key={asistencia.nombre} className="hover:bg-white/[0.02] transition-colors">
+                <tr key={asistencia.id} className="hover:bg-white/[0.02] transition-colors">
                   <td className="py-5 flex items-center gap-3">
                     <div className="bg-white/5 p-2 rounded-full text-gray-400">
                       <User size={16} />
                     </div>
-                    <span className="text-white font-medium">{asistencia.nombre}</span>
+                    <span className="text-white font-medium">{asistencia.socio}</span>
                   </td>
-                  <td className="py-5 text-gray-400">{asistencia.plan}</td>
+                  <td className="py-5 text-gray-400">{asistencia.tipoMembresia || 'Registrada'}</td>
                   <td className="py-5 flex items-center gap-2 text-gray-400">
-                    <Clock size={14} className="text-gray-600" /> {asistencia.hora}
+                    <Clock size={14} className="text-gray-600" /> {asistencia.fechaHora ? new Date(asistencia.fechaHora).toLocaleString('es-NI') : 'N/A'}
                   </td>
                   <td className="py-5">
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase ${
-                      asistencia.estado === 'Presente'
+                      (asistencia.estado || 'Presente') === 'Presente'
                         ? 'text-green-500 bg-green-500/10'
                         : 'text-red-500 bg-red-500/10'
                     }`}>
-                      {asistencia.estado === 'Presente' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                      {asistencia.estado}
+                      {(asistencia.estado || 'Presente') === 'Presente' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                      {asistencia.estado || 'Presente'}
                     </span>
                   </td>
                 </tr>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CreditCard, DollarSign, Search, Bell,
-  UserPlus, Menu, X, QrCode, ClipboardList, User, LogOut
+  UserPlus, Menu, X, QrCode, ClipboardList, User, LogOut, ShoppingCart
 } from 'lucide-react';
 
 import ControlSesion from '../../components/ControlSesion';
@@ -27,6 +27,7 @@ const RecepcionistaLayout = () => {
       case '/recepcion/check-in': return 'Check-in de Socios';
       case '/recepcion/registrar-socio': return 'Registrar Nuevo Socio';
       case '/recepcion/pagos': return 'Gestión de Pagos';
+      case '/recepcion/ventas': return 'Venta de Productos';
       case '/recepcion/membresias': return 'Gestión de Membresías';
       case '/recepcion/asistencias': return 'Control de Asistencias';
       case '/recepcion/notificaciones': return 'Notificaciones';
@@ -75,6 +76,7 @@ const RecepcionistaLayout = () => {
           <ElementoNavegacion to="/recepcion/check-in" icono={<QrCode size={18} />} etiqueta="Check-in" />
           <ElementoNavegacion to="/recepcion/registrar-socio" icono={<UserPlus size={18} />} etiqueta="Registrar socio" />
           <ElementoNavegacion to="/recepcion/pagos" icono={<DollarSign size={18} />} etiqueta="Pagos" />
+          <ElementoNavegacion to="/recepcion/ventas" icono={<ShoppingCart size={18} />} etiqueta="Ventas" />
           <ElementoNavegacion to="/recepcion/membresias" icono={<CreditCard size={18} />} etiqueta="Membresías" />
           <ElementoNavegacion to="/recepcion/asistencias" icono={<ClipboardList size={18} />} etiqueta="Asistencias" />
           <ElementoNavegacion to="/recepcion/notificaciones" icono={<Bell size={18} />} etiqueta="Notificaciones" />

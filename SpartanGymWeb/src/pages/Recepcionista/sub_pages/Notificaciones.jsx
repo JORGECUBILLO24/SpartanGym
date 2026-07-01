@@ -1,51 +1,48 @@
 import { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Clock, Info, Mail, Smartphone } from 'lucide-react';
-import {
-  EVENTO_MENSAJES_GLOBALES,
-  formatearHoraMensaje,
-  leerMensajesGlobales,
-} from '../../../utils/mensajesGlobales';
+import { operacionApi } from '../../../services/api';
 
-const notificacionesBase = [
-  { id: 1, tipo: 'info', titulo: 'Nuevo socio registrado', mensaje: 'Anthony Flores se ha unido al plan Gold.', tiempo: 'Hace 5 min' },
-  { id: 2, tipo: 'alerta', titulo: 'Pago pendiente', mensaje: 'Cristofer Cuarezma tiene un pago de mensualidad vencido.', tiempo: 'Hace 1 hora' },
-  { id: 3, tipo: 'exito', titulo: 'Check-in exitoso', mensaje: 'Ricardo Prado ingreso a SpartanGym Central.', tiempo: 'Hace 3 horas' },
-];
+const normalizarTipo = (tipo) => {
+  const valor = String(tipo || 'info').toLowerCase();
+  if (valor.includes('alert') || valor.includes('pago') || valor.includes('venc')) return 'alerta';
+  if (valor.includes('exito') || valor.includes('éxito') || valor.includes('check')) return 'exito';
+  if (valor.includes('global')) return 'global';
+  return 'info';
+};
+
+const formatearTiempo = (fecha) => {
+  if (!fecha) return 'Reciente';
+  return new Date(fecha).toLocaleString('es-NI');
+};
 
 const Notificaciones = () => {
-  const [mensajesGlobales, setMensajesGlobales] = useState(() => leerMensajesGlobales());
+  const [notificaciones, setNotificaciones] = useState([]);
+  const [errorApi, setErrorApi] = useState('');
 
   useEffect(() => {
-    const actualizarMensajes = () => setMensajesGlobales(leerMensajesGlobales());
-
-    window.addEventListener('storage', actualizarMensajes);
-    window.addEventListener(EVENTO_MENSAJES_GLOBALES, actualizarMensajes);
-
-    return () => {
-      window.removeEventListener('storage', actualizarMensajes);
-      window.removeEventListener(EVENTO_MENSAJES_GLOBALES, actualizarMensajes);
-    };
+    operacionApi.notificaciones()
+      .then((items) => setNotificaciones(items.map((notif) => ({
+        ...notif,
+        tipo: normalizarTipo(notif.tipo),
+        tiempo: formatearTiempo(notif.fechaCreacion),
+        categoria: notif.tipo || 'Sistema',
+        canales: ['app'],
+      }))))
+      .catch(() => setErrorApi('No se pudieron cargar las notificaciones desde la API.'));
   }, []);
-
-  const notificaciones = [
-    ...mensajesGlobales.map((mensaje) => ({
-      id: mensaje.id,
-      tipo: 'global',
-      titulo: mensaje.titulo,
-      mensaje: mensaje.mensaje,
-      tiempo: formatearHoraMensaje(mensaje.creadoEn),
-      categoria: mensaje.categoria,
-      canales: mensaje.canales,
-    })),
-    ...notificacionesBase,
-  ];
 
   return (
     <div className="max-w-4xl p-6 pt-0 animate-in fade-in duration-500">
       <div className="bg-[#0d0d0d] rounded-3xl border border-white/5 overflow-hidden">
+        {errorApi && (
+          <div className="flex items-center gap-2 border-b border-red-500/10 bg-red-500/10 p-4 text-xs font-bold text-red-400">
+            <AlertCircle size={15} />
+            {errorApi}
+          </div>
+        )}
         {notificaciones.length > 0 ? (
           notificaciones.map((notif) => (
-            <div key={notif.id} className="flex items-start gap-4 p-6 border-b border-white/5 hover:bg-[#171717] transition-all">
+            <div key={notif.id} className={`flex items-start gap-4 p-6 border-b border-white/5 hover:bg-[#171717] transition-all ${notif.leida ? 'opacity-60' : ''}`}>
               <div className={`p-3 rounded-full ${notif.tipo === 'info' ? 'bg-blue-500/10 text-blue-500' : notif.tipo === 'alerta' ? 'bg-red-500/10 text-red-500' : notif.tipo === 'global' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
                 {notif.tipo === 'info' && <Info size={20} />}
                 {notif.tipo === 'alerta' && <AlertCircle size={20} />}
@@ -68,7 +65,7 @@ const Notificaciones = () => {
                     {notif.canales.map((canal) => (
                       <span key={canal} className="inline-flex items-center gap-1 rounded-full border border-white/5 bg-white/5 px-2 py-1 text-[10px] font-bold uppercase text-gray-500">
                         {canal === 'email' ? <Mail size={10} /> : <Smartphone size={10} />}
-                        {canal === 'email' ? 'Correo' : 'SMS'}
+                        {canal === 'email' ? 'Correo' : 'App'}
                       </span>
                     ))}
                   </div>

@@ -2,12 +2,14 @@ package ni.edu.uam.SpartanGymAPI.services;
 
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.CompraMembresiaRequest;
+import ni.edu.uam.SpartanGymAPI.dto.TipoMembresiaRequest;
 import ni.edu.uam.SpartanGymAPI.models.*;
 import ni.edu.uam.SpartanGymAPI.repositories.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -19,6 +21,25 @@ public class MembresiaService {
     private final PagoRepository pagoRepository;
     private final MembresiaSocioRepository membresiaSocioRepository;
     private final UsuarioRepository usuarioRepository;
+
+    @Transactional(readOnly = true)
+    public List<TipoMembresia> listarTipos() {
+        return tipoMembresiaRepository.findAll();
+    }
+
+    @Transactional
+    public TipoMembresia crearTipo(TipoMembresiaRequest request) {
+        TipoMembresia tipo = new TipoMembresia();
+        tipo.setNombre(request.getNombre());
+        tipo.setDuracionDias(request.getDuracionDias());
+        tipo.setPrecio(request.getPrecio());
+        return tipoMembresiaRepository.save(tipo);
+    }
+
+    @Transactional
+    public void eliminarTipo(Integer id) {
+        tipoMembresiaRepository.deleteById(id);
+    }
 
     @Transactional
     public MembresiaSocio comprarMembresia(String emailSocio, CompraMembresiaRequest request) {

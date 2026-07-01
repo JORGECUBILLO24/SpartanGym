@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowUpRight,
@@ -12,6 +13,7 @@ import {
   Dumbbell,
   Gauge,
   Package,
+  QrCode,
   ShieldCheck,
   Sparkles,
   UserCheck,
@@ -25,19 +27,7 @@ import imgEstadisticas from '../../../assets/EstadisticasSpartan.webp';
 import imgMembresia from '../../../assets/MembresiaSpartan.webp';
 import imgSuplementos from '../../../assets/SuplementosSpartan.webp';
 import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
-
-const indicadoresRapidos = [
-  { titulo: 'Socios activos', valor: '128', detalle: '+18 este mes', icono: Users, color: 'text-blue-500' },
-  { titulo: 'Ingresos mes', valorMonto: 4850, detalle: '82.4% margen', icono: DollarSign, color: 'text-green-500' },
-  { titulo: 'Por vencer', valor: '17', detalle: 'Requieren seguimiento', icono: Calendar, color: 'text-red-500' },
-  { titulo: 'Personal', valor: '12', detalle: 'Turnos cubiertos', icono: UserCheck, color: 'text-orange-500' },
-];
-
-const pulsoOperativo = [
-  { etiqueta: 'Rendimiento', valor: '94%', icono: Gauge },
-  { etiqueta: 'Alertas', valor: '3', icono: Bell },
-  { etiqueta: 'Turnos', valor: '100%', icono: ShieldCheck },
-];
+import { finanzasApi, inventarioApi, membresiasApi, operacionApi, personalApi, reportesApi, sucursalesApi } from '../../../services/api';
 
 const modulosAdministracion = [
   {
@@ -47,8 +37,18 @@ const modulosAdministracion = [
     imagen: imgLaptop,
     icono: UserRoundCog,
     ruta: '/admin/usuarios',
-    metrica: '1,248 usuarios',
+    metrica: '...',
     estado: 'Activo',
+  },
+  {
+    titulo: 'Validacion QR de socios',
+    descripcion: 'QR temporal en web para que el socio lo escanee desde la app movil.',
+    boton: 'Mostrar QR',
+    imagen: imgLaptop,
+    icono: QrCode,
+    ruta: '/admin/check-in',
+    metrica: '...',
+    estado: 'Seguro',
   },
   {
     titulo: 'Tipos de membresia',
@@ -57,7 +57,7 @@ const modulosAdministracion = [
     imagen: imgMembresia,
     icono: CreditCard,
     ruta: '/admin/membresias',
-    metrica: '8 planes',
+    metrica: '...',
     estado: 'Actualizado',
   },
   {
@@ -67,7 +67,7 @@ const modulosAdministracion = [
     imagen: imgEstadisticas,
     icono: BarChart3,
     ruta: '/admin/finanzas',
-    metricaMonto: 4850,
+    metricaMonto: 0,
     estado: 'En linea',
   },
   {
@@ -77,7 +77,7 @@ const modulosAdministracion = [
     imagen: imgSuplementos,
     icono: Package,
     ruta: '/admin/inventario',
-    metrica: '3 alertas',
+    metrica: '...',
     estado: 'Revision',
   },
   {
@@ -87,7 +87,7 @@ const modulosAdministracion = [
     imagen: imgMembresia,
     icono: Building2,
     ruta: '/admin/sucursales',
-    metrica: '4 sedes',
+    metrica: '...',
     estado: 'Creciendo',
   },
   {
@@ -97,7 +97,7 @@ const modulosAdministracion = [
     imagen: imgSuplementos,
     icono: Dumbbell,
     ruta: '/admin/usuarios',
-    metrica: '7 activos',
+    metrica: '...',
     estado: 'Cubierto',
   },
   {
@@ -107,7 +107,7 @@ const modulosAdministracion = [
     imagen: imgLaptop,
     icono: Contact,
     ruta: '/admin/usuarios',
-    metrica: '4 turnos',
+    metrica: '...',
     estado: 'Operando',
   },
   {
@@ -117,14 +117,83 @@ const modulosAdministracion = [
     imagen: imgEstadisticas,
     icono: Bell,
     ruta: '/admin/mensajes',
-    metrica: '2 canales',
+    metrica: '...',
     estado: 'Listo',
   },
 ];
 
+const estadoInicialAdmin = {
+  sociosActivos: 0,
+  ingresosMes: 0,
+  margenNeto: 0,
+  porVencer: 0,
+  personalActivo: 0,
+  alertasInventario: 0,
+  tiposMembresia: 0,
+  movimientosFinancieros: 0,
+  sucursales: 0,
+};
+
 const Inicio = () => {
   const configuracion = useConfiguracionApp();
   const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
+  const [resumenAdmin, setResumenAdmin] = useState(estadoInicialAdmin);
+
+  useEffect(() => {
+    Promise.allSettled([
+      reportesApi.resumen(),
+      personalApi.listar(),
+      inventarioApi.listar(),
+      operacionApi.inicioRecepcion(),
+      membresiasApi.tipos(),
+      finanzasApi.listar(),
+      sucursalesApi.listar(),
+    ]).then(([reporte, personal, inventario, recepcion, tipos, finanzas, sucursales]) => {
+      const reporteDatos = reporte.status === 'fulfilled' ? reporte.value : {};
+      const personalDatos = personal.status === 'fulfilled' ? personal.value : [];
+      const inventarioDatos = inventario.status === 'fulfilled' ? inventario.value : [];
+      const recepcionDatos = recepcion.status === 'fulfilled' ? recepcion.value : {};
+      const tiposDatos = tipos.status === 'fulfilled' ? tipos.value : [];
+      const finanzasDatos = finanzas.status === 'fulfilled' ? finanzas.value : [];
+      const sucursalesDatos = sucursales.status === 'fulfilled' ? sucursales.value : [];
+
+      setResumenAdmin({
+        sociosActivos: Number(reporteDatos.totalSocios || recepcionDatos.sociosActivos || 0),
+        ingresosMes: Number(reporteDatos.ingresosTotales || 0),
+        margenNeto: Number(reporteDatos.margenNeto || 0),
+        porVencer: (recepcionDatos.proximosVencimientos || []).length,
+        personalActivo: personalDatos.filter((persona) => persona.activo).length,
+        alertasInventario: inventarioDatos.filter((producto) => Number(producto.stock || 0) <= 5).length,
+        tiposMembresia: tiposDatos.length,
+        movimientosFinancieros: finanzasDatos.length,
+        sucursales: sucursalesDatos.length,
+      });
+    });
+  }, []);
+
+  const indicadoresDinamicos = [
+    { titulo: 'Socios activos', valor: resumenAdmin.sociosActivos, detalle: 'Registrados en base', icono: Users, color: 'text-blue-500' },
+    { titulo: 'Ingresos mes', valorMonto: resumenAdmin.ingresosMes, detalle: `${resumenAdmin.margenNeto}% margen`, icono: DollarSign, color: 'text-green-500' },
+    { titulo: 'Por vencer', valor: resumenAdmin.porVencer, detalle: 'Requieren seguimiento', icono: Calendar, color: 'text-red-500' },
+    { titulo: 'Personal', valor: resumenAdmin.personalActivo, detalle: 'Usuarios activos', icono: UserCheck, color: 'text-orange-500' },
+  ];
+
+  const pulsoDinamico = [
+    { etiqueta: 'Rendimiento', valor: `${resumenAdmin.margenNeto}%`, icono: Gauge },
+    { etiqueta: 'Alertas', valor: String(resumenAdmin.alertasInventario), icono: Bell },
+    { etiqueta: 'Turnos', valor: resumenAdmin.personalActivo ? 'Activo' : '0', icono: ShieldCheck },
+  ];
+
+  const modulosDinamicos = modulosAdministracion.map((modulo) => {
+    if (modulo.titulo === 'Gestion de usuarios') return { ...modulo, metrica: `${resumenAdmin.sociosActivos} socios` };
+    if (modulo.titulo === 'Tipos de membresia') return { ...modulo, metrica: `${resumenAdmin.tiposMembresia} planes` };
+    if (modulo.titulo === 'Reportes financieros') return { ...modulo, metricaMonto: resumenAdmin.ingresosMes };
+    if (modulo.titulo === 'Inventario') return { ...modulo, metrica: `${resumenAdmin.alertasInventario} alertas` };
+    if (modulo.titulo === 'Sucursales y gimnasios') return { ...modulo, metrica: `${resumenAdmin.sucursales} sedes` };
+    if (modulo.titulo === 'Personal de entrenamiento') return { ...modulo, metrica: `${resumenAdmin.personalActivo} activos` };
+    if (modulo.titulo === 'Area de recepcion') return { ...modulo, metrica: `${resumenAdmin.movimientosFinancieros} movimientos` };
+    return modulo;
+  });
 
   return (
     <div className="inicio-admin flex min-h-full w-full flex-col gap-5 text-white sm:gap-6">
@@ -145,7 +214,7 @@ const Inicio = () => {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            {pulsoOperativo.map((pulso) => (
+            {pulsoDinamico.map((pulso) => (
               <PulsoOperativo key={pulso.etiqueta} {...pulso} />
             ))}
           </div>
@@ -153,7 +222,7 @@ const Inicio = () => {
       </section>
 
       <div className="grid [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))] gap-3 sm:gap-4">
-        {indicadoresRapidos.map((indicador) => (
+        {indicadoresDinamicos.map((indicador) => (
           <TarjetaIndicador
             key={indicador.titulo}
             {...indicador}
@@ -163,7 +232,7 @@ const Inicio = () => {
       </div>
 
       <div className="grid flex-grow grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-2">
-        {modulosAdministracion.map((modulo) => (
+        {modulosDinamicos.map((modulo) => (
           <TarjetaModulo
             key={modulo.titulo}
             {...modulo}

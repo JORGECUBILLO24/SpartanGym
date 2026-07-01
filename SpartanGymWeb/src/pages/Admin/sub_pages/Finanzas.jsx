@@ -1,14 +1,25 @@
-import { Fragment, useMemo, useState } from 'react';
-import { 
-  DollarSign, TrendingUp, TrendingDown, CreditCard, 
-  Plus, Save, CheckCircle2, FileText
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import {
+  DollarSign, TrendingUp, TrendingDown, CreditCard,
+  Plus, Save, CheckCircle2, FileText,
+  AlertCircle, RefreshCw, Search, User
 } from 'lucide-react';
 import TarjetaMetrica from '../../../components/TarjetaMetrica';
+import {
+  FacturaMembresiaModal,
+  FacturaMembresiaResumen,
+  descargarFacturaMembresiaPdf,
+  imprimirFacturaMembresia,
+} from '../../../components/FacturaMembresia';
 import {
   formatearMoneda,
   MONEDAS_DISPONIBLES,
   useConfiguracionApp,
 } from '../../../utils/configuracionApp';
+import { finanzasApi, membresiasApi, pagosApi, sociosApi } from '../../../services/api';
+
+const renovacionInicial = { idSocio: '', idTipoMembresia: '', metodoPago: 'Efectivo' };
+const metodosPagoMembresia = ['Efectivo', 'Tarjeta', 'Transferencia'];
 
 const categoriasFinancieras = ['Membresía', 'Suplemento', 'Servicios', 'Mantenimiento'];
 
@@ -24,49 +35,101 @@ const Finanzas = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [errorApi, setErrorApi] = useState('');
   const [filtro, setFiltro] = useState('todos');
   const busqueda = '';
   const configuracion = useConfiguracionApp();
   const monedaActual = MONEDAS_DISPONIBLES.find((moneda) => moneda.codigo === configuracion.currency) || MONEDAS_DISPONIBLES[1];
   const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
 
-  // Datos mock de transacciones
-  const [transacciones, setTransacciones] = useState([
-    { id: '#TRX-9841', usuario: 'Jorge Cubillo', tipo: 'ingreso', concepto: 'Membresía Spartan Anual', monto: 250.00, metodo: 'Tarjeta', categoria: 'Membresía', fecha: 'Hoy, 04:15 PM' },
-    { id: '#TRX-9840', usuario: 'Gimnasio Central', tipo: 'gasto', concepto: 'Mantenimiento de máquinas', monto: 120.00, metodo: 'Transferencia', categoria: 'Mantenimiento', fecha: 'Hoy, 11:30 AM' },
-    { id: '#TRX-9839', usuario: 'Anthony Flores', tipo: 'ingreso', concepto: 'Membresía Premium (3 Meses)', monto: 80.00, metodo: 'Efectivo', categoria: 'Membresía', fecha: 'Ayer' },
-  ]);
+  const [transacciones, setTransacciones] = useState([]);
+  const ingresos = transacciones.filter((trx) => trx.tipo === 'ingreso').reduce((total, trx) => total + Number(trx.monto || 0), 0);
+  const egresos = transacciones.filter((trx) => trx.tipo === 'gasto').reduce((total, trx) => total + Number(trx.monto || 0), 0);
+
+  // Renovacion de membresia + factura
+  const [socios, setSocios] = useState([]);
+  const [tiposMembresia, setTiposMembresia] = useState([]);
+  const [renovacion, setRenovacion] = useState(renovacionInicial);
+  const [busquedaSocio, setBusquedaSocio] = useState('');
+  const [facturaMembresia, setFacturaMembresia] = useState(null);
+  const [facturaModalAbierta, setFacturaModalAbierta] = useState(false);
+  const [descargandoFactura, setDescargandoFactura] = useState(false);
+  const [renovando, setRenovando] = useState(false);
+  const [mensajeRenovacion, setMensajeRenovacion] = useState(null);
+
+  const cargarTransacciones = async () => {
+    setTransacciones(await finanzasApi.listar());
+  };
+
+  const cargarDatosRenovacion = async () => {
+    const [sociosData, tipos] = await Promise.all([sociosApi.listar(), membresiasApi.tipos()]);
+    setSocios(sociosData);
+    setTiposMembresia(tipos);
+  };
+
+  useEffect(() => {
+    Promise.resolve()
+      .then(cargarTransacciones)
+      .catch(() => setErrorApi('No se pudo cargar finanzas desde la API.'));
+    cargarDatosRenovacion().catch(() => setMensajeRenovacion({ tipo: 'error', texto: 'No se pudieron cargar socios o membresias desde la API.' }));
+  }, []);
+
+  const sociosFiltrados = socios.filter((socio) =>
+    `${socio.nombres || ''} ${socio.apellidos || ''}`.toLowerCase().includes(busquedaSocio.toLowerCase().trim())
+  );
+
+  const renovarMembresia = async (evento) => {
+    evento.preventDefault();
+    setRenovando(true);
+    setMensajeRenovacion(null);
+
+    try {
+      const factura = await pagosApi.renovar({
+        idSocio: renovacion.idSocio,
+        idTipoMembresia: Number(renovacion.idTipoMembresia),
+        metodoPago: renovacion.metodoPago,
+      });
+      setFacturaMembresia(factura);
+      setFacturaModalAbierta(true);
+      setRenovacion(renovacionInicial);
+      setBusquedaSocio('');
+      setMensajeRenovacion({ tipo: 'exito', texto: `Membresia renovada. Factura ${factura.numeroFactura} generada.` });
+      await cargarTransacciones();
+    } catch (error) {
+      setMensajeRenovacion({ tipo: 'error', texto: error.message || 'No se pudo renovar la membresia.' });
+    } finally {
+      setRenovando(false);
+    }
+  };
 
   const handleChange = (e) => {
     setNuevoMovimiento({ ...nuevoMovimiento, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorApi('');
     
-    // Simulación de guardado
-    setTimeout(() => {
-      const nuevaTrx = {
-        id: `#TRX-${Math.floor(Math.random() * 9000) + 1000}`,
-        usuario: 'Administrador',
+    try {
+      await finanzasApi.crear({
         tipo: nuevoMovimiento.tipo,
         concepto: nuevoMovimiento.concepto,
-        monto: parseFloat(nuevoMovimiento.monto),
+        monto: Number(nuevoMovimiento.monto),
         metodo: nuevoMovimiento.metodo,
         categoria: nuevoMovimiento.categoria,
-        fecha: 'Ahora mismo'
-      };
-      
-      setTransacciones([nuevaTrx, ...transacciones]);
-      setIsSubmitting(false);
+      });
+      await cargarTransacciones();
       setIsSaved(true);
-      
       setTimeout(() => {
         setNuevoMovimiento({ concepto: '', monto: '', tipo: 'ingreso', metodo: 'Efectivo', categoria: 'Membresía' });
         setIsSaved(false);
       }, 2000);
-    }, 1000);
+    } catch {
+      setErrorApi('No se pudo guardar el movimiento en la API.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const transaccionesFiltradas = transacciones.filter(t => {
@@ -95,11 +158,16 @@ const Finanzas = () => {
       
       {/* MÉTRICAS SUPERIORES */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <TarjetaMetrica titulo="Balance" valor={formatearMonto(4114.5)} icono={DollarSign} color="text-gray-400" detalle="+12%" />
-        <TarjetaMetrica titulo="Ingresos" valor={formatearMonto(4850)} icono={TrendingUp} color="text-green-500" detalle="84 Trx" />
-        <TarjetaMetrica titulo="Egresos" valor={formatearMonto(735.5)} icono={TrendingDown} color="text-red-500" detalle="Gastos" />
-        <TarjetaMetrica titulo="Pendiente" valor={formatearMonto(320)} icono={CreditCard} color="text-orange-500" detalle="17 Socios" />
+        <TarjetaMetrica titulo="Balance" valor={formatearMonto(ingresos - egresos)} icono={DollarSign} color="text-gray-400" detalle="Neto" />
+        <TarjetaMetrica titulo="Ingresos" valor={formatearMonto(ingresos)} icono={TrendingUp} color="text-green-500" detalle={`${transacciones.filter((trx) => trx.tipo === 'ingreso').length} Trx`} />
+        <TarjetaMetrica titulo="Egresos" valor={formatearMonto(egresos)} icono={TrendingDown} color="text-red-500" detalle="Gastos" />
+        <TarjetaMetrica titulo="Movimientos" valor={transacciones.length} icono={CreditCard} color="text-orange-500" detalle="Registros" />
       </div>
+      {errorApi && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">
+          {errorApi}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 rounded-2xl border border-white/10 bg-[#090909] p-4 shadow-2xl sm:grid-cols-2 xl:grid-cols-4">
         {resumenCategorias.map((item) => (
@@ -111,8 +179,123 @@ const Finanzas = () => {
         ))}
       </div>
 
+      {/* RENOVAR MEMBRESÍA + FACTURA */}
+      <section className="rounded-2xl border border-white/10 bg-[#090909] p-6 shadow-2xl">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-red-600/10 p-2 text-red-500">
+              <User size={20} />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold uppercase tracking-wider text-white">Renovar Membresía</h4>
+              <p className="text-[11px] text-gray-500">Busca al socio, elige el plan y genera la factura.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={cargarDatosRenovacion}
+            className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[10px] font-black uppercase text-gray-300 transition-colors hover:bg-white/10"
+          >
+            <RefreshCw size={13} /> Actualizar
+          </button>
+        </div>
+
+        {mensajeRenovacion && (
+          <div className={`mb-4 flex items-center gap-2 rounded-xl border p-3 text-xs font-bold ${
+            mensajeRenovacion.tipo === 'exito'
+              ? 'border-green-500/20 bg-green-500/10 text-green-400'
+              : 'border-red-500/20 bg-red-500/10 text-red-400'
+          }`}>
+            {mensajeRenovacion.tipo === 'exito' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+            {mensajeRenovacion.texto}
+          </div>
+        )}
+
+        {facturaMembresia && (
+          <div className="mb-4">
+            <FacturaMembresiaResumen
+              factura={facturaMembresia}
+              formatearMonto={formatearMonto}
+              onAbrir={() => setFacturaModalAbierta(true)}
+            />
+          </div>
+        )}
+
+        <form onSubmit={renovarMembresia} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div>
+            <label className="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Buscar socio por nombre</label>
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-2.5 text-gray-600" size={14} />
+              <input
+                type="text"
+                value={busquedaSocio}
+                onChange={(e) => setBusquedaSocio(e.target.value)}
+                placeholder="Escribe el nombre del socio..."
+                className="w-full bg-[#111] border border-white/5 rounded-xl py-2 pl-9 pr-4 text-xs outline-none focus:border-red-600 transition-all text-white"
+              />
+            </div>
+            <select
+              required
+              value={renovacion.idSocio}
+              onChange={(e) => setRenovacion({ ...renovacion, idSocio: e.target.value })}
+              className="w-full bg-[#111] border border-white/5 rounded-xl py-2 px-3 text-xs outline-none focus:border-red-600 cursor-pointer text-white"
+              size={5}
+            >
+              {sociosFiltrados.length === 0 && <option value="" disabled>No hay socios que coincidan</option>}
+              {sociosFiltrados.map((socio) => (
+                <option key={socio.id} value={socio.id}>{socio.nombres} {socio.apellidos}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Tipo de membresía</label>
+              <select
+                required
+                value={renovacion.idTipoMembresia}
+                onChange={(e) => setRenovacion({ ...renovacion, idTipoMembresia: e.target.value })}
+                className="w-full bg-[#111] border border-white/5 rounded-xl py-2 px-3 text-xs outline-none focus:border-red-600 cursor-pointer text-white"
+              >
+                <option value="">Selecciona plan</option>
+                {tiposMembresia.map((tipo) => (
+                  <option key={tipo.id} value={tipo.id}>{tipo.nombre} - {formatearMonto(tipo.precio)}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase font-bold mb-1.5 block">Método de pago</label>
+              <div className="flex gap-2">
+                {metodosPagoMembresia.map((metodo) => (
+                  <button
+                    key={metodo}
+                    type="button"
+                    onClick={() => setRenovacion({ ...renovacion, metodoPago: metodo })}
+                    className={`flex-1 py-2 rounded-lg border text-[10px] font-bold transition-all ${
+                      renovacion.metodoPago === metodo ? 'border-red-600 bg-red-600/10 text-white' : 'border-white/5 bg-[#111] text-gray-500'
+                    }`}
+                  >
+                    {metodo}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={renovando || !renovacion.idSocio || !renovacion.idTipoMembresia}
+              className="mt-auto flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3 text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-red-900/20 transition-all hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <FileText size={16} />
+              {renovando ? 'Procesando...' : 'Renovar y generar factura'}
+            </button>
+          </div>
+        </form>
+      </section>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* COLUMNA IZQUIERDA: TABLA DE HISTORIAL */}
         <div className="lg:col-span-2 bg-[#090909] border border-white/10 rounded-2xl p-6 shadow-2xl">
           <div className="flex justify-between items-center mb-6">
@@ -149,7 +332,7 @@ const Finanzas = () => {
                       <tr key={t.id} className="hover:bg-white/[0.02]">
                         <td className="p-4">
                           <p className="font-bold text-white break-words max-w-[180px]">{t.concepto}</p>
-                          <span className="text-[10px] text-gray-500">{t.fecha}</span>
+                          <span className="text-[10px] text-gray-500">{t.fechaTransaccion ? new Date(t.fechaTransaccion).toLocaleString('es-NI') : 'N/A'}</span>
                         </td>
                         <td className="p-4">
                           <span className="px-2 py-0.5 bg-white/5 rounded text-[9px] font-bold text-gray-400">{t.metodo}</span>
@@ -267,6 +450,25 @@ const Finanzas = () => {
         </div>
 
       </div>
+
+      {facturaMembresia && facturaModalAbierta && (
+        <FacturaMembresiaModal
+          factura={facturaMembresia}
+          configuracion={configuracion}
+          formatearMonto={formatearMonto}
+          descargando={descargandoFactura}
+          onClose={() => setFacturaModalAbierta(false)}
+          onPrint={() => imprimirFacturaMembresia(facturaMembresia, configuracion, formatearMonto)}
+          onDownload={async () => {
+            setDescargandoFactura(true);
+            try {
+              await descargarFacturaMembresiaPdf(facturaMembresia, configuracion, formatearMonto);
+            } finally {
+              setDescargandoFactura(false);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -20,4 +20,7 @@ public class Asistencia {
 
     @Column(name = "fecha_hora", updatable = false)
     private LocalDateTime fechaHora = LocalDateTime.now();
+
+    @Column(name = "qr_token_hash", length = 64, unique = true)
+    private String qrTokenHash;
 }
