@@ -42,6 +42,21 @@ interface SpartanGymApi {
         @Path("socioId") socioId: String
     ): Response<List<ControlBiometricoResponse>>
 
+    @POST("api/progreso")
+    suspend fun registrarProgreso(
+        @Body request: RegistroProgresoRequest
+    ): Response<ControlBiometricoResponse>
+
+    @POST("api/pagos/mi-membresia")
+    suspend fun renovarMiMembresia(
+        @Body request: CompraMembresiaAppRequest
+    ): Response<FacturaMembresiaAppResponse>
+
+    @POST("api/ventas/productos/mi-compra")
+    suspend fun comprarProducto(
+        @Body request: CompraProductoAppRequest
+    ): Response<FacturaVentaAppResponse>
+
     @GET("api/configuracion")
     suspend fun obtenerConfiguracion(): Response<AppConfigResponse>
 

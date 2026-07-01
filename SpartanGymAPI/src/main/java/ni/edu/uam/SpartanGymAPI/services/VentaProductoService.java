@@ -136,6 +136,35 @@ public class VentaProductoService {
         return toResponse(ventaGuardada);
     }
 
+    // Compra desde la app: el socio (del token) reserva un producto de su sucursal para
+    // retirarlo en recepcion. Reutiliza toda la logica de venta (stock, impuesto, factura).
+    @Transactional
+    public VentaProductoResponse comprarComoSocio(VentaProductoDetalleRequest detalle, Authentication auth) {
+        if (auth == null || auth.getName() == null) {
+            throw new RuntimeException("Usuario no autenticado");
+        }
+        Usuario usuario = usuarioRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        Socio socio = socioRepository.findById(usuario.getId())
+                .orElseThrow(() -> new RuntimeException("Perfil de socio no encontrado"));
+        if (socio.getSucursal() == null) {
+            throw new RuntimeException("Tu perfil no tiene una sucursal asignada. Acércate a recepción.");
+        }
+        if (detalle == null || detalle.getProductoId() == null) {
+            throw new RuntimeException("Selecciona un producto para comprar");
+        }
+
+        VentaProductoRequest request = new VentaProductoRequest();
+        request.setClienteEventual(false);
+        request.setSocioId(socio.getUsuarioId());
+        request.setSucursalId(socio.getSucursal().getId());
+        request.setMetodoPago("Pendiente en recepción");
+        request.setObservaciones("Compra desde la app - retiro en recepción");
+        request.setDetalles(List.of(detalle));
+
+        return vender(request, auth);
+    }
+
     private Usuario obtenerVendedor(Authentication auth) {
         if (auth == null || auth.getName() == null) {
             return null;
