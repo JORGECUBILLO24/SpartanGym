@@ -16,6 +16,7 @@ import {
   User,
   UserRoundCog,
   Users,
+  X,
 } from 'lucide-react';
 import { guardarDatoLocal, leerDatoLocal } from '../../../utils/almacenamientoLocal';
 import {
@@ -33,6 +34,9 @@ import {
   personalCreadoPorCuentaActual,
 } from '../../../utils/personalCompartido';
 import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
+import { finanzasApi, operacionApi, personalApi, sociosApi, sucursalesApi, asistenciasApi } from '../../../services/api';
+import { useSucursalGlobal } from '../../../context/SucursalContext';
+import QRCode from 'qrcode';
 
 const CLAVE_PERFIL_ADMIN = 'spartanGym.adminProfile';
 
@@ -44,13 +48,6 @@ const perfilPorDefecto = {
   sucursal: 'SpartanGym Central',
   ubicacion: 'Managua, Nicaragua',
 };
-
-const gimnasiosAdministrados = gimnasiosDisponibles;
-
-const conteoUsuariosPorSucursal = gimnasiosAdministrados.map((gimnasio) => ({
-  sucursal: gimnasio.nombre,
-  usuarios: gimnasio.usuarios,
-}));
 
 const formatearPersonaPerfil = (persona, cuenta) => ({
   id: persona.id,
@@ -82,8 +79,58 @@ const PerfilAdmin = () => {
   const [guardado, setGuardado] = useState(false);
   const [mensajePersonal, setMensajePersonal] = useState(null);
   const [cuentaActual, setCuentaActual] = useState(() => leerCuentaActual());
-  const [gimnasioActivoId, setGimnasioActivoId] = useState(gimnasiosAdministrados[0].id);
+  const [gimnasiosAdministrados, setGimnasiosAdministrados] = useState([]);
+  const [cargandoGimnasios, setCargandoGimnasios] = useState(true);
+  const [gimnasioActivoId, setGimnasioActivoId] = useState(null);
+  const { sucursalActivaId, setSucursalActivaId } = useSucursalGlobal();
+  const [gimnasioParaGlobal, setGimnasioParaGlobal] = useState(null);
   const [personalCompartido, setPersonalCompartido] = useState(() => leerPersonalCompartido());
+  const [modalValidacionQr, setModalValidacionQr] = useState(false);
+
+  useEffect(() => {
+    const cargarGimnasios = async () => {
+      try {
+        const [data, socios] = await Promise.all([
+          sucursalesApi.listar(),
+          sociosApi.listar({ ignoreSucursal: true })
+        ]);
+        
+        const countPorSucursal = socios.reduce((acc, socio) => {
+          const sucursalId = socio.sucursalId || socio.sucursal?.id || socio.sucursal; // Handle different property names
+          if (sucursalId) {
+            acc[sucursalId] = (acc[sucursalId] || 0) + 1;
+          }
+          // Also match by name if the API returns name instead of ID
+          if (socio.sucursal) {
+            acc[socio.sucursal] = (acc[socio.sucursal] || 0) + 1;
+          }
+          return acc;
+        }, {});
+
+        const gyms = data.map(sucursal => ({
+          id: sucursal.id,
+          nombre: sucursal.nombre,
+          ciudad: sucursal.ubicacion || 'Sin ciudad',
+          estado: sucursal.estado || 'Operativa',
+          usuarios: sucursal.usuarios || countPorSucursal[sucursal.id] || countPorSucursal[sucursal.nombre] || 0,
+          personal: sucursal.personal || 0,
+          efectivoDia: sucursal.efectivoDia || 0,
+          ventas: sucursal.ventas || 0,
+          asistencias: sucursal.asistencias || 0,
+          pagosPendientes: sucursal.pagosPendientes || 0,
+        }));
+        setGimnasiosAdministrados(gyms);
+        if (gyms.length > 0) {
+          setGimnasioActivoId(gyms[0].id);
+        }
+      } catch (error) {
+        console.error("Error al cargar sucursales:", error);
+      } finally {
+        setCargandoGimnasios(false);
+      }
+    };
+    cargarGimnasios();
+  }, []);
 
   useEffect(() => {
     const actualizarPersonal = () => setPersonalCompartido(leerPersonalCompartido());
@@ -106,17 +153,24 @@ const PerfilAdmin = () => {
     () => obtenerInicialesCuenta({ name: perfil.nombre, email: perfil.correo }, 'AD'),
     [perfil.correo, perfil.nombre]
   );
+  const conteoUsuariosPorSucursal = useMemo(
+    () => gimnasiosAdministrados.map((gimnasio) => ({
+      sucursal: gimnasio.nombre,
+      usuarios: gimnasio.usuarios,
+    })),
+    [gimnasiosAdministrados]
+  );
   const totalUsuarios = useMemo(
     () => conteoUsuariosPorSucursal.reduce((total, sucursal) => total + sucursal.usuarios, 0),
-    []
+    [conteoUsuariosPorSucursal]
   );
   const usuariosMaximos = useMemo(
-    () => Math.max(...conteoUsuariosPorSucursal.map((sucursal) => sucursal.usuarios)),
-    []
+    () => conteoUsuariosPorSucursal.length > 0 ? Math.max(...conteoUsuariosPorSucursal.map((sucursal) => sucursal.usuarios)) : 0,
+    [conteoUsuariosPorSucursal]
   );
   const gimnasioActivo = useMemo(
     () => gimnasiosAdministrados.find((gimnasio) => gimnasio.id === gimnasioActivoId) || gimnasiosAdministrados[0],
-    [gimnasioActivoId]
+    [gimnasioActivoId, gimnasiosAdministrados]
   );
   const administradoresCreados = useMemo(
     () => personalCompartido
@@ -262,6 +316,14 @@ const PerfilAdmin = () => {
 
           <div className="mt-8 flex justify-end border-t border-white/5 pt-5">
             <button
+            type="button"
+            onClick={() => setModalValidacionQr(true)}
+            className="flex items-center gap-2 px-6 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-all duration-300 font-medium mr-4"
+          >
+            <Activity size={20} className="text-red-500" />
+            Validar por QR
+          </button>
+            <button
               type="submit"
               disabled={guardando}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-7 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-red-900/20 transition-all hover:-translate-y-0.5 hover:bg-red-700 disabled:cursor-wait disabled:opacity-60"
@@ -283,17 +345,31 @@ const PerfilAdmin = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {gimnasiosAdministrados.map((gimnasio) => (
-              <TarjetaGimnasio
-                key={gimnasio.nombre}
-                gimnasio={gimnasio}
-                activo={gimnasio.id === gimnasioActivoId}
-                onClick={() => setGimnasioActivoId(gimnasio.id)}
-              />
-            ))}
+            {cargandoGimnasios ? (
+              <div className="col-span-2 text-center text-sm text-gray-500 py-4">Cargando sucursales...</div>
+            ) : gimnasiosAdministrados.length > 0 ? (
+              gimnasiosAdministrados.map((gimnasio) => (
+                <TarjetaGimnasio
+                  key={gimnasio.id}
+                  gimnasio={gimnasio}
+                  activo={gimnasio.id === gimnasioActivoId}
+                  esGlobal={gimnasio.id === sucursalActivaId}
+                  onClick={() => setGimnasioActivoId(gimnasio.id)}
+                  onSeleccionarGlobal={() => setGimnasioParaGlobal(gimnasio)}
+                />
+              ))
+            ) : (
+              <div className="col-span-2 text-center text-sm text-gray-500 py-4">No hay sucursales registradas</div>
+            )}
           </div>
 
-          <PanelGimnasioGlobal gimnasio={gimnasioActivo} />
+          {gimnasioActivo ? (
+            <PanelGimnasioGlobal gimnasio={gimnasioActivo} />
+          ) : !cargandoGimnasios && (
+            <div className="mt-5 rounded-2xl border border-white/5 bg-[#111]/60 p-4 text-center text-gray-500 text-sm">
+              Seleccione un gimnasio para ver los detalles
+            </div>
+          )}
         </section>
 
         <section className="tarjeta-perfil rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6">
@@ -350,6 +426,141 @@ const PerfilAdmin = () => {
           onEliminar={eliminarPersona}
         />
       </div>
+
+      {gimnasioParaGlobal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0a0a0a] p-6 shadow-2xl">
+            <h3 className="text-xl font-black text-white">¿Ver en Dashboard global?</h3>
+            <p className="mt-3 text-sm font-medium text-gray-400">
+              Al confirmar, el dashboard, los reportes y todas las analíticas se filtrarán exclusivamente para <strong className="text-white">{gimnasioParaGlobal.nombre}</strong>.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setGimnasioParaGlobal(null)}
+                className="rounded-xl px-4 py-2 text-sm font-bold text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setSucursalActivaId(gimnasioParaGlobal.id);
+                  setGimnasioParaGlobal(null);
+                }}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-700"
+              >
+                Confirmar y Filtrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal de Validacion QR */}
+      {modalValidacionQr && (
+        <ModalValidacionQr onClose={() => setModalValidacionQr(false)} />
+      )}
+    </div>
+  );
+};
+
+const ModalValidacionQr = ({ onClose }) => {
+  const [qrBase64, setQrBase64] = useState(null);
+  const [qrSesion, setQrSesion] = useState(null);
+  const [estadoQr, setEstadoQr] = useState('pendiente');
+  const [mensajeQr, setMensajeQr] = useState('Escanea este codigo con la App Spartan para registrar tu entrada.');
+  const [cargandoQr, setCargandoQr] = useState(false);
+
+  const generarQr = async () => {
+    setCargandoQr(true);
+    try {
+      const response = await asistenciasApi.qrValidacion();
+      const qrDataUrl = await QRCode.toDataURL(response.token, {
+        width: 300,
+        margin: 2,
+        color: { dark: '#FFFFFF', light: '#00000000' }
+      });
+      setQrBase64(qrDataUrl);
+      setQrSesion(response);
+      setEstadoQr('pendiente');
+      setMensajeQr('Escanea este codigo para validar el ingreso.');
+    } catch (error) {
+      console.error('Error al generar QR:', error);
+      setMensajeQr('Error al generar el codigo QR.');
+      setEstadoQr('error');
+    } finally {
+      setCargandoQr(false);
+    }
+  };
+
+  const consultarEstadoQr = async () => {
+    if (!qrSesion?.token || estadoQr !== 'pendiente' || cargandoQr) return;
+    try {
+      const respuesta = await asistenciasApi.estadoQrValidacionPorToken(qrSesion.token);
+      if (respuesta?.estado === 'Aprobado') {
+        setEstadoQr('Aprobado');
+        setMensajeQr('Ingreso validado exitosamente.');
+      } else if (respuesta?.estado === 'Rechazado' || respuesta?.estado === 'Expirado') {
+        setEstadoQr('Rechazado');
+        setMensajeQr(respuesta.mensaje || 'QR invalido o expirado.');
+      }
+    } catch (error) {
+      // Ignorar 401 si expiro el QR
+    }
+  };
+
+  useEffect(() => {
+    generarQr();
+  }, []);
+
+  useEffect(() => {
+    const intervalo = window.setInterval(consultarEstadoQr, 2500);
+    return () => window.clearInterval(intervalo);
+  }, [qrSesion, estadoQr, cargandoQr]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="bg-[#111111] border border-gray-800 rounded-2xl p-6 w-full max-w-sm flex flex-col items-center relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+        >
+          <X size={24} />
+        </button>
+        <div className="bg-gradient-to-br from-red-600 to-red-900 p-4 rounded-full mb-4 shadow-lg shadow-red-900/50">
+          <Activity className="w-8 h-8 text-white" />
+        </div>
+        <h3 className="text-xl font-bold text-white mb-2">Validacion por QR</h3>
+        <p className="text-gray-400 text-center text-sm mb-6 h-10">
+          {mensajeQr}
+        </p>
+
+        <div className="bg-[#1a1a1a] p-4 rounded-xl border border-gray-800 mb-6 flex items-center justify-center min-h-[250px] w-full">
+          {cargandoQr ? (
+            <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+          ) : qrBase64 ? (
+            <img src={qrBase64} alt="Codigo QR de Validacion" className="w-48 h-48 rounded-lg" />
+          ) : null}
+        </div>
+
+        {estadoQr === 'Aprobado' && (
+          <div className="flex items-center gap-2 text-green-500 bg-green-500/10 px-4 py-2 rounded-lg w-full justify-center">
+            <CheckCircle2 size={20} />
+            <span className="font-medium">!Validado con Exito!</span>
+          </div>
+        )}
+        {(estadoQr === 'Rechazado' || estadoQr === 'error') && (
+          <div className="flex items-center gap-2 text-red-500 bg-red-500/10 px-4 py-2 rounded-lg w-full justify-center">
+            <AlertCircle size={20} />
+            <span className="font-medium">Error al Validar</span>
+          </div>
+        )}
+
+        <button
+          onClick={generarQr}
+          className="mt-6 w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-medium transition-colors"
+        >
+          Generar Nuevo QR
+        </button>
+      </div>
     </div>
   );
 };
@@ -396,7 +607,7 @@ const TarjetaResumenPerfil = ({ titulo, valor, detalle, icono: Icono, color }) =
   </article>
 );
 
-const TarjetaGimnasio = ({ gimnasio, activo, onClick }) => (
+const TarjetaGimnasio = ({ gimnasio, activo, esGlobal, onClick, onSeleccionarGlobal }) => (
   <button
     type="button"
     onClick={onClick}
@@ -427,6 +638,23 @@ const TarjetaGimnasio = ({ gimnasio, activo, onClick }) => (
         <p className="text-[9px] font-black uppercase text-gray-500">Personal</p>
         <p className="mt-1 text-lg font-black text-white">{gimnasio.personal}</p>
       </div>
+    </div>
+    <div className="mt-4 border-t border-white/5 pt-4">
+      {esGlobal ? (
+        <div className="w-full rounded-xl bg-red-500/10 border border-red-500/20 py-2 text-center text-[10px] font-black uppercase tracking-widest text-red-500">
+          Activa Globalmente
+        </div>
+      ) : (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onSeleccionarGlobal();
+          }}
+          className="w-full rounded-xl bg-white/5 py-2 text-xs font-bold text-white transition-all hover:bg-red-600"
+        >
+          Ver en Dashboard
+        </button>
+      )}
     </div>
   </button>
 );

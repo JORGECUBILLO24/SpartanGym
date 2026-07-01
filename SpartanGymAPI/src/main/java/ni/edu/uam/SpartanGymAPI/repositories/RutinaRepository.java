@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface RutinaRepository extends JpaRepository<Rutina, UUID> {
     List<Rutina> findBySocioUsuarioIdOrderByFechaAsignacionDesc(UUID socioId);
+
+    List<Rutina> findByEntrenadorUsuarioIdOrderByFechaAsignacionDesc(UUID entrenadorId);
 }

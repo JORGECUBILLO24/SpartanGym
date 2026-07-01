@@ -1,111 +1,103 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  AlertCircle,
   Bell,
   CheckCircle2,
   Clock,
   Mail,
   Send,
-  Smartphone,
   Tag,
   Users,
 } from 'lucide-react';
-import {
-  formatearHoraMensaje,
-  guardarMensajeGlobal,
-  leerMensajesGlobales,
-} from '../../../utils/mensajesGlobales';
-import { obtenerEtiquetaCuentaActual } from '../../../utils/cuentaActual';
-
-const canalesDisponibles = [
-  { id: 'email', label: 'Correo', icon: Mail, detalle: 'Bandeja principal' },
-  { id: 'sms', label: 'SMS', icon: Smartphone, detalle: 'Mensaje corto' },
-];
+import { notificacionesApi } from '../../../services/api';
 
 const categoriasMensaje = ['General', 'Promocion', 'Pagos', 'Membresias', 'Emergencia'];
 
 const mensajeVacio = {
-  asunto: '',
+  titulo: '',
   mensaje: '',
-  categoria: 'General',
-  canales: ['email'],
+  tipo: 'General',
 };
 
-const obtenerCuentaActual = () => {
-  return obtenerEtiquetaCuentaActual();
-};
+const formatearHora = (fechaEntrada) => {
+  const fecha = fechaEntrada ? new Date(fechaEntrada) : new Date();
+  if (Number.isNaN(fecha.getTime())) return 'Ahora';
 
-const crearResumenEntrega = (canales) => ({
-  email: canales.includes('email') ? '1,248 correos' : 'No incluido',
-  sms: canales.includes('sms') ? '1,032 SMS' : 'No incluido',
-});
+  return new Intl.DateTimeFormat('es-NI', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(fecha);
+};
 
 const MensajesGlobales = () => {
   const [formulario, setFormulario] = useState(mensajeVacio);
-  const [historial, setHistorial] = useState(() => leerMensajesGlobales());
+  const [historial, setHistorial] = useState([]);
   const [enviando, setEnviando] = useState(false);
-  const [enviado, setEnviado] = useState(false);
+  const [mensajeEstado, setMensajeEstado] = useState(null);
 
-  const categoriasResumen = useMemo(() => {
-    return categoriasMensaje.map((categoria) => ({
-      categoria,
-      total: historial.filter((mensaje) => mensaje.categoria === categoria).length,
-    }));
-  }, [historial]);
-
-  const alternarCanal = (canal) => {
-    setFormulario((actual) => {
-      const canales = actual.canales.includes(canal)
-        ? actual.canales.filter((item) => item !== canal)
-        : [...actual.canales, canal];
-
-      return {
-        ...actual,
-        canales: canales.length ? canales : [canal],
-      };
-    });
+  const cargarHistorial = async () => {
+    setHistorial(await notificacionesApi.listarGlobales());
   };
 
-  const enviarMensaje = (evento) => {
+  useEffect(() => {
+    Promise.resolve()
+      .then(cargarHistorial)
+      .catch(() => {
+        setMensajeEstado({ tipo: 'error', texto: 'No se pudieron cargar los mensajes globales desde la API.' });
+      });
+  }, []);
+
+  const categoriasResumen = useMemo(() => (
+    categoriasMensaje.map((categoria) => ({
+      categoria,
+      total: historial.filter((mensaje) => mensaje.tipo === categoria).length,
+    }))
+  ), [historial]);
+
+  const enviarMensaje = async (evento) => {
     evento.preventDefault();
     setEnviando(true);
-    setEnviado(false);
+    setMensajeEstado(null);
 
-    setTimeout(() => {
-      const nuevoMensaje = {
-        id: `MSG-${Date.now()}`,
-        titulo: formulario.asunto.trim(),
+    try {
+      await notificacionesApi.crearGlobal({
+        tipo: formulario.tipo,
+        titulo: formulario.titulo.trim(),
         mensaje: formulario.mensaje.trim(),
-        categoria: formulario.categoria,
-        canales: formulario.canales,
-        audiencia: 'Todos los usuarios',
-        estado: 'Enviado',
-        creadoPor: obtenerCuentaActual(),
-        creadoEn: new Date().toISOString(),
-        entregas: crearResumenEntrega(formulario.canales),
-      };
-
-      const mensajesActualizados = guardarMensajeGlobal(nuevoMensaje);
-      setHistorial(mensajesActualizados);
+      });
       setFormulario(mensajeVacio);
+      await cargarHistorial();
+      setMensajeEstado({ tipo: 'exito', texto: 'Mensaje global publicado y enviado por correo a los usuarios activos.' });
+    } catch {
+      setMensajeEstado({ tipo: 'error', texto: 'No se pudo enviar el mensaje. Verifica tu sesion admin.' });
+    } finally {
       setEnviando(false);
-      setEnviado(true);
-      setTimeout(() => setEnviado(false), 2600);
-    }, 900);
+    }
   };
 
   return (
     <div className="flex min-h-screen flex-col gap-6 pb-10 text-white">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <ResumenCard icon={Users} title="Audiencia" value="Todos" detail="Usuarios activos" />
-        <ResumenCard icon={Mail} title="Correo" value="1,248" detail="Contactos disponibles" />
-        <ResumenCard icon={Smartphone} title="SMS" value="1,032" detail="Telefonos disponibles" />
+        <ResumenCard icon={Users} title="Audiencia" value="Todos" detail="Usuarios con acceso" />
+        <ResumenCard icon={Mail} title="Canal" value="App + correo" detail="Notificacion y email" />
+        <ResumenCard icon={Bell} title="Historial" value={historial.length} detail="Mensajes globales" />
       </div>
 
+      {mensajeEstado && (
+        <div className={`flex items-center gap-2 rounded-xl border p-3 text-xs font-bold ${
+          mensajeEstado.tipo === 'exito'
+            ? 'border-green-500/20 bg-green-500/10 text-green-400'
+            : 'border-red-500/20 bg-red-500/10 text-red-400'
+        }`}>
+          {mensajeEstado.tipo === 'exito' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+          {mensajeEstado.texto}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <form
-          onSubmit={enviarMensaje}
-          className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6 lg:p-8"
-        >
+        <form onSubmit={enviarMensaje} className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6 lg:p-8">
           <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-60" />
 
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -113,10 +105,6 @@ const MensajesGlobales = () => {
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-400">Comunicaciones</p>
               <h2 className="mt-1 text-xl font-black text-white">Mensaje global</h2>
             </div>
-            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1.5 text-[10px] font-bold uppercase text-green-500">
-              <CheckCircle2 size={12} />
-              {enviado ? 'Enviado' : 'Listo'}
-            </span>
           </div>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -124,8 +112,8 @@ const MensajesGlobales = () => {
               <label className="mb-2 block text-xs font-bold uppercase text-gray-500">Asunto</label>
               <input
                 required
-                value={formulario.asunto}
-                onChange={(evento) => setFormulario({ ...formulario, asunto: evento.target.value })}
+                value={formulario.titulo}
+                onChange={(evento) => setFormulario({ ...formulario, titulo: evento.target.value })}
                 placeholder="Ej. Horario especial de esta semana"
                 className="w-full rounded-xl border border-white/10 bg-[#111] px-4 py-3 text-sm text-white outline-none transition-all focus:border-red-600"
               />
@@ -136,8 +124,8 @@ const MensajesGlobales = () => {
               <div className="relative">
                 <Tag className="absolute left-3 top-3.5 text-gray-600" size={16} />
                 <select
-                  value={formulario.categoria}
-                  onChange={(evento) => setFormulario({ ...formulario, categoria: evento.target.value })}
+                  value={formulario.tipo}
+                  onChange={(evento) => setFormulario({ ...formulario, tipo: evento.target.value })}
                   className="w-full cursor-pointer appearance-none rounded-xl border border-white/10 bg-[#111] py-3 pl-10 pr-4 text-sm text-white outline-none transition-all focus:border-red-600"
                 >
                   {categoriasMensaje.map((categoria) => (
@@ -153,69 +141,28 @@ const MensajesGlobales = () => {
             <textarea
               required
               rows={6}
-              maxLength={280}
+              maxLength={500}
               value={formulario.mensaje}
               onChange={(evento) => setFormulario({ ...formulario, mensaje: evento.target.value })}
               placeholder="Escribe el mensaje que recibiran los usuarios."
               className="w-full resize-none rounded-xl border border-white/10 bg-[#111] px-4 py-3 text-sm leading-6 text-white outline-none transition-all focus:border-red-600"
             />
             <div className="mt-2 flex justify-end text-[10px] font-bold text-gray-600">
-              {formulario.mensaje.length}/280
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <label className="mb-2 block text-xs font-bold uppercase text-gray-500">Canales de entrega</label>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {canalesDisponibles.map(({ id, label, icon: Icon, detalle }) => {
-                const activo = formulario.canales.includes(id);
-
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={activo}
-                    onClick={() => alternarCanal(id)}
-                    className={`flex items-center justify-between rounded-xl border p-4 text-left transition-all duration-300 ${
-                      activo
-                        ? 'border-red-500/60 bg-red-600/10 text-white shadow-lg shadow-red-950/20'
-                        : 'border-white/10 bg-[#111] text-gray-400 hover:-translate-y-0.5 hover:border-white/20 hover:text-white'
-                    }`}
-                  >
-                    <span className="flex items-center gap-3">
-                      <span className={`rounded-lg p-2 ${activo ? 'bg-red-600 text-white' : 'bg-white/5 text-gray-500'}`}>
-                        <Icon size={18} />
-                      </span>
-                      <span>
-                        <span className="block text-sm font-black">{label}</span>
-                        <span className="block text-[10px] font-medium text-gray-500">{detalle}</span>
-                      </span>
-                    </span>
-                    {activo && <CheckCircle2 size={16} className="text-red-500" />}
-                  </button>
-                );
-              })}
+              {formulario.mensaje.length}/500
             </div>
           </div>
 
           <div className="mt-8 flex flex-col gap-3 border-t border-white/5 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <Bell size={14} />
-              <span>Destino: todos los usuarios registrados</span>
+              <span>Destino: todos los usuarios activos con acceso y correo registrado</span>
             </div>
             <button
               type="submit"
               disabled={enviando}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-red-900/20 transition-all hover:-translate-y-0.5 hover:bg-red-700 disabled:cursor-wait disabled:opacity-60"
             >
-              {enviando ? (
-                'Enviando...'
-              ) : (
-                <>
-                  <Send size={16} />
-                  Enviar global
-                </>
-              )}
+              {enviando ? 'Enviando...' : <><Send size={16} /> Enviar global</>}
             </button>
           </div>
         </form>
@@ -240,30 +187,21 @@ const MensajesGlobales = () => {
             </div>
 
             <div className="custom-scrollbar max-h-[470px] space-y-3 overflow-y-auto pr-1">
-              {historial.length ? (
-                historial.map((mensaje) => (
-                  <div key={mensaje.id} className="rounded-xl border border-white/5 bg-[#111]/60 p-4 transition-all hover:border-white/10">
-                    <div className="mb-2 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-black text-white" title={mensaje.titulo}>{mensaje.titulo}</p>
-                        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-red-500">{mensaje.categoria}</p>
-                      </div>
-                      <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-gray-600">
-                        <Clock size={11} />
-                        {formatearHoraMensaje(mensaje.creadoEn)}
-                      </span>
+              {historial.length ? historial.map((mensaje) => (
+                <div key={mensaje.id} className="rounded-xl border border-white/5 bg-[#111]/60 p-4 transition-all hover:border-white/10">
+                  <div className="mb-2 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-white" title={mensaje.titulo}>{mensaje.titulo}</p>
+                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-red-500">{mensaje.tipo}</p>
                     </div>
-                    <p className="line-clamp-3 text-xs leading-5 text-gray-400">{mensaje.mensaje}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {mensaje.canales.map((canal) => (
-                        <span key={canal} className="rounded-full border border-white/5 bg-white/5 px-2 py-1 text-[10px] font-bold uppercase text-gray-400">
-                          {canal === 'email' ? 'Correo' : 'SMS'}
-                        </span>
-                      ))}
-                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-gray-600">
+                      <Clock size={11} />
+                      {formatearHora(mensaje.fechaCreacion)}
+                    </span>
                   </div>
-                ))
-              ) : (
+                  <p className="line-clamp-3 text-xs leading-5 text-gray-400">{mensaje.mensaje}</p>
+                </div>
+              )) : (
                 <div className="rounded-xl border border-white/5 bg-[#111]/60 p-8 text-center text-xs font-medium text-gray-500">
                   Aun no hay mensajes enviados.
                 </div>

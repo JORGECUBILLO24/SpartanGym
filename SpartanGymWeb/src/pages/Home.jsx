@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDown, ArrowRight, CheckCircle2, Sparkles, Users } from 'lucide-react';
-import FondoLogin from '../assets/fondo_login.webp';
 import { beneficiosInicio } from '../data/homeBenefits';
 import { useLogosApp } from '../utils/logosApp';
 
@@ -31,7 +30,7 @@ const Home = () => {
       <section className="relative isolate flex min-h-screen flex-col overflow-hidden">
         <div
           className="home-hero-bg absolute inset-0 -z-20 bg-cover bg-center opacity-25"
-          style={{ backgroundImage: `url(${FondoLogin})` }}
+          style={{ backgroundImage: `url(${logos.fondoLogin})` }}
         />
         <div className="home-hero-overlay absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.76),rgba(0,0,0,0.82)_55%,#050505_100%)]" />
         <div className="home-hero-fade absolute inset-x-0 bottom-0 -z-10 h-44 bg-[linear-gradient(180deg,rgba(0,0,0,0),#050505)]" />
@@ -146,7 +145,7 @@ const Home = () => {
           <div className="relative w-full lg:w-1/2">
             <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border border-white/10 shadow-2xl shadow-black/50">
               <img
-                src={FondoLogin}
+                src={logos.fondoLogin}
                 alt="Instalaciones Spartan Gym"
                 width="941"
                 height="1672"

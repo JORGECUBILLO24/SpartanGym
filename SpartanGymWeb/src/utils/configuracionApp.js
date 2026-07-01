@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { guardarDatoLocal, leerDatoLocal } from './almacenamientoLocal';
-import { CLAVE_CONFIGURACION } from './tema';
+import { aplicarPreferenciaTema, CLAVE_CONFIGURACION } from './tema';
+import { configuracionApi } from '../services/api';
 
 export const EVENTO_CONFIGURACION = 'spartanGym.settingsChanged';
 
@@ -32,6 +33,7 @@ export const CONFIGURACION_DEFECTO = {
   ...COLORES_APARIENCIA_DEFECTO,
   logoPrincipal: '',
   logoAcceso: '',
+  fondoLogin: '',
   emailAlerts: true,
   smsAlerts: false,
   dailyReports: true,
@@ -180,6 +182,23 @@ export const aplicarApariencia = (configuracion = leerConfiguracionApp()) => {
   raiz.style.setProperty('--accent-rgb', paleta.accentRgb);
 
   return paleta;
+};
+
+export const sincronizarConfiguracionRemota = async () => {
+  try {
+    const configuracionRemota = await configuracionApi.obtener();
+
+    if (!configuracionRemota || typeof configuracionRemota !== 'object') {
+      return leerConfiguracionApp();
+    }
+
+    const configuracion = guardarConfiguracionApp(configuracionRemota);
+    aplicarPreferenciaTema(configuracion.theme);
+    aplicarApariencia(configuracion);
+    return configuracion;
+  } catch {
+    return leerConfiguracionApp();
+  }
 };
 
 export const useConfiguracionApp = () => {

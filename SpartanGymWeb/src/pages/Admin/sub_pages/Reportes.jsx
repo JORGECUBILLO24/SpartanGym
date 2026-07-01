@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertCircle,
   ArrowUpRight,
@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import TarjetaMetrica from '../../../components/TarjetaMetrica';
 import {
-  crearContenidoReporte,
   exportarReporteExcel,
   exportarReportePdf,
   formatearFechaCortaReporte,
@@ -24,6 +23,7 @@ import {
 } from '../../../utils/exportarReportes';
 import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
 import { obtenerLogosApp } from '../../../utils/logosApp';
+import { reportesApi } from '../../../services/api';
 
 const tiposReportes = [
   {
@@ -64,48 +64,44 @@ const tiposReportes = [
   },
 ];
 
-const crearReporteHistorial = ({ id, titulo, tipo, fecha, kind, createdAt, createdBy }) => ({
+const resumenInicial = {
+  totalSocios: 0,
+  membresiasActivas: 0,
+  asistenciasRegistradas: 0,
+  ingresosTotales: 0,
+  tasaRetencion: 0,
+  margenNeto: 0,
+};
+
+const crearReporteHistorial = ({
   id,
   titulo,
   tipo,
-  formato: 'PDF / Excel',
   fecha,
-  tamano: 'Listo',
   kind,
   createdAt,
   createdBy,
-  ...crearContenidoReporte(kind),
+  formato = 'PDF / Excel',
+  tamano = 'Listo',
+  headers = [],
+  rows = [],
+  summary = [],
+  detalles = [],
+}) => ({
+  id,
+  titulo,
+  tipo,
+  formato,
+  fecha,
+  tamano,
+  kind,
+  createdAt,
+  createdBy,
+  headers,
+  rows,
+  summary,
+  detalles,
 });
-
-const crearHistorialInicial = () => [
-  crearReporteHistorial({
-    id: 'REP-2026-001',
-    titulo: 'Cierre Financiero Mayo 2026',
-    tipo: 'Finanzas',
-    fecha: '01 Jun 2026',
-    kind: 'fin',
-    createdAt: '2026-06-01T09:00:00',
-    createdBy: 'admin@spartangym.com (Administrador)',
-  }),
-  crearReporteHistorial({
-    id: 'REP-2026-002',
-    titulo: 'Rendimiento de Inventario Q2',
-    tipo: 'Inventario',
-    fecha: '28 May 2026',
-    kind: 'inv',
-    createdAt: '2026-05-28T16:30:00',
-    createdBy: 'admin@spartangym.com (Administrador)',
-  }),
-  crearReporteHistorial({
-    id: 'REP-2026-003',
-    titulo: 'Asistencia y Flujo de Socios',
-    tipo: 'Asistencia',
-    fecha: '15 May 2026',
-    kind: 'asi',
-    createdAt: '2026-05-15T08:15:00',
-    createdBy: 'recepcion@spartangym.com (Recepcionista)',
-  }),
-];
 
 const Reportes = () => {
   const configuracion = useConfiguracionApp();
@@ -113,33 +109,51 @@ const Reportes = () => {
   const [reportesDescargados, setReportesDescargados] = useState([]);
   const [descargandoId, setDescargandoId] = useState(null);
   const [errorDescarga, setErrorDescarga] = useState('');
-  const [historialReportes, setHistorialReportes] = useState(crearHistorialInicial);
+  const [resumen, setResumen] = useState(resumenInicial);
+  const [historialReportes, setHistorialReportes] = useState([]);
   const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
   const logos = obtenerLogosApp(configuracion);
 
-  const simularGeneracionReporte = (reporteBase) => {
-    setGenerandoId(reporteBase.id);
+  useEffect(() => {
+    reportesApi.resumen()
+      .then((datos) => setResumen({ ...resumenInicial, ...datos }))
+      .catch(() => setErrorDescarga('No se pudo cargar el resumen de reportes desde la API.'));
+  }, []);
 
-    setTimeout(() => {
+  const simularGeneracionReporte = async (reporteBase) => {
+    setGenerandoId(reporteBase.id);
+    setErrorDescarga('');
+
+    try {
+      const reporteApi = await reportesApi.generar(reporteBase.id);
       const ahora = new Date();
       const nuevoReporte = crearReporteHistorial({
-        id: `REP-2026-${Math.floor(Math.random() * 900) + 100}`,
-        titulo: `${reporteBase.titulo} (Generado)`,
+        id: reporteApi.id,
+        titulo: reporteApi.titulo,
         tipo: reporteBase.tipo,
-        fecha: formatearFechaCortaReporte(ahora),
-        kind: reporteBase.id,
+        fecha: reporteApi.fecha || formatearFechaCortaReporte(ahora),
+        kind: reporteApi.tipo || reporteBase.id,
         createdAt: ahora.toISOString(),
         createdBy: obtenerEtiquetaCuentaActual(),
+        formato: reporteApi.formato ? `${reporteApi.formato} / Excel` : 'PDF / Excel',
+        tamano: reporteApi.tamano || 'Listo',
+        headers: reporteApi.headers || [],
+        rows: reporteApi.rows || [],
+        summary: reporteApi.summary || [],
+        detalles: reporteApi.detalles || [],
       });
 
       setHistorialReportes((prev) => [nuevoReporte, ...prev]);
       setReportesDescargados((prev) => [...prev, reporteBase.id]);
-      setGenerandoId(null);
 
       setTimeout(() => {
         setReportesDescargados((prev) => prev.filter((item) => item !== reporteBase.id));
       }, 2000);
-    }, 1200);
+    } catch (error) {
+      setErrorDescarga(error.message || 'No se pudo generar el reporte desde la API.');
+    } finally {
+      setGenerandoId(null);
+    }
   };
 
   const descargarReporte = async (reporte, formato) => {
@@ -165,10 +179,10 @@ const Reportes = () => {
   return (
     <div className="flex min-h-screen flex-col gap-6 pb-10 text-white">
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <TarjetaMetrica titulo="Efectivo" valor={formatearMonto(1180)} detalle="32 pagos cobrados" icono={DollarSign} color="text-green-500" />
-        <TarjetaMetrica titulo="Tarjetas" valor={formatearMonto(2910)} detalle="71 pagos credito/debito" icono={FileSpreadsheet} color="text-red-500" />
-        <TarjetaMetrica titulo="Ventas" valor={formatearMonto(4850)} detalle="184 ventas totales" icono={TrendingUp} color="text-orange-500" />
-        <TarjetaMetrica titulo="Balance Neto" valor={formatearMonto(4114.5)} detalle="Ingresos menos egresos" icono={BarChart3} color="text-blue-500" />
+        <TarjetaMetrica titulo="Ingresos" valor={formatearMonto(resumen.ingresosTotales)} detalle="Pagos registrados" icono={DollarSign} color="text-green-500" />
+        <TarjetaMetrica titulo="Socios" valor={resumen.totalSocios} detalle="Registrados en base" icono={Users} color="text-red-500" />
+        <TarjetaMetrica titulo="Asistencias" valor={resumen.asistenciasRegistradas} detalle="Check-ins guardados" icono={TrendingUp} color="text-orange-500" />
+        <TarjetaMetrica titulo="Retencion" valor={`${resumen.tasaRetencion}%`} detalle={`${resumen.membresiasActivas} membresias activas`} icono={BarChart3} color="text-blue-500" />
       </div>
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
@@ -278,6 +292,11 @@ const Reportes = () => {
                 </div>
               </div>
             ))}
+            {historialReportes.length === 0 && (
+              <div className="rounded-xl border border-white/5 bg-[#111]/60 p-8 text-center text-xs font-medium text-gray-500">
+                Aun no hay reportes generados en esta sesion.
+              </div>
+            )}
           </div>
 
           <div className="mt-4 flex items-center gap-2 border-t border-white/5 pt-3 text-[9px] font-medium text-gray-600">

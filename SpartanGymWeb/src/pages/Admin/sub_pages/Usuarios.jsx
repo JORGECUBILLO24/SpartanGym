@@ -1,30 +1,52 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { 
   User, Mail, Phone, Save, CheckCircle2, 
   Camera, ShieldAlert, Key, Briefcase, 
-  Dumbbell, Headset, Lock, Building2, AlertCircle, Trash2
+  Dumbbell, Headset, Lock, Building2, AlertCircle, Trash2, Send, KeyRound, X
 } from 'lucide-react';
-import {
-  leerGimnasiosDisponibles,
-  obtenerGimnasioPredeterminado,
-} from '../../../utils/gimnasiosCompartidos';
-import {
-  agregarPersonalCompartido,
-  eliminarPersonalCompartido,
-  EVENTO_PERSONAL,
-  leerPersonalCompartido,
-  obtenerNombrePersonal,
-  personalCreadoPorCuentaActual,
-} from '../../../utils/personalCompartido';
+import { personalApi, sucursalesApi, usuariosApi } from '../../../services/api';
 
-const crearFormularioInicial = () => ({
+const crearFormularioInicial = (sucursalId = '') => ({
   nombre: '',
   apellido: '',
   correo: '',
   telefono: '',
   rol: '',
   password: '',
-  gimnasio: obtenerGimnasioPredeterminado(),
+  sucursalId,
+});
+
+const ROL_API_POR_UI = {
+  Administrador: 'ROLE_ADMIN',
+  Entrenador: 'ROLE_ENTRENADOR',
+  Recepcionista: 'ROLE_RECEPCIONISTA',
+};
+
+const ROL_UI_POR_API = {
+  ROLE_ADMIN: 'Administrador',
+  ROLE_ENTRENADOR: 'Entrenador',
+  ROLE_RECEPCIONISTA: 'Recepcionista',
+};
+
+const obtenerNombrePersonal = (persona) =>
+  [persona.nombre, persona.apellido].filter(Boolean).join(' ').trim() ||
+  [persona.nombres, persona.apellidos].filter(Boolean).join(' ').trim() ||
+  persona.correo ||
+  persona.email ||
+  'Usuario';
+
+const mapearPersonalApi = (persona) => ({
+  id: persona.id,
+  nombre: persona.nombres || '',
+  apellido: persona.apellidos || '',
+  correo: persona.email || '',
+  telefono: persona.telefono || '',
+  rol: ROL_UI_POR_API[persona.rol] || persona.rol || 'Sin rol',
+  sucursalId: persona.sucursalId || '',
+  sucursal: persona.sucursal || 'Sin sucursal',
+  creadoPor: 'Base de datos',
+  estado: persona.activo ? 'Activo' : 'Inactivo',
+  activo: Boolean(persona.activo),
 });
 
 const Usuarios = () => {
@@ -33,20 +55,33 @@ const Usuarios = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [errorRegistro, setErrorRegistro] = useState('');
   const [mensajeGestion, setMensajeGestion] = useState(null);
-  const [personalCompartido, setPersonalCompartido] = useState(() => leerPersonalCompartido());
-  const gimnasios = leerGimnasiosDisponibles();
+  const [passwordGestion, setPasswordGestion] = useState(null);
+  const [passwordTemporal, setPasswordTemporal] = useState('');
+  const [personalRegistrado, setPersonalRegistrado] = useState([]);
+  const [sucursales, setSucursales] = useState([]);
+
+  const cargarPersonal = useCallback(async () => {
+    const [personal, sucursalesApiData] = await Promise.all([
+      personalApi.listar(),
+      sucursalesApi.listar(),
+    ]);
+
+    setPersonalRegistrado(personal.map(mapearPersonalApi));
+    setSucursales(sucursalesApiData);
+    setFormData((actual) => ({
+      ...actual,
+      sucursalId: actual.sucursalId || sucursalesApiData[0]?.id || '',
+    }));
+  }, []);
 
   useEffect(() => {
-    const actualizarPersonal = () => setPersonalCompartido(leerPersonalCompartido());
-
-    window.addEventListener('storage', actualizarPersonal);
-    window.addEventListener(EVENTO_PERSONAL, actualizarPersonal);
-
-    return () => {
-      window.removeEventListener('storage', actualizarPersonal);
-      window.removeEventListener(EVENTO_PERSONAL, actualizarPersonal);
-    };
-  }, []);
+    Promise.resolve()
+      .then(cargarPersonal)
+      .catch(() => setMensajeGestion({
+        tipo: 'error',
+        texto: 'No se pudo cargar el personal desde la API.',
+      }));
+  }, [cargarPersonal]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -59,52 +94,113 @@ const Usuarios = () => {
     setFormData({ ...formData, password: randomPass });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorRegistro('');
     
-    setTimeout(() => {
-      const resultado = agregarPersonalCompartido(formData);
-
-      if (!resultado.ok) {
-        setIsSubmitting(false);
-        setIsSaved(false);
-        setErrorRegistro(resultado.mensaje);
-        setPersonalCompartido(resultado.personal);
-        return;
-      }
-
-      setPersonalCompartido(resultado.personal);
+    try {
+      await personalApi.registrar({
+        nombres: formData.nombre,
+        apellidos: formData.apellido,
+        email: formData.correo,
+        telefono: formData.telefono,
+        password: formData.password,
+        rol: ROL_API_POR_UI[formData.rol],
+        especialidad: formData.rol,
+        sucursalId: formData.sucursalId,
+      });
+      await cargarPersonal();
       setIsSubmitting(false);
       setIsSaved(true);
       setTimeout(() => {
-        setFormData(crearFormularioInicial());
+        setFormData(crearFormularioInicial(formData.sucursalId));
         setIsSaved(false);
       }, 3000);
-    }, 1500);
+    } catch (error) {
+      setIsSubmitting(false);
+      setIsSaved(false);
+      setErrorRegistro(error.message || 'No se pudo registrar el personal en la API.');
+    }
   };
 
-  const eliminarUsuario = (persona) => {
-    if (!personalCreadoPorCuentaActual(persona)) {
-      setMensajeGestion({
-        tipo: 'error',
-        texto: 'Solo puedes eliminar usuarios creados por tu cuenta.',
-      });
-      return;
-    }
-
+  const eliminarUsuario = async (persona) => {
     const debeEliminar = typeof window === 'undefined'
       ? true
-      : window.confirm(`Eliminar a ${obtenerNombrePersonal(persona)} del sistema?`);
+      : window.confirm(`Desactivar a ${obtenerNombrePersonal(persona)} del sistema?`);
 
     if (!debeEliminar) return;
 
-    const resultado = eliminarPersonalCompartido(persona.id);
-    setPersonalCompartido(resultado.personal);
-    setMensajeGestion({
-      tipo: resultado.ok ? 'exito' : 'error',
-      texto: resultado.mensaje,
-    });
+    try {
+      await personalApi.eliminar(persona.id);
+      await cargarPersonal();
+      setMensajeGestion({
+        tipo: 'exito',
+        texto: `${obtenerNombrePersonal(persona)} fue desactivado correctamente.`,
+      });
+    } catch (error) {
+      setMensajeGestion({
+        tipo: 'error',
+        texto: error.message || 'No se pudo desactivar el usuario.',
+      });
+    }
+  };
+
+  const actualizarRolUsuario = async (persona, rolVisual) => {
+    try {
+      await personalApi.actualizarRol(persona.id, ROL_API_POR_UI[rolVisual]);
+      await cargarPersonal();
+      setMensajeGestion({
+        tipo: 'exito',
+        texto: `Rol de ${obtenerNombrePersonal(persona)} actualizado a ${rolVisual}.`,
+      });
+    } catch (error) {
+      setMensajeGestion({
+        tipo: 'error',
+        texto: error.message || 'No se pudo actualizar el rol.',
+      });
+    }
+  };
+
+  const enviarEnlacePassword = async (persona) => {
+    try {
+      await usuariosApi.enviarEnlacePassword(persona.id);
+      setMensajeGestion({
+        tipo: 'exito',
+        texto: `Enlace de restablecimiento enviado a ${persona.correo}.`,
+      });
+    } catch (error) {
+      setMensajeGestion({
+        tipo: 'error',
+        texto: error.message || 'No se pudo enviar el enlace de restablecimiento.',
+      });
+    }
+  };
+
+  const abrirCambioPassword = (persona) => {
+    setPasswordGestion(persona);
+    setPasswordTemporal('');
+    setMensajeGestion(null);
+  };
+
+  const guardarCambioPassword = async (event) => {
+    event.preventDefault();
+    if (!passwordGestion) return;
+
+    try {
+      await usuariosApi.cambiarPassword(passwordGestion.id, passwordTemporal);
+      setMensajeGestion({
+        tipo: 'exito',
+        texto: `Contraseña actualizada para ${obtenerNombrePersonal(passwordGestion)}.`,
+      });
+      setPasswordGestion(null);
+      setPasswordTemporal('');
+    } catch (error) {
+      setMensajeGestion({
+        tipo: 'error',
+        texto: error.message || 'No se pudo cambiar la contraseña.',
+      });
+    }
   };
 
   const getRoleDetails = (rol) => {
@@ -117,6 +213,7 @@ const Usuarios = () => {
   };
 
   const RoleIcon = getRoleDetails(formData.rol).icon;
+  const sucursalSeleccionada = sucursales.find((sucursal) => sucursal.id === formData.sucursalId);
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -224,18 +321,19 @@ const Usuarios = () => {
             </div>
 
             <div>
-              <label className="text-xs text-gray-500 uppercase font-bold mb-2 block">Gimnasio asignado</label>
+              <label className="text-xs text-gray-500 uppercase font-bold mb-2 block">Sucursal asignada</label>
               <div className="relative">
                 <Building2 className="absolute left-4 top-3.5 text-gray-500 z-10" size={18} />
                 <select
-                  name="gimnasio"
+                  name="sucursalId"
                   required
-                  value={formData.gimnasio}
+                  value={formData.sucursalId}
                   onChange={handleChange}
                   className="w-full cursor-pointer appearance-none rounded-xl border border-white/5 bg-[#111] py-3 pl-12 pr-4 text-white outline-none transition-all focus:border-red-600"
                 >
-                  {gimnasios.map((gimnasio) => (
-                    <option key={gimnasio.id} value={gimnasio.nombre}>{gimnasio.nombre}</option>
+                  <option value="">Selecciona sucursal...</option>
+                  {sucursales.map((sucursal) => (
+                    <option key={sucursal.id} value={sucursal.id}>{sucursal.nombre}</option>
                   ))}
                 </select>
               </div>
@@ -306,10 +404,10 @@ const Usuarios = () => {
             </div>
 
             <div className="mt-4 w-full rounded-xl border border-white/5 bg-black/20 p-4">
-              <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Gimnasio asignado</p>
+              <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Sucursal asignada</p>
               <div className="mt-2 flex items-center gap-2 text-sm font-bold text-white">
                 <Building2 size={16} className="text-red-500" />
-                <span className="min-w-0 break-words">{formData.gimnasio}</span>
+                <span className="min-w-0 break-words">{sucursalSeleccionada?.nombre || 'Sin sucursal'}</span>
               </div>
             </div>
 
@@ -335,11 +433,11 @@ const Usuarios = () => {
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">Personal global</p>
-            <h3 className="text-lg font-black text-white">Usuarios registrados por gimnasio</h3>
-            <p className="mt-1 text-xs text-gray-500">Administradores, recepcionistas y entrenadores quedan ligados al gimnasio seleccionado.</p>
+            <h3 className="text-lg font-black text-white">Usuarios registrados por sucursal</h3>
+            <p className="mt-1 text-xs text-gray-500">Administradores, recepcionistas y entrenadores quedan ligados a la sucursal seleccionada.</p>
           </div>
           <span className="w-fit rounded-full bg-white/5 px-3 py-1 text-[10px] font-black text-gray-400">
-            {personalCompartido.length} usuarios
+            {personalRegistrado.length} usuarios
           </span>
         </div>
 
@@ -360,15 +458,15 @@ const Usuarios = () => {
               <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-500">
                 <th className="pb-3 pr-4 font-bold">Usuario</th>
                 <th className="pb-3 pr-4 font-bold">Rol</th>
-                <th className="pb-3 pr-4 font-bold">Gimnasio asignado</th>
+                <th className="pb-3 pr-4 font-bold">Sucursal asignada</th>
                 <th className="pb-3 pr-4 font-bold">Creado por</th>
                 <th className="pb-3 pr-4 font-bold">Estado</th>
                 <th className="pb-3 font-bold">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {personalCompartido.map((persona) => {
-                const puedeEliminar = personalCreadoPorCuentaActual(persona);
+              {personalRegistrado.map((persona) => {
+                const puedeEliminar = persona.activo;
 
                 return (
                   <tr key={persona.id} className="hover:bg-white/[0.03]">
@@ -377,14 +475,29 @@ const Usuarios = () => {
                       <p className="text-[10px] text-gray-500">{persona.correo || persona.telefono || 'Sin contacto'}</p>
                     </td>
                     <td className="py-3 pr-4 text-gray-400">{persona.rol}</td>
-                    <td className="py-3 pr-4 text-gray-400">{persona.gimnasio}</td>
+                    <td className="py-3 pr-4 text-gray-400">{persona.sucursal}</td>
                     <td className="py-3 pr-4 text-gray-400">{persona.creadoPor}</td>
                     <td className="py-3 pr-4">
-                      <span className="rounded-full border border-green-500/20 bg-green-500/10 px-2 py-1 text-[10px] font-black uppercase text-green-500">
+                      <span className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase ${
+                        persona.activo
+                          ? 'border-green-500/20 bg-green-500/10 text-green-500'
+                          : 'border-red-500/20 bg-red-500/10 text-red-400'
+                      }`}>
                         {persona.estado}
                       </span>
                     </td>
-                    <td className="py-3">
+                    <td className="flex flex-col gap-2 py-3 sm:flex-row">
+                      <select
+                        value={persona.rol}
+                        disabled={!persona.activo}
+                        onChange={(e) => actualizarRolUsuario(persona, e.target.value)}
+                        className="select-legible min-w-[132px] rounded-lg border border-white/10 bg-[#111] px-3 py-2 text-[10px] font-black uppercase text-white outline-none transition-all focus:border-red-600 disabled:cursor-not-allowed disabled:border-white/5 disabled:bg-white/5 disabled:text-gray-500"
+                        aria-label={`Cambiar rol de ${obtenerNombrePersonal(persona)}`}
+                      >
+                        <option value="Administrador">Administrador</option>
+                        <option value="Entrenador">Entrenador</option>
+                        <option value="Recepcionista">Recepcionista</option>
+                      </select>
                       <button
                         type="button"
                         disabled={!puedeEliminar}
@@ -394,11 +507,31 @@ const Usuarios = () => {
                             ? 'border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-600 hover:text-white'
                             : 'cursor-not-allowed border-white/5 bg-white/5 text-gray-600'
                         }`}
-                        title={puedeEliminar ? 'Eliminar usuario creado por tu cuenta' : 'Solo puedes eliminar usuarios creados por tu cuenta'}
-                        aria-label={`Eliminar ${obtenerNombrePersonal(persona)}`}
+                        title={puedeEliminar ? 'Desactivar usuario' : 'Usuario ya desactivado'}
+                        aria-label={`Desactivar ${obtenerNombrePersonal(persona)}`}
                       >
                         <Trash2 size={13} />
-                        Eliminar
+                        Desactivar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!persona.activo}
+                        onClick={() => enviarEnlacePassword(persona)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[10px] font-black uppercase text-blue-300 transition-all hover:bg-blue-600 hover:text-white disabled:cursor-not-allowed disabled:border-white/5 disabled:bg-white/5 disabled:text-gray-600"
+                        aria-label={`Enviar enlace de restablecimiento a ${obtenerNombrePersonal(persona)}`}
+                      >
+                        <Send size={13} />
+                        Enlace
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!persona.activo}
+                        onClick={() => abrirCambioPassword(persona)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[10px] font-black uppercase text-amber-300 transition-all hover:bg-amber-500 hover:text-black disabled:cursor-not-allowed disabled:border-white/5 disabled:bg-white/5 disabled:text-gray-600"
+                        aria-label={`Cambiar contraseña de ${obtenerNombrePersonal(persona)}`}
+                      >
+                        <KeyRound size={13} />
+                        Cambiar
                       </button>
                     </td>
                   </tr>
@@ -408,6 +541,63 @@ const Usuarios = () => {
           </table>
         </div>
       </section>
+
+      {passwordGestion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <form
+            onSubmit={guardarCambioPassword}
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0b0b0c] p-5 shadow-2xl"
+          >
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300">Gestion de acceso</p>
+                <h3 className="mt-1 text-lg font-black text-white">Cambiar contraseña</h3>
+                <p className="mt-1 text-xs text-gray-500">{obtenerNombrePersonal(passwordGestion)} - {passwordGestion.correo}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPasswordGestion(null)}
+                className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+                aria-label="Cerrar"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <label className="block">
+              <span className="mb-2 block text-xs font-black uppercase tracking-widest text-gray-500">Nueva contraseña</span>
+              <span className="relative block">
+                <Lock className="absolute left-4 top-3.5 text-gray-500" size={18} />
+                <input
+                  type="text"
+                  minLength={6}
+                  required
+                  value={passwordTemporal}
+                  onChange={(e) => setPasswordTemporal(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-[#050505] py-3 pl-12 pr-4 text-sm text-white outline-none transition-all focus:border-amber-400"
+                  placeholder="Minimo 6 caracteres"
+                />
+              </span>
+            </label>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setPasswordTemporal(Math.random().toString(36).slice(-8) + 'Gym!')}
+                className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-gray-300 transition-colors hover:bg-white/10"
+              >
+                Generar
+              </button>
+              <button
+                type="submit"
+                className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-black text-black transition-colors hover:bg-amber-300"
+              >
+                Guardar contraseña
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };
