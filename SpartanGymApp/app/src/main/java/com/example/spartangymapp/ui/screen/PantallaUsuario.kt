@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,11 +58,16 @@ import com.example.spartangymapp.R
 import com.example.spartangymapp.network.AppConfigResponse
 import com.example.spartangymapp.network.AsistenciaQrRequest
 import com.example.spartangymapp.network.AsistenciaQrValidationResponse
+import com.example.spartangymapp.network.CompraMembresiaAppRequest
+import com.example.spartangymapp.network.CompraProductoAppRequest
 import com.example.spartangymapp.network.ControlBiometricoResponse
 import com.example.spartangymapp.network.DashboardResponse
+import com.example.spartangymapp.network.FacturaMembresiaAppResponse
+import com.example.spartangymapp.network.TipoMembresiaResponse
 import com.example.spartangymapp.network.PagoSocioResponse
 import com.example.spartangymapp.network.PerfilActualResponse
 import com.example.spartangymapp.network.ProductoCatalogoResponse
+import com.example.spartangymapp.network.RegistroProgresoRequest
 import com.example.spartangymapp.network.RetrofitClient
 import com.example.spartangymapp.network.RutinaResumenResponse
 import androidx.compose.ui.viewinterop.AndroidView
@@ -71,7 +77,10 @@ import com.google.zxing.MultiFormatReader
 import com.google.zxing.NotFoundException
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
+import androidx.compose.ui.graphics.asImageBitmap
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReference
 
@@ -161,10 +170,12 @@ fun PantallaUsuario(
     var pagos by remember { mutableStateOf<List<PagoSocioResponse>>(emptyList()) }
     var productos by remember { mutableStateOf<List<ProductoCatalogoResponse>>(emptyList()) }
     var progreso by remember { mutableStateOf<List<ControlBiometricoResponse>>(emptyList()) }
+    var tiposMembresia by remember { mutableStateOf<List<TipoMembresiaResponse>>(emptyList()) }
+    var refreshKey by remember { mutableStateOf(0) }
     var cargando by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(socioId) {
+    LaunchedEffect(socioId, refreshKey) {
         cargando = true
         error = null
         rutinas.clear()
@@ -175,6 +186,7 @@ fun PantallaUsuario(
             val pg = RetrofitClient.apiService.obtenerPagosSocio(socioId)
             val pr = RetrofitClient.apiService.listarProductosCatalogo()
             val bio = RetrofitClient.apiService.obtenerProgresoSocio(socioId)
+            val tm = RetrofitClient.apiService.listarTiposMembresia()
 
             dashboard = d.body()
             perfilActual = p.body()
@@ -182,6 +194,7 @@ fun PantallaUsuario(
             pagos = pg.body().orEmpty()
             productos = pr.body().orEmpty()
             progreso = bio.body().orEmpty()
+            tiposMembresia = tm.body().orEmpty()
         } catch (e: Exception) {
             error = e.message
         } finally {
@@ -240,10 +253,22 @@ fun PantallaUsuario(
                     subPantalla == "pago" -> PagoUsuario(
                         dashboard = dashboard, onVolver = { subPantalla = "" }
                     )
-                    subPantalla == "progreso" -> ProgresoUsuario(progreso = progreso, onVolver = { subPantalla = "" })
+                    subPantalla == "progreso" -> ProgresoUsuario(
+                        progreso = progreso,
+                        socioId = socioId,
+                        onActualizado = { progreso = it },
+                        onVolver = { subPantalla = "" }
+                    )
                     subPantalla == "productos" -> ProductosUsuario(
                         productos = productos,
                         appConfig = appConfig,
+                        onActualizado = { productos = it },
+                        onVolver = { subPantalla = "" }
+                    )
+                    subPantalla == "renovar_membresia" -> RenovarMembresiaUsuario(
+                        tipos = tiposMembresia,
+                        appConfig = appConfig,
+                        onRenovado = { refreshKey++ },
                         onVolver = { subPantalla = "" }
                     )
                     else -> when (seccionActual) {
@@ -267,7 +292,8 @@ fun PantallaUsuario(
                         2 -> TabPagos(
                             dashboard = dashboard,
                             pagos = pagos,
-                            onPagar = { subPantalla = "pago" }
+                            onPagar = { subPantalla = "pago" },
+                            onRenovar = { subPantalla = "renovar_membresia" }
                         )
                         3 -> TabQrAsistencia(appConfig = appConfig)
                         4 -> TabPerfilCredencial(
@@ -584,7 +610,8 @@ private fun TabRutinas(
 private fun TabPagos(
     dashboard: DashboardResponse?,
     pagos: List<PagoSocioResponse>,
-    onPagar: () -> Unit
+    onPagar: () -> Unit,
+    onRenovar: () -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
         SeccionHeader("Pagos", "Historial y estado de membresía")
@@ -615,12 +642,15 @@ private fun TabPagos(
                 }
                 Spacer(Modifier.height(16.dp))
                 Button(
-                    onClick = onPagar,
+                    onClick = onRenovar,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Ver detalle de pago", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Renovar / Pagar membresía", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                TextButton(onClick = onPagar, modifier = Modifier.fillMaxWidth()) {
+                    Text("Ver detalle de pago", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -784,15 +814,113 @@ private fun PagoUsuario(dashboard: DashboardResponse?, onVolver: () -> Unit) {
 }
 
 @Composable
-private fun ProgresoUsuario(progreso: List<ControlBiometricoResponse>, onVolver: () -> Unit) {
+private fun ProgresoUsuario(
+    progreso: List<ControlBiometricoResponse>,
+    socioId: String,
+    onActualizado: (List<ControlBiometricoResponse>) -> Unit,
+    onVolver: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var peso by remember { mutableStateOf("") }
+    var notas by remember { mutableStateOf("") }
+    var guardando by remember { mutableStateOf(false) }
+    var mensaje by remember { mutableStateOf<String?>(null) }
+
+    fun registrar() {
+        val pesoNum = peso.trim().replace(',', '.').toDoubleOrNull()
+        if (pesoNum == null || pesoNum <= 0) {
+            mensaje = "Ingresa un peso válido en kg."
+            return
+        }
+        if (guardando) return
+        guardando = true
+        mensaje = null
+        scope.launch {
+            try {
+                RetrofitClient.apiService.registrarProgreso(
+                    RegistroProgresoRequest(idSocio = socioId, pesoKg = pesoNum, medidasNotas = notas.trim().ifBlank { null })
+                )
+                val actualizado = RetrofitClient.apiService.obtenerProgresoSocio(socioId).body().orEmpty()
+                onActualizado(actualizado)
+                peso = ""
+                notas = ""
+                mensaje = "✅ Progreso registrado"
+            } catch (e: Exception) {
+                mensaje = e.message ?: "No se pudo registrar el progreso."
+            } finally {
+                guardando = false
+            }
+        }
+    }
+
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
         BotonVolver(onVolver)
         Spacer(Modifier.height(16.dp))
-        SeccionHeader("Progreso", "Historial de peso y medidas")
+        SeccionHeader("Progreso", "Registra y sigue tu peso")
         Spacer(Modifier.height(16.dp))
 
+        // Formulario para que el socio registre su propio progreso
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = Superficie,
+            border = BorderStroke(1.dp, BordeSutil)
+        ) {
+            Column(Modifier.padding(18.dp)) {
+                Text("Registrar medición", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = peso,
+                    onValueChange = { peso = it },
+                    label = { Text("Peso (kg)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = BordeSutil,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary, unfocusedLabelColor = GrisTexto,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = notas,
+                    onValueChange = { notas = it },
+                    label = { Text("Notas / medidas (opcional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = BordeSutil,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary, unfocusedLabelColor = GrisTexto,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                mensaje?.let {
+                    Spacer(Modifier.height(10.dp))
+                    Text(it, color = if (it.startsWith("✅")) VerdeEstado else MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = { registrar() },
+                    enabled = !guardando,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (guardando) {
+                        CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    Text(if (guardando) "Guardando" else "Registrar progreso", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
         if (progreso.isEmpty()) {
-            EstadoVacioAPI("Sin registros", "Tu entrenador aún no ha registrado tus mediciones.")
+            EstadoVacioAPI("Sin mediciones", "Registra tu primer peso arriba para empezar a ver tu progreso.")
         } else {
             val ordenado = progreso.sortedByDescending { it.fechaRegistro ?: "" }
             val ultimo = ordenado.first()
@@ -835,6 +963,162 @@ private fun ProgresoUsuario(progreso: List<ControlBiometricoResponse>, onVolver:
                     valor = registro.pesoKg.apiValor("kg") + notas,
                     etiqueta = "Peso"
                 )
+            }
+        }
+    }
+}
+
+// ─── Renovar / pagar membresia (socio desde la app) ─────────────────────────
+@Composable
+private fun RenovarMembresiaUsuario(
+    tipos: List<TipoMembresiaResponse>,
+    appConfig: AppConfigResponse,
+    onRenovado: () -> Unit,
+    onVolver: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var seleccionId by remember { mutableStateOf<Int?>(null) }
+    var metodo by remember { mutableStateOf("Efectivo") }
+    var procesando by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var factura by remember { mutableStateOf<FacturaMembresiaAppResponse?>(null) }
+
+    fun pagar() {
+        val id = seleccionId
+        if (id == null) {
+            error = "Selecciona un plan"
+            return
+        }
+        if (procesando) return
+        procesando = true
+        error = null
+        scope.launch {
+            try {
+                val resp = RetrofitClient.apiService.renovarMiMembresia(
+                    CompraMembresiaAppRequest(tipoMembresiaId = id, metodoPago = metodo)
+                )
+                val cuerpo = resp.body()
+                if (!resp.isSuccessful || cuerpo == null) {
+                    val detalle = resp.errorBody()?.string()?.takeIf { it.isNotBlank() }
+                    error = detalle ?: "No se pudo procesar el pago (${resp.code()})."
+                } else {
+                    factura = cuerpo
+                    onRenovado()
+                }
+            } catch (e: Exception) {
+                error = e.message ?: "No se pudo procesar el pago."
+            } finally {
+                procesando = false
+            }
+        }
+    }
+
+    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
+        BotonVolver(onVolver)
+        Spacer(Modifier.height(16.dp))
+        SeccionHeader("Membresía", "Renueva o paga tu plan")
+        Spacer(Modifier.height(16.dp))
+
+        val fac = factura
+        if (fac != null) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF0D2B18),
+                border = BorderStroke(1.dp, VerdeEstado.copy(alpha = 0.35f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(20.dp)) {
+                    Text("✅ Pago registrado", color = VerdeEstado, fontSize = 18.sp, fontWeight = FontWeight.Black)
+                    Spacer(Modifier.height(10.dp))
+                    FilaDatoAPI("Factura", fac.numeroFactura.apiValor(), "MEM")
+                    FilaDatoAPI("Plan", fac.tipoMembresia.apiValor(), "Membresía")
+                    FilaDatoAPI("Total", "${simboloMoneda(appConfig.currency)}${"%.2f".format(fac.total ?: 0.0)}", "Pagado")
+                    FilaDatoAPI("Vence", fac.fechaVencimiento.apiValor(), "Fecha")
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = onVolver,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Listo", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        } else if (tipos.isEmpty()) {
+            EstadoVacioAPI("Sin planes", "No hay planes de membresía disponibles.")
+        } else {
+            Text("Elige tu plan", color = GrisTexto, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(10.dp))
+            tipos.forEach { tipo ->
+                val sel = seleccionId == tipo.id
+                Surface(
+                    modifier = Modifier.fillMaxWidth().clickable { seleccionId = tipo.id },
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (sel) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else Superficie,
+                    border = BorderStroke(1.dp, if (sel) MaterialTheme.colorScheme.primary else BordeSutil)
+                ) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(tipo.nombre.apiValor(), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text("${tipo.duracionDias ?: 0} días", color = GrisTexto, fontSize = 12.sp)
+                        }
+                        Text(
+                            "${simboloMoneda(appConfig.currency)}${"%.2f".format(tipo.precio ?: 0.0)}",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Text("Método de pago", color = GrisTexto, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Efectivo", "Tarjeta", "Transferencia").forEach { m ->
+                    val activo = metodo == m
+                    Surface(
+                        modifier = Modifier.weight(1f).clickable { metodo = m },
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (activo) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else Superficie,
+                        border = BorderStroke(1.dp, if (activo) MaterialTheme.colorScheme.primary else BordeSutil)
+                    ) {
+                        Text(
+                            m,
+                            color = if (activo) Color.White else GrisTexto,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
+                        )
+                    }
+                }
+            }
+
+            error?.let {
+                Spacer(Modifier.height(12.dp))
+                Text(it, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = { pagar() },
+                enabled = !procesando && seleccionId != null,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = BordeSutil
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (procesando) {
+                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(10.dp))
+                }
+                Text(if (procesando) "Procesando" else "Pagar y generar factura", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -886,22 +1170,104 @@ private fun ProductosBanner(productosCount: Int, onClick: () -> Unit) {
 }
 
 @Composable
+private fun ProductoImagen(imagenUrl: String?, modifier: Modifier = Modifier) {
+    var bitmap by remember(imagenUrl) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    LaunchedEffect(imagenUrl) {
+        bitmap = withContext(Dispatchers.IO) { cargarImagenConfiguracion(imagenUrl)?.asImageBitmap() }
+    }
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        val img = bitmap
+        if (img != null) {
+            Image(
+                bitmap = img,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Icon(
+                Icons.Rounded.ShoppingCart,
+                contentDescription = null,
+                tint = GrisTexto,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+
+@Composable
 private fun ProductosUsuario(
     productos: List<ProductoCatalogoResponse>,
     appConfig: AppConfigResponse,
+    onActualizado: (List<ProductoCatalogoResponse>) -> Unit,
     onVolver: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    var comprandoId by remember { mutableStateOf<String?>(null) }
+    var mensaje by remember { mutableStateOf<String?>(null) }
+    var esError by remember { mutableStateOf(false) }
+
+    fun comprar(producto: ProductoCatalogoResponse) {
+        val id = producto.id ?: return
+        if (comprandoId != null) return
+        comprandoId = id
+        mensaje = null
+        scope.launch {
+            try {
+                val resp = RetrofitClient.apiService.comprarProducto(CompraProductoAppRequest(productoId = id, cantidad = 1))
+                val cuerpo = resp.body()
+                if (!resp.isSuccessful || cuerpo == null) {
+                    val detalle = resp.errorBody()?.string()?.takeIf { it.isNotBlank() }
+                    esError = true
+                    mensaje = detalle ?: "No se pudo completar la compra (${resp.code()})."
+                } else {
+                    esError = false
+                    mensaje = "✅ Compra registrada. Factura ${cuerpo.numeroFactura ?: ""}. Retírala en recepción."
+                    onActualizado(RetrofitClient.apiService.listarProductosCatalogo().body().orEmpty())
+                }
+            } catch (e: Exception) {
+                esError = true
+                mensaje = e.message ?: "No se pudo completar la compra."
+            } finally {
+                comprandoId = null
+            }
+        }
+    }
+
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
         BotonVolver(onVolver)
         Spacer(Modifier.height(16.dp))
-        SeccionHeader("Productos del gym", "Catálogo disponible en tu sucursal")
+        SeccionHeader("Productos del gym", "Compra y retira en recepción")
         Spacer(Modifier.height(16.dp))
+
+        mensaje?.let {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = if (esError) Color(0xFF1A0608) else Color(0xFF0D2B18),
+                border = BorderStroke(1.dp, if (esError) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f) else VerdeEstado.copy(alpha = 0.35f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    it,
+                    color = if (esError) MaterialTheme.colorScheme.primary else VerdeEstado,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(14.dp)
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+        }
 
         if (productos.isEmpty()) {
             EstadoVacioAPI("Sin productos", "Aún no hay productos disponibles en tu sucursal.")
         } else {
             productos.forEach { producto ->
-                ItemProducto(producto, appConfig)
+                ItemProducto(
+                    producto = producto,
+                    appConfig = appConfig,
+                    comprando = comprandoId == producto.id,
+                    onComprar = { comprar(producto) }
+                )
                 Spacer(Modifier.height(10.dp))
             }
         }
@@ -909,53 +1275,75 @@ private fun ProductosUsuario(
 }
 
 @Composable
-private fun ItemProducto(producto: ProductoCatalogoResponse, appConfig: AppConfigResponse) {
+private fun ItemProducto(
+    producto: ProductoCatalogoResponse,
+    appConfig: AppConfigResponse,
+    comprando: Boolean,
+    onComprar: () -> Unit
+) {
+    val agotado = (producto.stock ?: 0) <= 0
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = Superficie,
         border = BorderStroke(1.dp, BordeSutil)
     ) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF1A1A1A)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Rounded.ShoppingCart,
-                    contentDescription = null,
-                    tint = GrisTexto,
-                    modifier = Modifier.size(22.dp)
+        Column(Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ProductoImagen(
+                    imagenUrl = producto.imagenUrl,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF1A1A1A))
                 )
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        producto.nombre.apiValor(),
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(producto.categoria.apiValor(), color = GrisTexto, fontSize = 12.sp)
+                    Text(
+                        if (agotado) "Agotado" else "Stock: ${producto.stock}",
+                        color = if (agotado) MaterialTheme.colorScheme.primary else VerdeEstado,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 Text(
-                    producto.nombre.apiValor(),
+                    "${simboloMoneda(appConfig.currency)}${"%.2f".format(producto.precio ?: 0.0)}",
                     color = Color.White,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(producto.categoria.apiValor(), color = GrisTexto, fontSize = 12.sp)
-                val agotado = (producto.stock ?: 0) <= 0
-                Text(
-                    if (agotado) "Agotado" else "Stock: ${producto.stock}",
-                    color = if (agotado) MaterialTheme.colorScheme.primary else VerdeEstado,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Black
                 )
             }
-            Text(
-                "${simboloMoneda(appConfig.currency)}${"%.2f".format(producto.precio ?: 0.0)}",
-                color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Black
-            )
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onComprar,
+                enabled = !agotado && !comprando,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = BordeSutil
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (comprando) {
+                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(
+                    if (agotado) "Agotado" else "Comprar (retiro en recepción)",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
         }
     }
 }

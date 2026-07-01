@@ -122,6 +122,41 @@ data class ControlBiometricoResponse(
     val medidasNotas: String? = null
 )
 
+data class RegistroProgresoRequest(
+    val idSocio: String,
+    val pesoKg: Double,
+    val medidasNotas: String? = null
+)
+
+data class CompraMembresiaAppRequest(
+    val tipoMembresiaId: Int,
+    val metodoPago: String
+)
+
+data class FacturaMembresiaAppResponse(
+    val numeroFactura: String? = null,
+    val socio: String? = null,
+    val tipoMembresia: String? = null,
+    val subtotal: Double? = null,
+    val impuesto: Double? = null,
+    val total: Double? = null,
+    val metodoPago: String? = null,
+    val fechaInicio: String? = null,
+    val fechaVencimiento: String? = null
+)
+
+data class CompraProductoAppRequest(
+    val productoId: String,
+    val cantidad: Int
+)
+
+data class FacturaVentaAppResponse(
+    val numeroFactura: String? = null,
+    val total: Double? = null,
+    val sucursal: String? = null,
+    val metodoPago: String? = null
+)
+
 data class NotificacionResponse(
     val id: String? = null,
     val tipo: String? = null,

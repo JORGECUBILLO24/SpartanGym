@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertCircle, CheckCircle2, KeyRound, Lock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, Lock } from 'lucide-react';
 import { authApi } from '../services/api';
 import { useLogosApp } from '../utils/logosApp';
 
@@ -109,22 +109,35 @@ const RestablecerContrasena = () => {
   );
 };
 
-const CampoPassword = ({ label, value, onChange, placeholder }) => (
-  <label className="block">
-    <span className="text-xs font-bold uppercase text-gray-500">{label}</span>
-    <span className="group relative mt-2 block">
-      <Lock className="absolute left-3 top-3.5 h-4 w-4 text-gray-600 transition-colors group-focus-within:text-red-500" />
-      <input
-        type="password"
-        minLength={6}
-        required
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-white/5 bg-[#171717] py-3 pl-10 text-white outline-none transition-colors focus:border-red-600 focus:bg-[#1a1a1a]"
-        placeholder={placeholder}
-      />
-    </span>
-  </label>
-);
+const CampoPassword = ({ label, value, onChange, placeholder }) => {
+  const [mostrar, setMostrar] = useState(false);
+
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase text-gray-500">{label}</span>
+      <span className="group relative mt-2 block">
+        <Lock className="absolute left-3 top-3.5 h-4 w-4 text-gray-600 transition-colors group-focus-within:text-red-500" />
+        <input
+          type={mostrar ? 'text' : 'password'}
+          minLength={6}
+          required
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full rounded-xl border border-white/5 bg-[#171717] py-3 pl-10 pr-11 text-white outline-none transition-colors focus:border-red-600 focus:bg-[#1a1a1a]"
+          placeholder={placeholder}
+        />
+        <button
+          type="button"
+          onClick={() => setMostrar((v) => !v)}
+          className="absolute right-3 top-3.5 text-gray-500 transition-colors hover:text-red-500"
+          aria-label={mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          tabIndex={-1}
+        >
+          {mostrar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </span>
+    </label>
+  );
+};
 
 export default RestablecerContrasena;

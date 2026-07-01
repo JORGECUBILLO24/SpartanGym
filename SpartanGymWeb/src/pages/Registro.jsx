@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AlertCircle, Building2, Lock, Mail, Phone, User, UserPlus } from 'lucide-react';
+import { AlertCircle, Building2, Eye, EyeOff, Lock, Mail, Phone, User, UserPlus } from 'lucide-react';
 import { useLogosApp } from '../utils/logosApp';
 import { authApi, authStorage, sucursalesApi } from '../services/api';
 
@@ -190,23 +190,40 @@ const CampoRegistro = ({
   type = 'text',
   required = false,
   minLength,
-}) => (
-  <div>
-    <label className="text-xs font-bold uppercase text-gray-500">{label}</label>
-    <div className="group relative mt-2">
-      <Icon className="absolute left-3 top-3.5 h-4 w-4 text-gray-600 transition-colors group-focus-within:text-red-500" />
-      <input
-        name={name}
-        value={value}
-        onChange={onChange}
-        required={required}
-        minLength={minLength}
-        type={type}
-        className="w-full rounded-xl border border-white/5 bg-[#171717] py-3 pl-10 text-white outline-none transition-colors focus:border-red-600 focus:bg-[#1a1a1a]"
-        placeholder={placeholder}
-      />
+}) => {
+  const [mostrar, setMostrar] = useState(false);
+  const esPassword = type === 'password';
+  const tipoInput = esPassword ? (mostrar ? 'text' : 'password') : type;
+
+  return (
+    <div>
+      <label className="text-xs font-bold uppercase text-gray-500">{label}</label>
+      <div className="group relative mt-2">
+        <Icon className="absolute left-3 top-3.5 h-4 w-4 text-gray-600 transition-colors group-focus-within:text-red-500" />
+        <input
+          name={name}
+          value={value}
+          onChange={onChange}
+          required={required}
+          minLength={minLength}
+          type={tipoInput}
+          className={`w-full rounded-xl border border-white/5 bg-[#171717] py-3 pl-10 ${esPassword ? 'pr-11' : ''} text-white outline-none transition-colors focus:border-red-600 focus:bg-[#1a1a1a]`}
+          placeholder={placeholder}
+        />
+        {esPassword && (
+          <button
+            type="button"
+            onClick={() => setMostrar((v) => !v)}
+            className="absolute right-3 top-3.5 text-gray-500 transition-colors hover:text-red-500"
+            aria-label={mostrar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            tabIndex={-1}
+          >
+            {mostrar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default Registro;

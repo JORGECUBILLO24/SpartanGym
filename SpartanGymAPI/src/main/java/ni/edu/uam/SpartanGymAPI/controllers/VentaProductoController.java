@@ -1,6 +1,7 @@
 package ni.edu.uam.SpartanGymAPI.controllers;
 
 import lombok.RequiredArgsConstructor;
+import ni.edu.uam.SpartanGymAPI.dto.VentaProductoDetalleRequest;
 import ni.edu.uam.SpartanGymAPI.dto.VentaProductoRequest;
 import ni.edu.uam.SpartanGymAPI.dto.VentaProductoResponse;
 import ni.edu.uam.SpartanGymAPI.services.VentaProductoService;
@@ -39,5 +40,12 @@ public class VentaProductoController {
     @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN', 'RECEPCIONISTA')")
     public ResponseEntity<VentaProductoResponse> vender(@RequestBody VentaProductoRequest request, Authentication auth) {
         return ResponseEntity.ok(service.vender(request, auth));
+    }
+
+    // El socio compra/reserva un producto desde la app para retirarlo en recepcion.
+    @PostMapping("/mi-compra")
+    @PreAuthorize("hasAuthority('ROLE_SOCIO')")
+    public ResponseEntity<VentaProductoResponse> comprarComoSocio(@RequestBody VentaProductoDetalleRequest request, Authentication auth) {
+        return ResponseEntity.ok(service.comprarComoSocio(request, auth));
     }
 }
