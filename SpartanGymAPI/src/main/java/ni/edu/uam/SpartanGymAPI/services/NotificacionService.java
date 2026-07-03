@@ -395,24 +395,22 @@ public class NotificacionService {
                   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                   <title>%TITULO%</title>
                 </head>
-                <body style="margin:0;padding:0;background:#050505;color:#ffffff;font-family:Arial,Helvetica,sans-serif;">
-                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#050505;padding:32px 12px;">
+                <body style="margin:0;padding:0;background:#0f1115;color:#e7e9ee;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0f1115;padding:34px 14px;">
                     <tr>
                       <td align="center">
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#0d0d0f;border:1px solid #2a0b0b;border-radius:22px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.55);">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#181b21;border:1px solid #262b33;border-radius:18px;overflow:hidden;box-shadow:0 16px 42px rgba(0,0,0,.38);">
                           <tr>
-                            <td style="padding:0;background:linear-gradient(135deg,#151515 0%,#050505 48%,#310606 100%);">
-                              <div style="padding:30px 30px 26px;border-bottom:1px solid rgba(255,255,255,.08);text-align:center;">
-                                %LOGO%
-                                <h1 style="margin:18px 0 0;font-size:30px;line-height:1.08;color:#fff;font-weight:900;text-transform:uppercase;">%TITULO%</h1>
-                                <p style="margin:14px 0 0;color:#d4d4d8;font-size:15px;line-height:1.65;text-align:center;">%INTRO%</p>
-                              </div>
+                            <td style="padding:38px 42px 30px;text-align:center;border-bottom:1px solid #262b33;">
+                              %LOGO%
+                              <h1 style="margin:20px 0 0;font-size:23px;line-height:1.35;color:#f4f5f7;font-weight:600;letter-spacing:.2px;">%TITULO%</h1>
+                              <p style="margin:12px auto 0;max-width:440px;color:#aeb4bf;font-size:15px;line-height:1.7;">%INTRO%</p>
                             </td>
                           </tr>
                           %CONTENIDO%
                           <tr>
-                            <td style="padding:18px 30px;background:#080808;border-top:1px solid rgba(255,255,255,.08);">
-                              <p style="margin:0;color:#71717a;font-size:11px;line-height:1.5;text-align:center;">Este mensaje fue generado automaticamente por Spartan Gym.</p>
+                            <td style="padding:22px 42px 26px;border-top:1px solid #262b33;">
+                              <p style="margin:0;color:#767c88;font-size:12px;line-height:1.6;text-align:center;">Mensaje automatico de %NOMBRE%. Por favor no respondas a este correo.</p>
                             </td>
                           </tr>
                         </table>
@@ -425,6 +423,7 @@ public class NotificacionService {
                 .replace("%TITULO%", titulo)
                 .replace("%LOGO%", construirLogoHtml(marca))
                 .replace("%INTRO%", introHtml)
+                .replace("%NOMBRE%", escapeHtml(marca.nombreGimnasio()))
                 .replace("%CONTENIDO%", contenidoHtml);
     }
 
@@ -440,10 +439,10 @@ public class NotificacionService {
         }
 
         return """
-                <div style="display:inline-block;padding:12px 16px;border:1px solid rgba(239,68,68,.32);border-radius:16px;background:rgba(0,0,0,.25);">
-                  <div style="font-size:26px;line-height:1;color:#ffffff;font-weight:900;letter-spacing:1px;text-transform:uppercase;">SPARTAN <span style="color:#ef4444;">GYM</span></div>
+                <div style="display:inline-block;padding:14px 22px;border:1px solid #33383f;border-radius:14px;background:#20242c;">
+                  <div style="font-size:24px;line-height:1;color:#f4f5f7;font-weight:800;letter-spacing:1px;">SPARTAN <span style="color:#ef4b57;">GYM</span></div>
                 </div>
-                <div style="margin-top:12px;font-size:11px;line-height:1;letter-spacing:4px;text-transform:uppercase;color:#f87171;font-weight:800;">%NOMBRE%</div>
+                <div style="margin-top:12px;font-size:11px;line-height:1;letter-spacing:3px;text-transform:uppercase;color:#8a909b;font-weight:700;">%NOMBRE%</div>
                 """.replace("%NOMBRE%", nombre);
     }
 
