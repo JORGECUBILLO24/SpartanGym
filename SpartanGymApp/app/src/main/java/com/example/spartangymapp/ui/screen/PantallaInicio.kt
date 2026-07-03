@@ -36,7 +36,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.spartangymapp.R
 import com.example.spartangymapp.network.AppConfigResponse
-import com.example.spartangymapp.network.RetrofitClient
 import com.example.spartangymapp.viewmodel.LoginViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -54,8 +53,6 @@ fun PantallaInicio(
     var passwordVisible by remember { mutableStateOf(false) }
     var mostrarRecuperacion by remember { mutableStateOf(false) }
     var correoRecuperacion by remember { mutableStateOf("") }
-    var mostrarServidor by remember { mutableStateOf(false) }
-    var servidorInput by remember { mutableStateOf(RetrofitClient.getServidorMostrable()) }
 
     val spartanRed = MaterialTheme.colorScheme.primary
     val cardBorder = Color(0xFF6A0F15)
@@ -351,82 +348,6 @@ fun PantallaInicio(
                                 fontWeight = FontWeight.Black,
                                 fontSize = 16.sp
                             )
-                        }
-                    }
-
-                    // ── Configuracion del servidor (para conexion por IP en celulares reales) ──
-                    TextButton(
-                        onClick = {
-                            mostrarServidor = !mostrarServidor
-                            if (mostrarServidor) servidorInput = RetrofitClient.getServidorMostrable()
-                        },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) {
-                        Text(
-                            text = if (mostrarServidor) "Ocultar configuracion de servidor" else "Configurar servidor",
-                            color = textPlaceholder,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    if (mostrarServidor) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFF101010),
-                            border = BorderStroke(1.dp, spartanRed.copy(alpha = 0.35f))
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Text(
-                                    text = "Direccion del servidor",
-                                    color = Color.White,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                                Text(
-                                    text = "Emulador: 10.0.2.2:8080\nCelular en la misma red Wi-Fi: IP del servidor (ej. 192.168.1.10:8080)",
-                                    color = Color(0xFFBDBDBD),
-                                    fontSize = 11.sp,
-                                    lineHeight = 16.sp
-                                )
-                                CampoInicio(
-                                    label = "IP o URL del servidor",
-                                    value = servidorInput,
-                                    onValueChange = { servidorInput = it },
-                                    placeholder = "192.168.1.10:8080",
-                                    fieldBackground = fieldBackground,
-                                    fieldBorder = fieldBorder,
-                                    spartanRed = spartanRed,
-                                    textLabel = textLabel,
-                                    textPlaceholder = textPlaceholder,
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
-                                )
-                                OutlinedButton(
-                                    onClick = {
-                                        RetrofitClient.setBaseUrl(servidorInput)
-                                        servidorInput = RetrofitClient.getServidorMostrable()
-                                        Toast.makeText(
-                                            context,
-                                            "Servidor guardado: ${RetrofitClient.getBaseUrl()}",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    border = BorderStroke(1.dp, spartanRed),
-                                    shape = RoundedCornerShape(10.dp)
-                                ) {
-                                    Text(
-                                        text = "GUARDAR SERVIDOR",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Black
-                                    )
-                                }
-                            }
                         }
                     }
                 }
