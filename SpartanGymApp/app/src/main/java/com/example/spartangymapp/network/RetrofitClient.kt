@@ -9,10 +9,11 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
-    // 10.0.2.2 es el "localhost" del Emulador de Android.
-    // En un celular fisico se usa la IP del servidor dentro de la misma red (ej. 192.168.1.X:8080),
-    // configurable desde la pantalla de inicio sin recompilar la app.
-    private const val DEFAULT_BASE_URL = "http://10.0.2.2:8080/"
+    // URL de PRODUCCION: la API desplegada en Render (conectada a Neon). La app se conecta
+    // automaticamente aqui desde cualquier red (datos moviles o wifi), sin configurar nada.
+    // Para desarrollo local (emulador 10.0.2.2 o IP en la LAN) se puede sobreescribir desde
+    // la opcion "Configurar servidor" en la pantalla de inicio.
+    private const val DEFAULT_BASE_URL = "https://spartangym-api.onrender.com/"
     private const val PREFS = "spartan_prefs"
     private const val KEY_BASE_URL = "base_url"
 
