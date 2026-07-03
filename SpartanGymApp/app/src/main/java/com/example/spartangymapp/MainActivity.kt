@@ -19,9 +19,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Carga la URL del servidor guardada (emulador por defecto, o la IP configurada en un celular real).
-        RetrofitClient.init(applicationContext)
-
         setContent {
             var accentColor by remember { mutableStateOf(Color(0xFFE10613)) }
             var appConfig by remember { mutableStateOf(AppConfigResponse()) }
