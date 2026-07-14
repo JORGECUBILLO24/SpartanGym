@@ -1,6 +1,7 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
 import lombok.RequiredArgsConstructor;
+import ni.edu.uam.SpartanGymAPI.dto.ProgresoSemana;
 import ni.edu.uam.SpartanGymAPI.dto.RutinaRequest;
 import ni.edu.uam.SpartanGymAPI.models.*;
 import ni.edu.uam.SpartanGymAPI.repositories.*;
@@ -28,6 +29,8 @@ public class RutinaService {
     private final SocioRepository socioRepository;
     private final EjercicioRepository ejercicioRepository;
     private final NotificacionService notificacionService;
+    private final EjercicioCompletadoService ejercicioCompletadoService;
+    private final RutinaResponseMapper rutinaResponseMapper;
 
     private static final DateTimeFormatter FECHA_CORREO = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -132,7 +135,12 @@ public class RutinaService {
             detalle.setRepeticiones(dto.getRepeticiones());
             detalle.setTipoEjercicio(textoOpcional(dto.getTipoEjercicio(), "Fuerza"));
             detalle.setDiaProgramado(dto.getDiaProgramado());
+            detalle.setDiaSemana(dto.getDiaSemana());
             detalle.setPesoSugeridoKg(dto.getPesoSugeridoKg());
+            detalle.setVelocidadNivel(dto.getVelocidadNivel());
+            detalle.setInclinacion(dto.getInclinacion());
+            detalle.setDuracionSegundos(dto.getDuracionSegundos());
+            detalle.setDistanciaMetros(dto.getDistanciaMetros());
             detalle.setTiempoDescansoSegundos(dto.getTiempoDescansoSegundos());
             detalle.setNotas(limpiarTexto(dto.getNotas()));
             detalle.setOrden(dto.getOrden());
@@ -202,39 +210,7 @@ public class RutinaService {
     }
 
     private Map<String, Object> mapearRutina(Rutina rutina) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("id", rutina.getId());
-        data.put("socioId", rutina.getSocio().getUsuarioId());
-        data.put("socio", rutina.getSocio().getNombres() + " " + rutina.getSocio().getApellidos());
-        data.put("entrenadorId", rutina.getEntrenador().getUsuarioId());
-        data.put("entrenador", rutina.getEntrenador().getNombres() + " " + rutina.getEntrenador().getApellidos());
-        data.put("fechaAsignacion", rutina.getFechaAsignacion());
-        data.put("nombre", rutina.getNombre());
-        data.put("tipoRutina", rutina.getTipoRutina());
-        data.put("generoObjetivo", rutina.getGeneroObjetivo());
-        data.put("esGlobal", Boolean.TRUE.equals(rutina.getEsGlobal()));
-        data.put("fechaInicio", rutina.getFechaInicio());
-        data.put("fechaFin", rutina.getFechaFin());
-        data.put("objetivo", rutina.getObjetivo());
-        data.put("notas", rutina.getNotas());
-        data.put("ejercicios", rutina.getDetalles().stream()
-                .sorted(Comparator.comparing(detalle -> Objects.requireNonNullElse(detalle.getOrden(), 0)))
-                .map(detalle -> {
-            Map<String, Object> ejercicio = new LinkedHashMap<>();
-            ejercicio.put("ejercicioId", detalle.getEjercicio().getId());
-            ejercicio.put("ejercicio", detalle.getEjercicio().getNombre());
-            ejercicio.put("grupoMuscular", detalle.getEjercicio().getGrupoMuscular().getNombre());
-            ejercicio.put("grupoMuscularId", detalle.getEjercicio().getGrupoMuscular().getId());
-            ejercicio.put("tipoEjercicio", detalle.getTipoEjercicio());
-            ejercicio.put("diaProgramado", detalle.getDiaProgramado());
-            ejercicio.put("series", detalle.getSeries());
-            ejercicio.put("repeticiones", detalle.getRepeticiones());
-            ejercicio.put("pesoSugeridoKg", detalle.getPesoSugeridoKg());
-            ejercicio.put("tiempoDescansoSegundos", detalle.getTiempoDescansoSegundos());
-            ejercicio.put("notas", detalle.getNotas());
-            ejercicio.put("orden", detalle.getOrden());
-            return ejercicio;
-        }).toList());
-        return data;
+        ProgresoSemana progresoSemana = ejercicioCompletadoService.calcularProgreso(rutina);
+        return rutinaResponseMapper.mapear(rutina, progresoSemana);
     }
 }
