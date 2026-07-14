@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.*;
+import ni.edu.uam.SpartanGymAPI.dto.ProgresoSemana;
+import ni.edu.uam.SpartanGymAPI.services.EjercicioCompletadoService;
+import ni.edu.uam.SpartanGymAPI.services.RutinaResponseMapper;
 
 @RestController
 @RequestMapping("/api/operacion")
@@ -24,6 +27,8 @@ public class OperacionController {
     private final AsistenciaRepository asistenciaRepository;
     private final RutinaRepository rutinaRepository;
     private final NotificacionRepository notificacionRepository;
+    private final EjercicioCompletadoService ejercicioCompletadoService;
+    private final RutinaResponseMapper rutinaResponseMapper;
 
     @GetMapping("/me")
     @Transactional(readOnly = true)
@@ -245,39 +250,8 @@ public class OperacionController {
     }
 
     private Map<String, Object> rutinaMap(Rutina rutina) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("id", rutina.getId());
-        data.put("socioId", rutina.getSocio().getUsuarioId());
-        data.put("socio", rutina.getSocio().getNombres() + " " + rutina.getSocio().getApellidos());
-        data.put("entrenador", rutina.getEntrenador().getNombres() + " " + rutina.getEntrenador().getApellidos());
-        data.put("fechaAsignacion", rutina.getFechaAsignacion());
-        data.put("nombre", rutina.getNombre());
-        data.put("tipoRutina", rutina.getTipoRutina());
-        data.put("generoObjetivo", rutina.getGeneroObjetivo());
-        data.put("esGlobal", Boolean.TRUE.equals(rutina.getEsGlobal()));
-        data.put("fechaInicio", rutina.getFechaInicio());
-        data.put("fechaFin", rutina.getFechaFin());
-        data.put("objetivo", rutina.getObjetivo());
-        data.put("notas", rutina.getNotas());
-        data.put("ejercicios", rutina.getDetalles().stream()
-                .sorted(Comparator.comparing(detalle -> Objects.requireNonNullElse(detalle.getOrden(), 0)))
-                .map(detalle -> {
-            Map<String, Object> ejercicio = new LinkedHashMap<>();
-            ejercicio.put("ejercicioId", detalle.getEjercicio().getId());
-            ejercicio.put("ejercicio", detalle.getEjercicio().getNombre());
-            ejercicio.put("grupoMuscular", detalle.getEjercicio().getGrupoMuscular().getNombre());
-            ejercicio.put("grupoMuscularId", detalle.getEjercicio().getGrupoMuscular().getId());
-            ejercicio.put("tipoEjercicio", detalle.getTipoEjercicio());
-            ejercicio.put("diaProgramado", detalle.getDiaProgramado());
-            ejercicio.put("series", detalle.getSeries());
-            ejercicio.put("repeticiones", detalle.getRepeticiones());
-            ejercicio.put("pesoSugeridoKg", detalle.getPesoSugeridoKg());
-            ejercicio.put("tiempoDescansoSegundos", detalle.getTiempoDescansoSegundos());
-            ejercicio.put("notas", detalle.getNotas());
-            ejercicio.put("orden", detalle.getOrden());
-            return ejercicio;
-        }).toList());
-        return data;
+        ProgresoSemana progresoSemana = ejercicioCompletadoService.calcularProgreso(rutina);
+        return rutinaResponseMapper.mapear(rutina, progresoSemana);
     }
 
     private Map<String, Object> notificacionMap(Notificacion notificacion) {
