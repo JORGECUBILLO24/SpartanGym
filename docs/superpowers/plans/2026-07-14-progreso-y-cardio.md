@@ -15,6 +15,8 @@
 - El progreso es **semanal** (lunes–domingo), se reinicia cada semana. No hay rachas ni historial multi-semana en este plan (fuera de alcance, ver spec).
 - Columnas fijas, no JSON, para los parámetros alternativos.
 - **No se toca `PantallaEntrenador.kt`** (constructor de rutinas dentro de la app Android) — fuera de alcance de este plan; el entrenador construye rutinas con campos por tipo únicamente desde la web. Es un gap conocido a futuro, no silencioso: se documenta aquí.
+- **Decisión post-aprobación (pre-flight, antes de ejecutar la Task 1):** para evitar duplicar el bloque de mapeo de ejercicios entre `RutinaService.mapearRutina` y `OperacionController.rutinaMap`, se extrae un componente compartido `RutinaResponseMapper` (ver Tasks 9 y 10, ya actualizadas con este diseño — no usar ninguna versión anterior de estas dos tareas). Confirmado explícitamente por el usuario.
+- **Decisión post-aprobación (pre-flight):** el Step 3 de la Task 12 (aplicar la migración SQL contra la base del perfil `local`, que hoy apunta a Neon en la nube — la misma que usa la API en producción) la ejecuta el usuario manualmente, no el subagente de esa tarea. El subagente de la Task 12 hace todo lo demás (tests, build, arrancar el servidor, smoke tests) y se detiene/reporta en ese paso para que el usuario lo confirme antes de continuar con los Steps 5-8 (que sí requieren que la migración ya esté aplicada).
 - **Prerrequisito de entorno (una sola vez):** este worktree es un checkout nuevo y `SpartanGymAPI/src/main/resources/application-local.properties` está gitignored, así que **no existe aquí todavía**. Antes de correr la API localmente (Tarea 12), cópialo desde el checkout principal:
   ```powershell
   Copy-Item "C:\Users\gaboe\Documents\PoyectoFInalPOOII\SpartanGymResolve\SpartanGym1\SpartanGym\SpartanGymAPI\src\main\resources\application-local.properties" "C:\Users\gaboe\Documents\PoyectoFInalPOOII\SpartanGymResolve\SpartanGym1\SpartanGym\.claude\worktrees\feat+progreso-y-cardio\SpartanGymAPI\src\main\resources\application-local.properties"
@@ -1092,22 +1094,113 @@ git commit -m "feat(api): agregar endpoint para marcar/desmarcar ejercicio compl
 
 ---
 
-### Task 9: `RutinaService` — mapear campos nuevos y progreso en `construirRutina`/`mapearRutina`
+### Task 9: `RutinaResponseMapper` compartido + `RutinaService` lo usa
 
 **Files:**
+- Create: `SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/services/RutinaResponseMapper.java`
 - Modify: `SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/services/RutinaService.java`
 
 **Interfaces:**
 - Consumes: `EjercicioCompletadoService.calcularProgreso(Rutina)` (Task 7).
-- Produces: `GET /api/rutinas` (usado por `Rutinas.jsx` en la Fase 2) ahora incluye `progresoSemana`, `completadosSemana`, `planificadosSemana` por rutina y `diaSemana`/`velocidadNivel`/`inclinacion`/`duracionSegundos`/`distanciaMetros`/`completadoEstaSemana` por ejercicio.
+- Produces: `RutinaResponseMapper.mapear(Rutina rutina, ProgresoSemana progresoSemana): Map<String, Object>`. Usado por `RutinaService.mapearRutina` (esta tarea) y por `OperacionController.rutinaMap` (Task 10) — es el punto único que serializa una `Rutina` + su progreso a la forma que consumen la web y la app, para no mantener dos copias del mismo bloque. `GET /api/rutinas` (usado por `Rutinas.jsx` en la Fase 2) queda incluyendo `progresoSemana`, `completadosSemana`, `planificadosSemana` por rutina y `diaSemana`/`velocidadNivel`/`inclinacion`/`duracionSegundos`/`distanciaMetros`/`completadoEstaSemana` por ejercicio.
 
-- [ ] **Step 1: Inyectar `EjercicioCompletadoService` y mapear los campos nuevos en `construirRutina`**
+> Nota: el mapa de `RutinaService.mapearRutina` ya incluía `entrenadorId` y el de `OperacionController.rutinaMap` no. El mapper compartido incluye `entrenadorId` (superset) — es un campo JSON adicional para el endpoint que consume la app, inofensivo porque Gson ignora campos desconocidos en las respuestas.
 
-En `SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/services/RutinaService.java`, agregar el campo tras `notificacionService` (línea 30):
+- [ ] **Step 1: Crear `RutinaResponseMapper`**
+
+```java
+package ni.edu.uam.SpartanGymAPI.services;
+
+import ni.edu.uam.SpartanGymAPI.dto.ProgresoSemana;
+import ni.edu.uam.SpartanGymAPI.models.Rutina;
+import ni.edu.uam.SpartanGymAPI.models.RutinaDetalle;
+import org.springframework.stereotype.Component;
+
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
+
+// Serializa una Rutina + su progreso semanal a la forma de respuesta que
+// comparten el listado de admin (RutinaService) y el endpoint que consume
+// la app (OperacionController) — un unico lugar para esta forma, no dos.
+@Component
+public class RutinaResponseMapper {
+
+    public Map<String, Object> mapear(Rutina rutina, ProgresoSemana progresoSemana) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("id", rutina.getId());
+        data.put("socioId", rutina.getSocio().getUsuarioId());
+        data.put("socio", rutina.getSocio().getNombres() + " " + rutina.getSocio().getApellidos());
+        data.put("entrenadorId", rutina.getEntrenador().getUsuarioId());
+        data.put("entrenador", rutina.getEntrenador().getNombres() + " " + rutina.getEntrenador().getApellidos());
+        data.put("fechaAsignacion", rutina.getFechaAsignacion());
+        data.put("nombre", rutina.getNombre());
+        data.put("tipoRutina", rutina.getTipoRutina());
+        data.put("generoObjetivo", rutina.getGeneroObjetivo());
+        data.put("esGlobal", Boolean.TRUE.equals(rutina.getEsGlobal()));
+        data.put("fechaInicio", rutina.getFechaInicio());
+        data.put("fechaFin", rutina.getFechaFin());
+        data.put("objetivo", rutina.getObjetivo());
+        data.put("notas", rutina.getNotas());
+        data.put("progresoSemana", progresoSemana.progreso());
+        data.put("completadosSemana", progresoSemana.completados());
+        data.put("planificadosSemana", progresoSemana.planificados());
+        data.put("ejercicios", rutina.getDetalles().stream()
+                .sorted(Comparator.comparing(detalle -> Objects.requireNonNullElse(detalle.getOrden(), 0)))
+                .map(detalle -> mapearEjercicio(detalle, progresoSemana))
+                .toList());
+        return data;
+    }
+
+    private Map<String, Object> mapearEjercicio(RutinaDetalle detalle, ProgresoSemana progresoSemana) {
+        Map<String, Object> ejercicio = new LinkedHashMap<>();
+        ejercicio.put("ejercicioId", detalle.getEjercicio().getId());
+        ejercicio.put("ejercicio", detalle.getEjercicio().getNombre());
+        ejercicio.put("grupoMuscular", detalle.getEjercicio().getGrupoMuscular().getNombre());
+        ejercicio.put("grupoMuscularId", detalle.getEjercicio().getGrupoMuscular().getId());
+        ejercicio.put("tipoEjercicio", detalle.getTipoEjercicio());
+        ejercicio.put("diaProgramado", detalle.getDiaProgramado());
+        ejercicio.put("diaSemana", detalle.getDiaSemana());
+        ejercicio.put("series", detalle.getSeries());
+        ejercicio.put("repeticiones", detalle.getRepeticiones());
+        ejercicio.put("pesoSugeridoKg", detalle.getPesoSugeridoKg());
+        ejercicio.put("velocidadNivel", detalle.getVelocidadNivel());
+        ejercicio.put("inclinacion", detalle.getInclinacion());
+        ejercicio.put("duracionSegundos", detalle.getDuracionSegundos());
+        ejercicio.put("distanciaMetros", detalle.getDistanciaMetros());
+        ejercicio.put("tiempoDescansoSegundos", detalle.getTiempoDescansoSegundos());
+        ejercicio.put("notas", detalle.getNotas());
+        ejercicio.put("orden", detalle.getOrden());
+        ejercicio.put("completadoEstaSemana", progresoSemana.ejerciciosCompletadosIds().contains(detalle.getEjercicio().getId()));
+        return ejercicio;
+    }
+}
+```
+
+- [ ] **Step 2: Verificar que compila**
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+.\mvnw.cmd -q compile
+```
+Expected: BUILD SUCCESS.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/services/RutinaResponseMapper.java
+git commit -m "feat(api): agregar RutinaResponseMapper compartido para serializar rutina+progreso"
+```
+
+- [ ] **Step 4: Inyectar `EjercicioCompletadoService` y `RutinaResponseMapper`, y mapear los campos nuevos en `construirRutina`**
+
+En `SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/services/RutinaService.java`, agregar los campos tras `notificacionService` (línea 30). `RutinaResponseMapper` está en el mismo paquete (`ni.edu.uam.SpartanGymAPI.services`), no necesita import:
 
 ```java
     private final NotificacionService notificacionService;
     private final EjercicioCompletadoService ejercicioCompletadoService;
+    private final RutinaResponseMapper rutinaResponseMapper;
 ```
 
 Dentro de `construirRutina` (líneas 128-139), reemplazar:
@@ -1145,7 +1238,7 @@ por:
             detalle.setOrden(dto.getOrden());
 ```
 
-- [ ] **Step 2: Reemplazar `mapearRutina` completo**
+- [ ] **Step 5: Reemplazar `mapearRutina` para delegar al `RutinaResponseMapper`**
 
 Método actual (líneas 204-239):
 ```java
@@ -1191,54 +1284,11 @@ Reemplazar por:
 ```java
     private Map<String, Object> mapearRutina(Rutina rutina) {
         ProgresoSemana progresoSemana = ejercicioCompletadoService.calcularProgreso(rutina);
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("id", rutina.getId());
-        data.put("socioId", rutina.getSocio().getUsuarioId());
-        data.put("socio", rutina.getSocio().getNombres() + " " + rutina.getSocio().getApellidos());
-        data.put("entrenadorId", rutina.getEntrenador().getUsuarioId());
-        data.put("entrenador", rutina.getEntrenador().getNombres() + " " + rutina.getEntrenador().getApellidos());
-        data.put("fechaAsignacion", rutina.getFechaAsignacion());
-        data.put("nombre", rutina.getNombre());
-        data.put("tipoRutina", rutina.getTipoRutina());
-        data.put("generoObjetivo", rutina.getGeneroObjetivo());
-        data.put("esGlobal", Boolean.TRUE.equals(rutina.getEsGlobal()));
-        data.put("fechaInicio", rutina.getFechaInicio());
-        data.put("fechaFin", rutina.getFechaFin());
-        data.put("objetivo", rutina.getObjetivo());
-        data.put("notas", rutina.getNotas());
-        data.put("progresoSemana", progresoSemana.progreso());
-        data.put("completadosSemana", progresoSemana.completados());
-        data.put("planificadosSemana", progresoSemana.planificados());
-        data.put("ejercicios", rutina.getDetalles().stream()
-                .sorted(Comparator.comparing(detalle -> Objects.requireNonNullElse(detalle.getOrden(), 0)))
-                .map(detalle -> {
-            Map<String, Object> ejercicio = new LinkedHashMap<>();
-            ejercicio.put("ejercicioId", detalle.getEjercicio().getId());
-            ejercicio.put("ejercicio", detalle.getEjercicio().getNombre());
-            ejercicio.put("grupoMuscular", detalle.getEjercicio().getGrupoMuscular().getNombre());
-            ejercicio.put("grupoMuscularId", detalle.getEjercicio().getGrupoMuscular().getId());
-            ejercicio.put("tipoEjercicio", detalle.getTipoEjercicio());
-            ejercicio.put("diaProgramado", detalle.getDiaProgramado());
-            ejercicio.put("diaSemana", detalle.getDiaSemana());
-            ejercicio.put("series", detalle.getSeries());
-            ejercicio.put("repeticiones", detalle.getRepeticiones());
-            ejercicio.put("pesoSugeridoKg", detalle.getPesoSugeridoKg());
-            ejercicio.put("velocidadNivel", detalle.getVelocidadNivel());
-            ejercicio.put("inclinacion", detalle.getInclinacion());
-            ejercicio.put("duracionSegundos", detalle.getDuracionSegundos());
-            ejercicio.put("distanciaMetros", detalle.getDistanciaMetros());
-            ejercicio.put("tiempoDescansoSegundos", detalle.getTiempoDescansoSegundos());
-            ejercicio.put("notas", detalle.getNotas());
-            ejercicio.put("orden", detalle.getOrden());
-            ejercicio.put("completadoEstaSemana", progresoSemana.ejerciciosCompletadosIds().contains(detalle.getEjercicio().getId()));
-            return ejercicio;
-        }).toList());
-        return data;
+        return rutinaResponseMapper.mapear(rutina, progresoSemana);
     }
 ```
 
-- [ ] **Step 3: Agregar el import de `ProgresoSemana`**
+- [ ] **Step 6: Agregar el import de `ProgresoSemana`**
 
 Al inicio del archivo, la línea `import ni.edu.uam.SpartanGymAPI.dto.RutinaRequest;` cambia a:
 ```java
@@ -1246,40 +1296,41 @@ import ni.edu.uam.SpartanGymAPI.dto.ProgresoSemana;
 import ni.edu.uam.SpartanGymAPI.dto.RutinaRequest;
 ```
 
-- [ ] **Step 4: Verificar que compila**
+- [ ] **Step 7: Verificar que compila**
 
 ```powershell
 .\mvnw.cmd -q compile
 ```
 Expected: BUILD SUCCESS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/services/RutinaService.java
-git commit -m "feat(api): RutinaService mapea campos por tipo y progreso semanal real"
+git commit -m "feat(api): RutinaService delega el mapeo de rutina al RutinaResponseMapper compartido"
 ```
 
 ---
 
-### Task 10: `OperacionController.rutinaMap` — progreso real para el endpoint que consume la app
+### Task 10: `OperacionController.rutinaMap` — delegar al `RutinaResponseMapper` compartido
 
 **Files:**
 - Modify: `SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/controllers/OperacionController.java`
 
 **Interfaces:**
-- Consumes: `EjercicioCompletadoService.calcularProgreso(Rutina)` (Task 7).
-- Produces: `GET /api/operacion/socio/{socioId}/rutinas` (consumido por la app, Fase 3) ahora incluye `progresoSemana`, `completadosSemana`, `planificadosSemana` y por ejercicio `diaSemana`/`velocidadNivel`/`inclinacion`/`duracionSegundos`/`distanciaMetros`/`completadoEstaSemana`.
+- Consumes: `EjercicioCompletadoService.calcularProgreso(Rutina)` (Task 7), `RutinaResponseMapper.mapear(Rutina, ProgresoSemana)` (Task 9).
+- Produces: `GET /api/operacion/socio/{socioId}/rutinas` (consumido por la app, Fase 3) ahora incluye `progresoSemana`, `completadosSemana`, `planificadosSemana`, `entrenadorId` y por ejercicio `diaSemana`/`velocidadNivel`/`inclinacion`/`duracionSegundos`/`distanciaMetros`/`completadoEstaSemana` — misma forma que `GET /api/rutinas` (Task 9), porque ambos delegan al mismo mapper.
 
-- [ ] **Step 1: Inyectar `EjercicioCompletadoService`**
+- [ ] **Step 1: Inyectar `EjercicioCompletadoService` y `RutinaResponseMapper`**
 
-Agregar el campo tras `notificacionRepository` (línea 26):
+Agregar los campos tras `notificacionRepository` (línea 26). `RutinaResponseMapper` está en el paquete `services`, `OperacionController` está en `controllers` — sí necesita import (ver Step 3):
 ```java
     private final NotificacionRepository notificacionRepository;
     private final EjercicioCompletadoService ejercicioCompletadoService;
+    private final RutinaResponseMapper rutinaResponseMapper;
 ```
 
-- [ ] **Step 2: Reemplazar `rutinaMap` completo**
+- [ ] **Step 2: Reemplazar `rutinaMap` para delegar al mapper compartido**
 
 Método actual (líneas 247-281):
 ```java
@@ -1324,58 +1375,17 @@ Reemplazar por:
 ```java
     private Map<String, Object> rutinaMap(Rutina rutina) {
         ProgresoSemana progresoSemana = ejercicioCompletadoService.calcularProgreso(rutina);
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("id", rutina.getId());
-        data.put("socioId", rutina.getSocio().getUsuarioId());
-        data.put("socio", rutina.getSocio().getNombres() + " " + rutina.getSocio().getApellidos());
-        data.put("entrenador", rutina.getEntrenador().getNombres() + " " + rutina.getEntrenador().getApellidos());
-        data.put("fechaAsignacion", rutina.getFechaAsignacion());
-        data.put("nombre", rutina.getNombre());
-        data.put("tipoRutina", rutina.getTipoRutina());
-        data.put("generoObjetivo", rutina.getGeneroObjetivo());
-        data.put("esGlobal", Boolean.TRUE.equals(rutina.getEsGlobal()));
-        data.put("fechaInicio", rutina.getFechaInicio());
-        data.put("fechaFin", rutina.getFechaFin());
-        data.put("objetivo", rutina.getObjetivo());
-        data.put("notas", rutina.getNotas());
-        data.put("progresoSemana", progresoSemana.progreso());
-        data.put("completadosSemana", progresoSemana.completados());
-        data.put("planificadosSemana", progresoSemana.planificados());
-        data.put("ejercicios", rutina.getDetalles().stream()
-                .sorted(Comparator.comparing(detalle -> Objects.requireNonNullElse(detalle.getOrden(), 0)))
-                .map(detalle -> {
-            Map<String, Object> ejercicio = new LinkedHashMap<>();
-            ejercicio.put("ejercicioId", detalle.getEjercicio().getId());
-            ejercicio.put("ejercicio", detalle.getEjercicio().getNombre());
-            ejercicio.put("grupoMuscular", detalle.getEjercicio().getGrupoMuscular().getNombre());
-            ejercicio.put("grupoMuscularId", detalle.getEjercicio().getGrupoMuscular().getId());
-            ejercicio.put("tipoEjercicio", detalle.getTipoEjercicio());
-            ejercicio.put("diaProgramado", detalle.getDiaProgramado());
-            ejercicio.put("diaSemana", detalle.getDiaSemana());
-            ejercicio.put("series", detalle.getSeries());
-            ejercicio.put("repeticiones", detalle.getRepeticiones());
-            ejercicio.put("pesoSugeridoKg", detalle.getPesoSugeridoKg());
-            ejercicio.put("velocidadNivel", detalle.getVelocidadNivel());
-            ejercicio.put("inclinacion", detalle.getInclinacion());
-            ejercicio.put("duracionSegundos", detalle.getDuracionSegundos());
-            ejercicio.put("distanciaMetros", detalle.getDistanciaMetros());
-            ejercicio.put("tiempoDescansoSegundos", detalle.getTiempoDescansoSegundos());
-            ejercicio.put("notas", detalle.getNotas());
-            ejercicio.put("orden", detalle.getOrden());
-            ejercicio.put("completadoEstaSemana", progresoSemana.ejerciciosCompletadosIds().contains(detalle.getEjercicio().getId()));
-            return ejercicio;
-        }).toList());
-        return data;
+        return rutinaResponseMapper.mapear(rutina, progresoSemana);
     }
 ```
 
-- [ ] **Step 3: Agregar el import de `ProgresoSemana` y `EjercicioCompletadoService`**
+- [ ] **Step 3: Agregar los imports de `ProgresoSemana`, `EjercicioCompletadoService` y `RutinaResponseMapper`**
 
 El archivo ya tiene `import ni.edu.uam.SpartanGymAPI.repositories.*;` — agregar tras el bloque de imports existente (después de `import java.time.LocalDate;`):
 ```java
 import ni.edu.uam.SpartanGymAPI.dto.ProgresoSemana;
 import ni.edu.uam.SpartanGymAPI.services.EjercicioCompletadoService;
+import ni.edu.uam.SpartanGymAPI.services.RutinaResponseMapper;
 ```
 
 - [ ] **Step 4: Verificar que compila**
@@ -1389,7 +1399,7 @@ Expected: BUILD SUCCESS.
 
 ```bash
 git add SpartanGymAPI/src/main/java/ni/edu/uam/SpartanGymAPI/controllers/OperacionController.java
-git commit -m "feat(api): OperacionController.rutinaMap devuelve progreso semanal real"
+git commit -m "feat(api): OperacionController.rutinaMap delega al RutinaResponseMapper compartido"
 ```
 
 ---
@@ -1581,9 +1591,11 @@ git commit -m "feat(api): DashboardService calcula progreso semanal real de la r
 
 ---
 
-### Task 12: Verificación end-to-end de la API (build completo + tests + smoke manual contra BD)
+### Task 12: Build completo + tests de la API + preparar entorno (sin tocar la BD)
 
 **Files:** (ninguno — tarea de verificación)
+
+> Esta tarea **no toca ninguna base de datos**. Termina justo antes de aplicar la migración SQL, que corre el usuario manualmente (ver Task 12b) por tratarse de la base de Neon compartida con la API en producción.
 
 - [ ] **Step 1: Correr toda la suite de tests**
 
@@ -1596,26 +1608,33 @@ Expected: BUILD SUCCESS — incluye `RangoSemanaTest` (3), `EjercicioCompletadoS
 
 - [ ] **Step 2: Copiar `application-local.properties` desde el checkout principal (ver Global Constraints) si no está ya copiado**
 
-- [ ] **Step 3: Aplicar la migración SQL de la Task 1 contra la base del perfil `local`**
+- [ ] **Step 3: Reportar DONE sin arrancar el servidor.** El siguiente paso (aplicar la migración SQL contra Neon) lo hace el usuario fuera de este flujo de subagentes — no continuar a la Task 12b hasta que el controller confirme que la migración ya se aplicó.
 
-Usar el cliente psql apuntando a la misma base que `application-local.properties`. Ejecutar el bloque SQL agregado en la Task 1 (sección "5. Progreso semanal..." de `spartan_gym_schema.sql`).
+---
 
-- [ ] **Step 4: Levantar la API localmente**
+### Task 12b: Smoke tests end-to-end contra BD (requiere migración ya aplicada por el usuario)
+
+**Files:** (ninguno — tarea de verificación)
+
+**Precondición (verificada por el controller antes de dispatchar esta tarea, no por el subagente):** el usuario ya ejecutó a mano el bloque SQL de la Task 1 (sección "5. Progreso semanal..." de `spartan_gym_schema.sql`) contra la base que usa `application-local.properties`, y lo confirmó.
+
+- [ ] **Step 1: Levantar la API localmente**
 
 ```powershell
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+cd SpartanGymAPI
 .\mvnw.cmd spring-boot:run
 ```
 Expected: arranca sin excepciones, log `Started SpartanGymApiApplication`.
 
-- [ ] **Step 5: Smoke test manual con curl — login de un socio de prueba**
+- [ ] **Step 2: Smoke test manual con curl — login de un socio de prueba**
 
 ```powershell
 curl -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" -d '{\"email\":\"<email-de-un-socio-sembrado>\",\"password\":\"admin123\"}'
 ```
 Guardar el `token` de la respuesta.
 
-- [ ] **Step 6: Smoke test — marcar un ejercicio completado y verificar que el progreso cambia**
+- [ ] **Step 3: Smoke test — marcar un ejercicio completado y verificar que el progreso cambia**
 
 ```powershell
 # Obtener rutinas del socio (tomar un rutinaId y ejercicioId real del body)
@@ -1629,19 +1648,19 @@ curl http://localhost:8080/api/operacion/socio/<socioId>/rutinas -H "Authorizati
 ```
 Expected: la segunda llamada a `.../rutinas` muestra `completadoEstaSemana: true` en ese ejercicio y `progresoSemana` mayor que en la primera llamada. Repetir el POST con el mismo body no debe crear un segundo registro (idempotente) — confirmar revisando `SELECT COUNT(*) FROM ejercicios_completados WHERE rutina_id='<rutinaId>' AND ejercicio_id=<ejercicioId>;` = 1.
 
-- [ ] **Step 7: Smoke test — desmarcar**
+- [ ] **Step 4: Smoke test — desmarcar**
 
 ```powershell
 curl -X POST http://localhost:8080/api/rutinas/<rutinaId>/ejercicios/<ejercicioId>/completar -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{\"completado\":false}'
 ```
 Expected: 200 OK; `SELECT COUNT(*)...` de la fila = 0; siguiente `GET .../rutinas` muestra `completadoEstaSemana: false` y `progresoSemana` baja de nuevo.
 
-- [ ] **Step 8: Smoke test — ownership check**
+- [ ] **Step 5: Smoke test — ownership check**
 
-Repetir el Step 6 pero con el token de un socio **distinto** al dueño de la rutina.
+Repetir el Step 3 pero con el token de un socio **distinto** al dueño de la rutina.
 Expected: `403 Forbidden` con body `"No tienes permisos para realizar esta acción."` (viene de `GlobalExceptionHandler.handleAccessDenied`).
 
-- [ ] **Step 9: Detener el servidor (Ctrl+C) y no commitear nada en esta tarea** (es solo verificación).
+- [ ] **Step 6: Detener el servidor (Ctrl+C) y no commitear nada en esta tarea** (es solo verificación).
 
 ---
 
@@ -2555,13 +2574,14 @@ Expected: BUILD SUCCESSFUL.
 - (A) Marcar completado + % real semanal → Tasks 1, 5, 7, 8, 9, 10, 11, 17. ✓
 - (B) Campos alternativos por tipo (columnas fijas) → Tasks 1, 4, 6, 9, 10, 13, 17. ✓
 - `dia_semana` reemplaza `dia_programado` en el flujo nuevo → Tasks 1, 4, 9, 10, 13. ✓
-- Endpoint `POST completar` con validación de dueño → Tasks 7, 8, 12 (Step 8 smoke test). ✓
+- Endpoint `POST completar` con validación de dueño → Tasks 7, 8, 12b (Step 5 smoke test). ✓
 - Web: campos condicionales + progreso visible para staff → Tasks 13, 14. ✓
 - App: progreso real + persistencia + detalle por tipo → Tasks 15, 16, 17, 18. ✓
 - Fuera de alcance explícito (rachas, historial multi-semana, `PantallaEntrenador.kt`) → declarado en Global Constraints, no se crean tasks para ello. ✓
+- Mapper compartido `RutinaResponseMapper` (decisión de pre-flight, no del spec original) → Tasks 9, 10. ✓ Evita la duplicación verbatim del bloque de mapeo de ejercicios entre `RutinaService` y `OperacionController`.
 
 **Placeholders:** ninguno — cada step tiene código completo o comandos exactos con output esperado.
 
-**Consistencia de tipos:** `ProgresoSemana(int planificados, int completados, double progreso, Set<Long> ejerciciosCompletadosIds)` se usa igual en `EjercicioCompletadoService`, `RutinaService`, `OperacionController`, `DashboardService`. `MarcarEjercicioRequest{Boolean completado, LocalDate fecha}` (API) ↔ `MarcarEjercicioRequest(Boolean completado, String? fecha)` (Kotlin, serializado por Gson) coinciden en forma JSON. `EjercicioSocio.ejercicioId: Long` coincide con `Ejercicio.id: Long` (API) y `EjercicioRutinaResponse.ejercicioId: Long?` (app).
+**Consistencia de tipos:** `ProgresoSemana(int planificados, int completados, double progreso, Set<Long> ejerciciosCompletadosIds)` se usa igual en `EjercicioCompletadoService`, `RutinaResponseMapper`, `RutinaService`, `OperacionController`, `DashboardService`. `RutinaResponseMapper.mapear(Rutina, ProgresoSemana): Map<String,Object>` es el único punto que serializa una rutina completa, consumido por `RutinaService.mapearRutina` (Task 9) y `OperacionController.rutinaMap` (Task 10) — ambos delegan, ninguno reimplementa el bloque. `MarcarEjercicioRequest{Boolean completado, LocalDate fecha}` (API) ↔ `MarcarEjercicioRequest(Boolean completado, String? fecha)` (Kotlin, serializado por Gson) coinciden en forma JSON. `EjercicioSocio.ejercicioId: Long` coincide con `Ejercicio.id: Long` (API) y `EjercicioRutinaResponse.ejercicioId: Long?` (app).
 
-**Orden de dependencias:** Fase 1 (API) debe completarse antes que Fase 2 y 3 (ambas consumen los campos nuevos de `GET /api/rutinas` y `GET /api/operacion/socio/{id}/rutinas`). Fase 2 y 3 son independientes entre sí y pueden ejecutarse en paralelo una vez terminada la Fase 1.
+**Orden de dependencias:** Fase 1 (API) debe completarse antes que Fase 2 y 3 (ambas consumen los campos nuevos de `GET /api/rutinas` y `GET /api/operacion/socio/{id}/rutinas`). Fase 2 y 3 son independientes entre sí y pueden ejecutarse en paralelo una vez terminada la Fase 1. Dentro de la Fase 1: Task 12 (build+tests, sin BD) puede correr en cuanto termine la Task 11; Task 12b (smoke tests contra BD) espera a que el usuario confirme que aplicó la migración de la Task 1 manualmente contra Neon.
