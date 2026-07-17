@@ -62,8 +62,10 @@ import com.example.spartangymapp.network.CompraMembresiaAppRequest
 import com.example.spartangymapp.network.CompraProductoAppRequest
 import com.example.spartangymapp.network.ControlBiometricoResponse
 import com.example.spartangymapp.network.DashboardResponse
+import com.example.spartangymapp.network.EjercicioRutinaResponse
 import com.example.spartangymapp.network.FacturaMembresiaAppResponse
 import com.example.spartangymapp.network.TipoMembresiaResponse
+import com.example.spartangymapp.network.MarcarEjercicioRequest
 import com.example.spartangymapp.network.PagoSocioResponse
 import com.example.spartangymapp.network.PerfilActualResponse
 import com.example.spartangymapp.network.ProductoCatalogoResponse
@@ -96,6 +98,7 @@ private val VerdeEstado = Color(0xFF22C55E)
 
 // ─── Modelos internos ──────────────────────────────────────────────────────
 private data class EjercicioSocio(
+    val ejercicioId: Long,
     val nombre: String,
     val detalle: String,
     val zona: String,
@@ -103,6 +106,7 @@ private data class EjercicioSocio(
 )
 
 private data class RutinaSocio(
+    val id: String,
     val nombre: String,
     val objetivo: String,
     val dificultad: String,
@@ -117,28 +121,47 @@ private data class SocioNavItem(
     val icon: ImageVector
 )
 
-private fun RutinaResumenResponse.toRutinaSocio(index: Int): RutinaSocio {
-    val ejerciciosMapeados = ejercicios.orEmpty().map { e ->
-        val partes = listOfNotNull(
-            e.series?.let { "$it series" },
-            e.repeticiones?.let { "$it reps" },
-            e.pesoSugeridoKg?.let { "${it}kg" },
-            e.tiempoDescansoSegundos?.let { "${it}s descanso" }
+private fun EjercicioRutinaResponse.detalleTexto(): String {
+    val partes = if (tipoEjercicio == "Cardio") {
+        listOfNotNull(
+            duracionSegundos?.let { "${it / 60} min" },
+            velocidadNivel?.let { "${it} vel/nivel" },
+            inclinacion?.let { "${it}% incl" },
+            distanciaMetros?.let { "${it}m" },
+            tiempoDescansoSegundos?.let { "${it}s descanso" }
         )
+    } else {
+        listOfNotNull(
+            series?.let { "$it series" },
+            repeticiones?.let { "$it reps" },
+            pesoSugeridoKg?.let { "${it}kg" },
+            duracionSegundos?.let { "${it / 60} min" },
+            tiempoDescansoSegundos?.let { "${it}s descanso" }
+        )
+    }
+    return partes.joinToString(" · ").ifBlank { "—" }
+}
+
+private fun RutinaResumenResponse.toRutinaSocio(index: Int): RutinaSocio {
+    val ejerciciosMapeados = ejercicios.orEmpty().mapNotNull { e ->
+        val ejercicioId = e.ejercicioId ?: return@mapNotNull null
         EjercicioSocio(
+            ejercicioId = ejercicioId,
             nombre = e.ejercicio ?: "Ejercicio ${index + 1}",
-            detalle = partes.joinToString(" · ").ifBlank { "—" },
-            zona = e.grupoMuscular ?: "General"
+            detalle = e.detalleTexto(),
+            zona = e.grupoMuscular ?: "General",
+            completado = e.completadoEstaSemana ?: false
         )
     }
     val zonas = ejerciciosMapeados.map { it.zona }.distinct().take(3).joinToString(" · ")
     return RutinaSocio(
+        id = id.orEmpty(),
         nombre = nombre?.ifBlank { null } ?: objetivo?.ifBlank { null } ?: "Rutina ${index + 1}",
         objetivo = objetivo ?: "—",
         dificultad = tipoRutina?.ifBlank { null } ?: "Asignada",
         dias = ejerciciosMapeados.size,
         foco = zonas.ifBlank { "—" },
-        progreso = 0f,
+        progreso = (progresoSemana ?: 0.0).toFloat(),
         ejercicios = ejerciciosMapeados
     )
 }
@@ -174,6 +197,7 @@ fun PantallaUsuario(
     var refreshKey by remember { mutableStateOf(0) }
     var cargando by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(socioId, refreshKey) {
         cargando = true
@@ -243,10 +267,39 @@ fun PantallaUsuario(
                         DetalleRutinaUsuario(
                             rutina = rutinas[rutinaSeleccionada],
                             onToggleEjercicio = { idx ->
-                                val r = rutinas[rutinaSeleccionada]
-                                val lista = r.ejercicios.toMutableList()
-                                lista[idx] = lista[idx].copy(completado = !lista[idx].completado)
-                                rutinas[rutinaSeleccionada] = r.copy(ejercicios = lista)
+                                val posicionRutina = rutinaSeleccionada
+                                val r = rutinas[posicionRutina]
+                                val ejercicio = r.ejercicios[idx]
+                                val nuevoEstado = !ejercicio.completado
+
+                                // Actualizacion optimista: refleja el cambio de inmediato
+                                val listaOptimista = r.ejercicios.toMutableList()
+                                listaOptimista[idx] = ejercicio.copy(completado = nuevoEstado)
+                                val completadosOptimista = listaOptimista.count { it.completado }
+                                val progresoOptimista = if (listaOptimista.isEmpty()) 0f
+                                    else completadosOptimista.toFloat() / listaOptimista.size
+                                rutinas[posicionRutina] = r.copy(ejercicios = listaOptimista, progreso = progresoOptimista)
+
+                                scope.launch {
+                                    try {
+                                        RetrofitClient.apiService.marcarEjercicioCompletado(
+                                            rutinaId = r.id,
+                                            ejercicioId = ejercicio.ejercicioId,
+                                            request = MarcarEjercicioRequest(completado = nuevoEstado)
+                                        )
+                                    } catch (_: Exception) {
+                                        // Revertir si la llamada falla
+                                        val listaRevertida = rutinas[posicionRutina].ejercicios.toMutableList()
+                                        listaRevertida[idx] = ejercicio.copy(completado = !nuevoEstado)
+                                        val completadosRevertido = listaRevertida.count { it.completado }
+                                        val progresoRevertido = if (listaRevertida.isEmpty()) 0f
+                                            else completadosRevertido.toFloat() / listaRevertida.size
+                                        rutinas[posicionRutina] = rutinas[posicionRutina].copy(
+                                            ejercicios = listaRevertida,
+                                            progreso = progresoRevertido
+                                        )
+                                    }
+                                }
                             },
                             onVolver = { subPantalla = "" }
                         )
