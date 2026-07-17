@@ -173,12 +173,18 @@ data class EjercicioRutinaResponse(
     val grupoMuscularId: Int? = null,
     val tipoEjercicio: String? = null,
     val diaProgramado: String? = null,
+    val diaSemana: Int? = null,
     val series: Int? = null,
     val repeticiones: Int? = null,
     val pesoSugeridoKg: Double? = null,
+    val velocidadNivel: Double? = null,
+    val inclinacion: Double? = null,
+    val duracionSegundos: Int? = null,
+    val distanciaMetros: Double? = null,
     val tiempoDescansoSegundos: Int? = null,
     val notas: String? = null,
-    val orden: Int? = null
+    val orden: Int? = null,
+    val completadoEstaSemana: Boolean? = null
 )
 
 data class RutinaResumenResponse(
@@ -195,6 +201,7 @@ data class RutinaResumenResponse(
     val fechaFin: String? = null,
     val objetivo: String? = null,
     val notas: String? = null,
+    val progresoSemana: Double? = null,
     val ejercicios: List<EjercicioRutinaResponse>? = emptyList()
 )
 
@@ -245,6 +252,11 @@ data class RutinaRequest(
     val objetivo: String,
     val notas: String? = null,
     val detalles: List<RutinaDetalleRequest>
+)
+
+data class MarcarEjercicioRequest(
+    val completado: Boolean,
+    val fecha: String? = null
 )
 
 data class EntrenadorDashboardResponse(
