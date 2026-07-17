@@ -18,6 +18,40 @@ import { catalogoApi, personalApi, rutinasApi, sociosApi } from '../../../servic
 const tiposRutina = ['Hipertrofia', 'Fuerza', 'Definicion', 'Resistencia', 'Salud'];
 const tiposEjercicio = ['Fuerza', 'Cardio', 'Movilidad', 'Funcional', 'Estiramiento'];
 
+const diasSemana = [
+  { value: 1, label: 'Lunes' },
+  { value: 2, label: 'Martes' },
+  { value: 3, label: 'Miercoles' },
+  { value: 4, label: 'Jueves' },
+  { value: 5, label: 'Viernes' },
+  { value: 6, label: 'Sabado' },
+  { value: 7, label: 'Domingo' },
+];
+
+// Campos numericos por tipo de ejercicio: requeridos deben tener valor para poder guardar,
+// opcionales se envian solo si el entrenador los llena. Cardio/Movilidad/Estiramiento ya no
+// muestran ni exigen series/repeticiones/peso pensados para Fuerza.
+const CAMPOS_POR_TIPO = {
+  Fuerza: { requeridos: ['series', 'repeticiones'], opcionales: ['pesoSugeridoKg', 'tiempoDescansoSegundos'] },
+  Cardio: { requeridos: ['duracionSegundos'], opcionales: ['velocidadNivel', 'inclinacion', 'distanciaMetros', 'tiempoDescansoSegundos'] },
+  Movilidad: { requeridos: ['duracionSegundos'], opcionales: ['repeticiones'] },
+  Estiramiento: { requeridos: ['duracionSegundos'], opcionales: ['repeticiones'] },
+  Funcional: { requeridos: ['series', 'repeticiones'], opcionales: ['duracionSegundos', 'tiempoDescansoSegundos'] },
+};
+
+const ETIQUETAS_CAMPO = {
+  series: 'Series',
+  repeticiones: 'Reps',
+  pesoSugeridoKg: 'Peso kg',
+  tiempoDescansoSegundos: 'Descanso (s)',
+  velocidadNivel: 'Vel/Nivel',
+  inclinacion: 'Inclinacion %',
+  duracionSegundos: 'Duracion (s)',
+  distanciaMetros: 'Distancia (m)',
+};
+
+const camposDeTipo = (tipo) => CAMPOS_POR_TIPO[tipo] || CAMPOS_POR_TIPO.Fuerza;
+
 const plantillasGenero = [
   {
     id: 'Hombres',
@@ -48,7 +82,7 @@ const sumarDiasIso = (dias) => {
   return obtenerFechaIso(fecha);
 };
 
-const crearDetalleInicial = (ejercicios = [], fecha = obtenerFechaIso(), orden = 1) => {
+const crearDetalleInicial = (ejercicios = [], orden = 1) => {
   const ejercicio = ejercicios[0];
 
   return {
@@ -56,11 +90,15 @@ const crearDetalleInicial = (ejercicios = [], fecha = obtenerFechaIso(), orden =
     idEjercicio: ejercicio?.id ? String(ejercicio.id) : '',
     ejercicioNombre: ejercicio?.nombre || '',
     tipoEjercicio: 'Fuerza',
-    diaProgramado: fecha,
+    diaSemana: 1,
     series: 3,
     repeticiones: 12,
     pesoSugeridoKg: '',
     tiempoDescansoSegundos: 60,
+    velocidadNivel: '',
+    inclinacion: '',
+    duracionSegundos: '',
+    distanciaMetros: '',
     notas: '',
     orden,
   };
@@ -228,7 +266,7 @@ const Rutinas = () => {
       ...actual,
       detalles: [
         ...actual.detalles,
-        crearDetalleInicial(ejercicios, actual.fechaInicio || obtenerFechaIso(), actual.detalles.length + 1),
+        crearDetalleInicial(ejercicios, actual.detalles.length + 1),
       ],
     }));
   };
@@ -253,17 +291,32 @@ const Rutinas = () => {
     fechaFin: formulario.fechaFin || null,
     objetivo: formulario.objetivo.trim(),
     notas: formulario.notas.trim() || null,
-    detalles: formulario.detalles.map((detalle, index) => ({
-      idEjercicio: Number(detalle.idEjercicio),
-      tipoEjercicio: detalle.tipoEjercicio,
-      diaProgramado: detalle.diaProgramado || null,
-      series: Number(detalle.series),
-      repeticiones: Number(detalle.repeticiones),
-      pesoSugeridoKg: detalle.pesoSugeridoKg === '' ? null : Number(detalle.pesoSugeridoKg),
-      tiempoDescansoSegundos: detalle.tiempoDescansoSegundos === '' ? null : Number(detalle.tiempoDescansoSegundos),
-      notas: detalle.notas.trim() || null,
-      orden: index + 1,
-    })),
+    detalles: formulario.detalles.map((detalle, index) => {
+      const campos = camposDeTipo(detalle.tipoEjercicio);
+      const activos = [...campos.requeridos, ...campos.opcionales];
+      const numeroONull = (campo) => (
+        activos.includes(campo) && detalle[campo] !== '' && detalle[campo] != null
+          ? Number(detalle[campo])
+          : null
+      );
+
+      return {
+        idEjercicio: Number(detalle.idEjercicio),
+        tipoEjercicio: detalle.tipoEjercicio,
+        diaProgramado: null,
+        diaSemana: Number(detalle.diaSemana),
+        series: numeroONull('series'),
+        repeticiones: numeroONull('repeticiones'),
+        pesoSugeridoKg: numeroONull('pesoSugeridoKg'),
+        tiempoDescansoSegundos: numeroONull('tiempoDescansoSegundos'),
+        velocidadNivel: numeroONull('velocidadNivel'),
+        inclinacion: numeroONull('inclinacion'),
+        duracionSegundos: numeroONull('duracionSegundos'),
+        distanciaMetros: numeroONull('distanciaMetros'),
+        notas: detalle.notas.trim() || null,
+        orden: index + 1,
+      };
+    }),
   });
 
   const guardarRutina = async (event) => {
@@ -308,7 +361,11 @@ const Rutinas = () => {
     !formulario.nombre.trim() ||
     !formulario.objetivo.trim() ||
     (formulario.alcance === 'personal' && !formulario.idSocio) ||
-    formulario.detalles.some((detalle) => !detalle.idEjercicio || !detalle.series || !detalle.repeticiones);
+    formulario.detalles.some((detalle) => {
+      if (!detalle.idEjercicio || !detalle.diaSemana) return true;
+      const { requeridos } = camposDeTipo(detalle.tipoEjercicio);
+      return requeridos.some((campo) => detalle[campo] === '' || detalle[campo] == null);
+    });
 
   return (
     <div className="pagina-stack flex flex-col gap-6 text-white">
@@ -497,7 +554,7 @@ const Rutinas = () => {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1.25fr_150px_150px_100px_100px_110px_120px]">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                       <CampoSelect
                         label="Grupo muscular"
                         value={detalle.grupoMuscularId}
@@ -525,18 +582,26 @@ const Rutinas = () => {
                         {tiposEjercicio.map((tipo) => <option key={tipo} value={tipo}>{tipo}</option>)}
                       </CampoSelect>
 
-                      <CampoFecha
-                        label="Fecha"
-                        value={detalle.diaProgramado}
-                        min={formulario.fechaInicio}
-                        max={formulario.fechaFin || undefined}
-                        onChange={(valor) => actualizarDetalle(index, 'diaProgramado', valor)}
-                      />
+                      <CampoSelect
+                        label="Dia de la semana"
+                        value={String(detalle.diaSemana)}
+                        onChange={(valor) => actualizarDetalle(index, 'diaSemana', Number(valor))}
+                      >
+                        {diasSemana.map((dia) => <option key={dia.value} value={dia.value}>{dia.label}</option>)}
+                      </CampoSelect>
+                    </div>
 
-                      <CampoNumero label="Series" value={detalle.series} onChange={(valor) => actualizarDetalle(index, 'series', valor)} />
-                      <CampoNumero label="Reps" value={detalle.repeticiones} onChange={(valor) => actualizarDetalle(index, 'repeticiones', valor)} />
-                      <CampoNumero label="Peso kg" value={detalle.pesoSugeridoKg} onChange={(valor) => actualizarDetalle(index, 'pesoSugeridoKg', valor)} requerido={false} />
-                      <CampoNumero label="Descanso" value={detalle.tiempoDescansoSegundos} onChange={(valor) => actualizarDetalle(index, 'tiempoDescansoSegundos', valor)} requerido={false} />
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {[...camposDeTipo(detalle.tipoEjercicio).requeridos, ...camposDeTipo(detalle.tipoEjercicio).opcionales].map((campo) => (
+                        <div key={campo} className="w-28">
+                          <CampoNumero
+                            label={ETIQUETAS_CAMPO[campo]}
+                            value={detalle[campo]}
+                            onChange={(valor) => actualizarDetalle(index, campo, valor)}
+                            requerido={camposDeTipo(detalle.tipoEjercicio).requeridos.includes(campo)}
+                          />
+                        </div>
+                      ))}
                     </div>
 
                     <div className="mt-3">
@@ -643,7 +708,7 @@ const normalizarDetalles = (detalles, ejercicios) => {
       grupoMuscularId: detalle.grupoMuscularId || (ejercicioActual?.grupoMuscular?.id ? String(ejercicioActual.grupoMuscular.id) : ''),
       idEjercicio: detalle.idEjercicio || (ejercicioActual?.id ? String(ejercicioActual.id) : ''),
       ejercicioNombre: detalle.ejercicioNombre || ejercicioActual?.nombre || '',
-      diaProgramado: detalle.diaProgramado || obtenerFechaIso(),
+      diaSemana: detalle.diaSemana || 1,
       tipoEjercicio: detalle.tipoEjercicio || 'Fuerza',
       notas: detalle.notas || '',
       orden: index + 1,
