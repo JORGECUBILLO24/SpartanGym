@@ -282,11 +282,14 @@ fun PantallaUsuario(
 
                                 scope.launch {
                                     try {
-                                        RetrofitClient.apiService.marcarEjercicioCompletado(
+                                        val resp = RetrofitClient.apiService.marcarEjercicioCompletado(
                                             rutinaId = r.id,
                                             ejercicioId = ejercicio.ejercicioId,
                                             request = MarcarEjercicioRequest(completado = nuevoEstado)
                                         )
+                                        if (!resp.isSuccessful) {
+                                            throw java.io.IOException("No se pudo actualizar el ejercicio (${resp.code()}).")
+                                        }
                                     } catch (_: Exception) {
                                         // Revertir si la llamada falla
                                         val listaRevertida = rutinas[posicionRutina].ejercicios.toMutableList()
