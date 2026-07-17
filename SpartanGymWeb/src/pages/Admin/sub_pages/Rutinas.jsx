@@ -657,6 +657,7 @@ const Rutinas = () => {
                 <th className="pb-3 pr-4">Entrenador</th>
                 <th className="pb-3 pr-4">Fechas</th>
                 <th className="pb-3 pr-4">Ejercicios</th>
+                <th className="pb-3 pr-4">Progreso semana</th>
                 <th className="pb-3">Asignada</th>
               </tr>
             </thead>
@@ -678,12 +679,23 @@ const Rutinas = () => {
                   <td className="py-4 pr-4 text-gray-400">{rutina.entrenador}</td>
                   <td className="py-4 pr-4 text-gray-400">{formatearFecha(rutina.fechaInicio)} - {formatearFecha(rutina.fechaFin)}</td>
                   <td className="py-4 pr-4 text-gray-400">{rutina.ejercicios?.length || 0}</td>
+                  <td className="py-4 pr-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-red-500"
+                          style={{ width: `${Math.round((rutina.progresoSemana || 0) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-bold text-gray-300">{Math.round((rutina.progresoSemana || 0) * 100)}%</span>
+                    </div>
+                  </td>
                   <td className="py-4 text-gray-500">{rutina.fechaAsignacion ? new Date(rutina.fechaAsignacion).toLocaleDateString('es-NI') : 'N/A'}</td>
                 </tr>
               ))}
               {!rutinas.length && (
                 <tr>
-                  <td colSpan="7" className="py-10 text-center text-sm text-gray-500">
+                  <td colSpan="8" className="py-10 text-center text-sm text-gray-500">
                     No hay rutinas asignadas todavia.
                   </td>
                 </tr>
