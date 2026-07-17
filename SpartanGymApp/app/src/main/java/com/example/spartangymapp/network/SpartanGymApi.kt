@@ -96,4 +96,11 @@ interface SpartanGymApi {
     suspend fun crearRutina(
         @Body request: RutinaRequest
     ): Response<ResponseBody>
+
+    @POST("api/rutinas/{rutinaId}/ejercicios/{ejercicioId}/completar")
+    suspend fun marcarEjercicioCompletado(
+        @Path("rutinaId") rutinaId: String,
+        @Path("ejercicioId") ejercicioId: Long,
+        @Body request: MarcarEjercicioRequest
+    ): Response<ResponseBody>
 }
