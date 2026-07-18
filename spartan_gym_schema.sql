@@ -418,3 +418,42 @@ VALUES (
     '{"gymName":"Spartan Gym","email":"admin@spartangym.com","phone":"+505 0000 0000","currency":"USD","taxRate":"15","theme":"system","themeSource":"system","accentColor":"#e50914","accentHoverColor":"#b91c1c","accentSoftColor":"#450a0a","logoPrincipal":"","logoAcceso":"","fondoLogin":"","emailAlerts":true,"smsAlerts":false,"dailyReports":true,"twoFactor":false,"sessionTimeout":"30"}'
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- ==========================================
+-- 5. Progreso semanal de rutinas y campos por tipo de ejercicio
+-- ==========================================
+
+-- Cardio puro no tiene series/repeticiones; se relaja el NOT NULL.
+ALTER TABLE detalle_rutinas ALTER COLUMN series DROP NOT NULL;
+ALTER TABLE detalle_rutinas ALTER COLUMN repeticiones DROP NOT NULL;
+
+ALTER TABLE detalle_rutinas DROP CONSTRAINT IF EXISTS detalle_rutinas_series_check;
+ALTER TABLE detalle_rutinas ADD CONSTRAINT detalle_rutinas_series_check
+    CHECK (series IS NULL OR series > 0);
+
+ALTER TABLE detalle_rutinas DROP CONSTRAINT IF EXISTS detalle_rutinas_repeticiones_check;
+ALTER TABLE detalle_rutinas ADD CONSTRAINT detalle_rutinas_repeticiones_check
+    CHECK (repeticiones IS NULL OR repeticiones > 0);
+
+ALTER TABLE detalle_rutinas
+  ADD COLUMN IF NOT EXISTS dia_semana        SMALLINT,        -- 1=Lunes .. 7=Domingo
+  ADD COLUMN IF NOT EXISTS velocidad_nivel   DECIMAL(6,2),    -- km/h o nivel de maquina
+  ADD COLUMN IF NOT EXISTS inclinacion       DECIMAL(5,2),    -- % de inclinacion
+  ADD COLUMN IF NOT EXISTS duracion_segundos INT,
+  ADD COLUMN IF NOT EXISTS distancia_metros  DECIMAL(8,2);
+
+ALTER TABLE detalle_rutinas DROP CONSTRAINT IF EXISTS detalle_rutinas_dia_semana_check;
+ALTER TABLE detalle_rutinas ADD CONSTRAINT detalle_rutinas_dia_semana_check
+    CHECK (dia_semana IS NULL OR dia_semana BETWEEN 1 AND 7);
+
+CREATE TABLE IF NOT EXISTS ejercicios_completados (
+    id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    rutina_id      UUID NOT NULL,
+    ejercicio_id   INT  NOT NULL,
+    fecha          DATE NOT NULL DEFAULT CURRENT_DATE,
+    completado_en  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_ec_detalle FOREIGN KEY (rutina_id, ejercicio_id)
+        REFERENCES detalle_rutinas (rutina_id, ejercicio_id) ON DELETE CASCADE,
+    CONSTRAINT uq_ec_dia UNIQUE (rutina_id, ejercicio_id, fecha)
+);
+CREATE INDEX IF NOT EXISTS idx_ec_rutina_fecha ON ejercicios_completados (rutina_id, fecha);

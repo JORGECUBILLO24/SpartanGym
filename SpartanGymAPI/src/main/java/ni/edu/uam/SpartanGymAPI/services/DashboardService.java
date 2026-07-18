@@ -2,6 +2,7 @@ package ni.edu.uam.SpartanGymAPI.services;
 
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.DashboardResponse;
+import ni.edu.uam.SpartanGymAPI.dto.ProgresoSemana;
 import ni.edu.uam.SpartanGymAPI.models.ControlBiometrico;
 import ni.edu.uam.SpartanGymAPI.models.MembresiaSocio;
 import ni.edu.uam.SpartanGymAPI.models.Rutina;
@@ -24,6 +25,7 @@ public class DashboardService {
     private final MembresiaSocioRepository membresiaRepository;
     private final ControlBiometricoRepository controlRepository;
     private final RutinaRepository rutinaRepository;
+    private final EjercicioCompletadoService ejercicioCompletadoService;
 
     public DashboardResponse obtenerDashboardInicio(UUID socioId) {
         DashboardResponse response = new DashboardResponse();
@@ -60,10 +62,18 @@ public class DashboardService {
             response.setObjetivoRutina(r.getObjetivo());
             response.setNombreEntrenador(r.getEntrenador().getNombres() + " " + r.getEntrenador().getApellidos());
             response.setTotalEjercicios(r.getDetalles().size());
+
+            ProgresoSemana progresoSemana = ejercicioCompletadoService.calcularProgreso(r);
+            response.setProgresoSemana(progresoSemana.progreso());
+            response.setCompletadosSemana(progresoSemana.completados());
+            response.setPlanificadosSemana(progresoSemana.planificados());
         } else {
             response.setObjetivoRutina("Sin rutina asignada");
             response.setNombreEntrenador("N/A");
             response.setTotalEjercicios(0);
+            response.setProgresoSemana(0.0);
+            response.setCompletadosSemana(0);
+            response.setPlanificadosSemana(0);
         }
 
         return response;
