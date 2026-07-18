@@ -4,11 +4,14 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -16,13 +19,35 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
+    // Solo se usa como respaldo en el perfil "local"; fuera de ese perfil, jwt.secret es obligatorio.
     private static final String DEFAULT_SECRET = "VGhpc0lzQVNlY3JldEtleUZvclNwYXJ0YW5HeW1BUEkyMDI2MTIzNDU2Nzg5";
 
-    @Value("${jwt.secret:" + DEFAULT_SECRET + "}")
+    @Value("${jwt.secret:}")
     private String secretKey;
 
     @Value("${jwt.expiration:86400000}")
     private long jwtExpiration;
+
+    private final Environment environment;
+
+    public JwtService(Environment environment) {
+        this.environment = environment;
+    }
+
+    // Falla el arranque si falta JWT_SECRET fuera del perfil local, en vez de usar el secreto por defecto en silencio.
+    @PostConstruct
+    void validarSecret() {
+        if (secretKey != null && !secretKey.isBlank()) {
+            return;
+        }
+        if (Arrays.asList(environment.getActiveProfiles()).contains("local")) {
+            secretKey = DEFAULT_SECRET;
+            return;
+        }
+        throw new IllegalStateException(
+                "jwt.secret no esta configurado (variable de entorno JWT_SECRET). "
+                        + "Es obligatoria fuera del perfil 'local'.");
+    }
 
     // Genera el token a partir de los datos del usuario
     public String generateToken(UserDetails userDetails) {
