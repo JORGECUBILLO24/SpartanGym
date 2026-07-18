@@ -72,6 +72,7 @@ import com.example.spartangymapp.network.ProductoCatalogoResponse
 import com.example.spartangymapp.network.RegistroProgresoRequest
 import com.example.spartangymapp.network.RetrofitClient
 import com.example.spartangymapp.network.RutinaResumenResponse
+import com.example.spartangymapp.util.rotarLuminancia
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.zxing.BinaryBitmap
@@ -1723,7 +1724,13 @@ private fun decodificarQr(imageProxy: ImageProxy): String? {
         }
     }
 
-    val source = PlanarYUVLuminanceSource(datos, ancho, alto, 0, 0, ancho, alto, false)
+    // CameraX entrega el frame en la orientacion nativa del sensor (normalmente
+    // apaisada). rotationDegrees indica cuanto hay que rotarlo en sentido horario
+    // para que quede "de pie" como lo ve el usuario; sin esto ZXing recibe el
+    // frame mal orientado y falla en la mayoria de posiciones normales del telefono.
+    val frame = rotarLuminancia(datos, ancho, alto, imageProxy.imageInfo.rotationDegrees)
+
+    val source = PlanarYUVLuminanceSource(frame.datos, frame.ancho, frame.alto, 0, 0, frame.ancho, frame.alto, false)
     val bitmap = BinaryBitmap(HybridBinarizer(source))
 
     return try {
