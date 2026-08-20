@@ -207,36 +207,45 @@ fun PantallaUsuario(
     // `error != null` reemplaza toda la pantalla (PantallaError) — no queremos que
     // un fallo al subir la foto saque al socio de la pestaña en la que está.
     var mensajeFoto by remember { mutableStateOf<String?>(null) }
+    // Evita subidas superpuestas: mientras una foto está en proceso (comprimir + subir),
+    // el botón se deshabilita para que no se pueda lanzar una segunda selección que
+    // corra en paralelo y termine revirtiendo el resultado de la primera fuera de orden.
+    var subiendoFoto by remember { mutableStateOf(false) }
 
     val seleccionarFoto = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         val fotoAnterior = perfilActual?.fotoUrl
+        subiendoFoto = true
         scope.launch {
             mensajeFoto = null
-            val dataUrl = try {
-                withContext(Dispatchers.IO) {
-                    val bitmap = context.contentResolver.openInputStream(uri).use {
-                        BitmapFactory.decodeStream(it)
-                    } ?: throw java.io.IOException("No se pudo leer la imagen.")
-                    comprimirParaPerfil(bitmap)
-                }
-            } catch (_: Exception) {
-                mensajeFoto = "No se pudo procesar la imagen."
-                return@launch
-            }
-            // Actualizacion optimista: refleja el cambio de inmediato
-            perfilActual = perfilActual?.copy(fotoUrl = dataUrl)
             try {
-                val resp = RetrofitClient.apiService.actualizarFotoPerfil(ActualizarFotoRequest(dataUrl))
-                if (!resp.isSuccessful) {
-                    throw java.io.IOException("No se pudo actualizar la foto (${resp.code()}).")
+                val dataUrl = try {
+                    withContext(Dispatchers.IO) {
+                        val bitmap = context.contentResolver.openInputStream(uri).use {
+                            BitmapFactory.decodeStream(it)
+                        } ?: throw java.io.IOException("No se pudo leer la imagen.")
+                        comprimirParaPerfil(bitmap)
+                    }
+                } catch (_: Exception) {
+                    mensajeFoto = "No se pudo procesar la imagen."
+                    return@launch
                 }
-            } catch (_: Exception) {
-                // Revertir si la llamada falla
-                perfilActual = perfilActual?.copy(fotoUrl = fotoAnterior)
-                mensajeFoto = "No se pudo actualizar la foto."
+                // Actualizacion optimista: refleja el cambio de inmediato
+                perfilActual = perfilActual?.copy(fotoUrl = dataUrl)
+                try {
+                    val resp = RetrofitClient.apiService.actualizarFotoPerfil(ActualizarFotoRequest(dataUrl))
+                    if (!resp.isSuccessful) {
+                        throw java.io.IOException("No se pudo actualizar la foto (${resp.code()}).")
+                    }
+                } catch (_: Exception) {
+                    // Revertir si la llamada falla
+                    perfilActual = perfilActual?.copy(fotoUrl = fotoAnterior)
+                    mensajeFoto = "No se pudo actualizar la foto."
+                }
+            } finally {
+                subiendoFoto = false
             }
         }
     }
@@ -408,6 +417,7 @@ fun PantallaUsuario(
                             fotoUrl = perfilActual?.fotoUrl,
                             appConfig = appConfig,
                             mensajeFoto = mensajeFoto,
+                            subiendoFoto = subiendoFoto,
                             onCambiarFoto = {
                                 seleccionarFoto.launch(
                                     androidx.activity.result.PickVisualMediaRequest(
@@ -2057,6 +2067,7 @@ private fun TabPerfilCredencial(
     fotoUrl: String? = null,
     appConfig: AppConfigResponse,
     mensajeFoto: String? = null,
+    subiendoFoto: Boolean = false,
     onCambiarFoto: () -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -2084,11 +2095,19 @@ private fun TabPerfilCredencial(
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = onCambiarFoto,
+            enabled = !subiendoFoto,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                disabledContainerColor = BordeSutil
+            ),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text("Cambiar foto de perfil", color = Color.White, fontWeight = FontWeight.Bold)
+            if (subiendoFoto) {
+                CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+            }
+            Text(if (subiendoFoto) "Subiendo foto" else "Cambiar foto de perfil", color = Color.White, fontWeight = FontWeight.Bold)
         }
         mensajeFoto?.let {
             Spacer(Modifier.height(8.dp))
