@@ -45,7 +45,8 @@ data class PerfilActualResponse(
     val tipo: String? = null,
     val especialidad: String? = null,
     val sucursalId: String? = null,
-    val sucursal: String? = null
+    val sucursal: String? = null,
+    val fotoUrl: String? = null
 )
 
 data class AppConfigResponse(
@@ -272,7 +273,8 @@ data class EntrenadorClienteResponse(
     val apellidos: String? = null,
     val telefono: String? = null,
     val estadoAcceso: String? = null,
-    val email: String? = null
+    val email: String? = null,
+    val fotoUrl: String? = null
 )
 
 data class EntrenadorPerfilResponse(
@@ -296,4 +298,12 @@ data class PagoSocioResponse(
     val monto: Double? = null,
     val metodoPago: String? = null,
     val fechaTransaccion: String? = null
+)
+
+data class ActualizarFotoRequest(
+    val fotoUrl: String?
+)
+
+data class ActualizarFotoResponse(
+    val fotoUrl: String? = null
 )

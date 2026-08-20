@@ -5,6 +5,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 
 interface SpartanGymApi {
@@ -103,4 +104,9 @@ interface SpartanGymApi {
         @Path("ejercicioId") ejercicioId: Long,
         @Body request: MarcarEjercicioRequest
     ): Response<ResponseBody>
+
+    @PUT("api/operacion/me/foto")
+    suspend fun actualizarFotoPerfil(
+        @Body request: ActualizarFotoRequest
+    ): Response<ActualizarFotoResponse>
 }
