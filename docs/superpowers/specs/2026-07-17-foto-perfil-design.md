@@ -294,3 +294,9 @@ modelos correspondiente.
   fase futura si se decide.
 - Storage externo (S3/Cloudinary/similar) — se reafirma la decisión previa
   de base64 en columna `TEXT`.
+- Subida de foto para `ROLE_ENTRENADOR` — no tiene panel web (restricción
+  preexistente, no de esta feature) ni botón de subida en la app en esta
+  fase; el endpoint `PUT /api/operacion/me/foto` ya lo soportaría sin
+  cambios si se abre después (decisión tomada durante la revisión final de
+  implementación del 2026-08-20, tras detectar en la revisión de rama
+  completa que ningún entrenador tiene forma de subir su propia foto hoy).
