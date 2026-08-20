@@ -67,8 +67,12 @@ CREATE TABLE IF NOT EXISTS usuarios (
     password_hash VARCHAR(255) NOT NULL,
     rol_id INT NOT NULL REFERENCES roles(id),
     activo BOOLEAN DEFAULT TRUE,
+    foto_url TEXT,
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE usuarios
+    ADD COLUMN IF NOT EXISTS foto_url TEXT;
 
 CREATE TABLE IF NOT EXISTS socios (
     usuario_id UUID PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
