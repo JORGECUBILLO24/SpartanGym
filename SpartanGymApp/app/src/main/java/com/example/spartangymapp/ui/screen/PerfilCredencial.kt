@@ -639,7 +639,7 @@ private fun CredencialBloqueSucursal(
 }
 
 @Composable
-private fun FotoPerfilCredencial(
+internal fun FotoPerfilCredencial(
     fotoUrl: String?,
     modifier: Modifier = Modifier,
     respaldo: @Composable () -> Unit
@@ -657,16 +657,16 @@ private fun FotoPerfilCredencial(
         }
     }
 
-    val imagen = imageBitmap
-    if (imagen != null) {
-        Image(
-            bitmap = imagen,
-            contentDescription = "Foto de perfil",
-            contentScale = ContentScale.Crop,
-            modifier = modifier.fillMaxSize()
-        )
-    } else {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        val imagen = imageBitmap
+        if (imagen != null) {
+            Image(
+                bitmap = imagen,
+                contentDescription = "Foto de perfil",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
             respaldo()
         }
     }
