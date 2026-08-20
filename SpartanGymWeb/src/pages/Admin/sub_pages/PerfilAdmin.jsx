@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   AlertCircle,
@@ -90,10 +90,12 @@ const PerfilAdmin = () => {
   const [modalValidacionQr, setModalValidacionQr] = useState(false);
   const [fotoUrl, setFotoUrl] = useState(() => leerCuentaActual().fotoUrl || '');
   const [errorFoto, setErrorFoto] = useState('');
+  const fotoTocadaLocalmente = useRef(false);
 
   useEffect(() => {
     operacionApi.perfil()
       .then((datos) => {
+        if (fotoTocadaLocalmente.current) return;
         const remota = datos.fotoUrl || '';
         setFotoUrl(remota);
         const cuenta = leerCuentaActual();
@@ -284,6 +286,7 @@ const PerfilAdmin = () => {
     evento.target.value = '';
     if (!archivo) return;
     setErrorFoto('');
+    fotoTocadaLocalmente.current = true;
     try {
       const dataUrl = await prepararImagen(archivo, { maxLado: 512, calidad: 0.8, maxBytesEntrada: 5 * 1024 * 1024 });
       await operacionApi.actualizarFoto(dataUrl);
@@ -296,6 +299,7 @@ const PerfilAdmin = () => {
 
   const quitarFoto = async () => {
     setErrorFoto('');
+    fotoTocadaLocalmente.current = true;
     try {
       await operacionApi.actualizarFoto('');
       setFotoUrl('');
