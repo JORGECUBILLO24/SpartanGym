@@ -11,10 +11,12 @@ import Avatar from '../../components/Avatar';
 import {
   cerrarSesionActual,
   EVENTO_CUENTA_ACTUAL,
+  guardarCuentaActual,
   leerCuentaActual,
 } from '../../utils/cuentaActual';
 import { useLogosApp } from '../../utils/logosApp';
 import { SucursalProvider } from '../../context/SucursalContext';
+import { operacionApi } from '../../services/api';
 
 const AdminLayout = () => {
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -33,6 +35,18 @@ const AdminLayout = () => {
       window.removeEventListener('storage', actualizarCuenta);
       window.removeEventListener(EVENTO_CUENTA_ACTUAL, actualizarCuenta);
     };
+  }, []);
+
+  useEffect(() => {
+    operacionApi.perfil()
+      .then((datos) => {
+        const remota = datos.fotoUrl || '';
+        const cuenta = leerCuentaActual();
+        if ((cuenta.fotoUrl || '') !== remota) {
+          guardarCuentaActual({ ...cuenta, fotoUrl: remota });
+        }
+      })
+      .catch(() => { /* sin sesion API valida: se queda con el valor local */ });
   }, []);
 
   const cerrarSesion = () => {
@@ -153,6 +167,7 @@ const AdminLayout = () => {
                 nombre={cuentaActual.name || cuentaActual.username}
                 email={cuentaActual.email}
                 tamano={36}
+                respaldo="AD"
               />
             </Link>
           </div>

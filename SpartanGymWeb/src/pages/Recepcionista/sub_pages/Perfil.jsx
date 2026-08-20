@@ -43,6 +43,7 @@ const Perfil = () => {
   const [errorApi, setErrorApi] = useState('');
   const [fotoUrl, setFotoUrl] = useState('');
   const [errorFoto, setErrorFoto] = useState('');
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
   const fotoTocadaLocalmente = useRef(false);
 
   useEffect(() => {
@@ -80,8 +81,9 @@ const Perfil = () => {
   const cambiarFoto = async (evento) => {
     const archivo = evento.target.files?.[0];
     evento.target.value = '';
-    if (!archivo) return;
+    if (!archivo || subiendoFoto) return;
     setErrorFoto('');
+    setSubiendoFoto(true);
     fotoTocadaLocalmente.current = true;
     try {
       const dataUrl = await prepararImagen(archivo, { maxLado: 512, calidad: 0.8, maxBytesEntrada: 5 * 1024 * 1024 });
@@ -89,17 +91,23 @@ const Perfil = () => {
       setFotoUrl(dataUrl);
     } catch (error) {
       setErrorFoto(error.message || 'No se pudo actualizar la foto.');
+    } finally {
+      setSubiendoFoto(false);
     }
   };
 
   const quitarFoto = async () => {
+    if (subiendoFoto) return;
     setErrorFoto('');
+    setSubiendoFoto(true);
     fotoTocadaLocalmente.current = true;
     try {
       await operacionApi.actualizarFoto('');
       setFotoUrl('');
     } catch (error) {
       setErrorFoto(error.message || 'No se pudo quitar la foto.');
+    } finally {
+      setSubiendoFoto(false);
     }
   };
 
@@ -152,12 +160,19 @@ const Perfil = () => {
         <article className="tarjeta-sistema flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#0d0d0d] p-6 text-center shadow-2xl sm:p-8">
           <Avatar fotoUrl={fotoUrl} nombre={perfilActual.nombre} email={perfilActual.correo} tamano={112} respaldo="RC" />
           <div className="mt-3 flex items-center gap-2">
-            <label className="cursor-pointer rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-200 transition hover:bg-white/10">
-              Cambiar foto
-              <input type="file" accept="image/*" className="hidden" onChange={cambiarFoto} />
+            <label className={`rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-200 transition hover:bg-white/10 ${
+              subiendoFoto ? 'pointer-events-none cursor-wait opacity-50' : 'cursor-pointer'
+            }`}>
+              {subiendoFoto ? 'Guardando...' : 'Cambiar foto'}
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={subiendoFoto} onChange={cambiarFoto} />
             </label>
             {fotoUrl && (
-              <button type="button" onClick={quitarFoto} className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-400 transition hover:text-white">
+              <button
+                type="button"
+                onClick={quitarFoto}
+                disabled={subiendoFoto}
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-400 transition hover:text-white disabled:cursor-wait disabled:opacity-50 disabled:hover:text-gray-400"
+              >
                 Quitar foto
               </button>
             )}
