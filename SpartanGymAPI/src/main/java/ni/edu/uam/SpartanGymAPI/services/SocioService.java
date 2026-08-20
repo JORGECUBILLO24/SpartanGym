@@ -66,6 +66,7 @@ public class SocioService {
                 .sucursalId(socio.getSucursal() != null ? socio.getSucursal().getId() : null)
                 .sucursal(socio.getSucursal() != null ? socio.getSucursal().getNombre() : null)
                 .estadoAcceso(socio.getEstadoAcceso())
+                .fotoUrl(socio.getUsuario().getFotoUrl())
                 .tipoMembresia(membresiaActiva.map(m -> m.getTipoMembresia().getNombre()).orElse("Sin membresia"))
                 .estadoMembresia(membresiaActiva.map(MembresiaSocio::getEstado).orElse("Inactiva"))
                 .fechaVencimiento(membresiaActiva.map(MembresiaSocio::getFechaVencimiento).orElse(null))

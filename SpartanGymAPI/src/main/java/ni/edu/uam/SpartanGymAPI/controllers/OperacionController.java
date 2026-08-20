@@ -214,6 +214,7 @@ public class OperacionController {
         data.put("email", usuario.getEmail());
         data.put("rol", usuario.getRol().getNombre());
         data.put("activo", usuario.getActivo());
+        data.put("fotoUrl", usuario.getFotoUrl());
         return data;
     }
 
@@ -227,6 +228,7 @@ public class OperacionController {
         data.put("sucursal", socio.getSucursal() != null ? socio.getSucursal().getNombre() : null);
         data.put("estadoAcceso", socio.getEstadoAcceso());
         data.put("email", socio.getUsuario().getEmail());
+        data.put("fotoUrl", socio.getUsuario().getFotoUrl());
         return data;
     }
 
