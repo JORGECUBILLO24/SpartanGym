@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Building2,
   Mail,
@@ -9,6 +9,8 @@ import {
   Users,
 } from 'lucide-react';
 import { obtenerInicialesCuenta } from '../../../utils/cuentaActual';
+import { prepararImagen } from '../../../utils/imagen';
+import Avatar from '../../../components/Avatar';
 import { operacionApi, personalApi } from '../../../services/api';
 
 const perfilRecepcionBase = {
@@ -39,6 +41,9 @@ const Perfil = () => {
   const [recepcionistas, setRecepcionistas] = useState([]);
   const [perfilActualApi, setPerfilActualApi] = useState(perfilRecepcionBase);
   const [errorApi, setErrorApi] = useState('');
+  const [fotoUrl, setFotoUrl] = useState('');
+  const [errorFoto, setErrorFoto] = useState('');
+  const fotoTocadaLocalmente = useRef(false);
 
   useEffect(() => {
     Promise.allSettled([
@@ -55,6 +60,9 @@ const Perfil = () => {
           rol: datos.rol || 'Recepcionista',
           estado: datos.activo ? 'Activo' : 'Inactivo',
         });
+        if (!fotoTocadaLocalmente.current) {
+          setFotoUrl(datos.fotoUrl || '');
+        }
       } else {
         setErrorApi('No se pudo cargar el perfil desde la API.');
       }
@@ -68,6 +76,32 @@ const Perfil = () => {
       }
     });
   }, []);
+
+  const cambiarFoto = async (evento) => {
+    const archivo = evento.target.files?.[0];
+    evento.target.value = '';
+    if (!archivo) return;
+    setErrorFoto('');
+    fotoTocadaLocalmente.current = true;
+    try {
+      const dataUrl = await prepararImagen(archivo, { maxLado: 512, calidad: 0.8, maxBytesEntrada: 5 * 1024 * 1024 });
+      await operacionApi.actualizarFoto(dataUrl);
+      setFotoUrl(dataUrl);
+    } catch (error) {
+      setErrorFoto(error.message || 'No se pudo actualizar la foto.');
+    }
+  };
+
+  const quitarFoto = async () => {
+    setErrorFoto('');
+    fotoTocadaLocalmente.current = true;
+    try {
+      await operacionApi.actualizarFoto('');
+      setFotoUrl('');
+    } catch (error) {
+      setErrorFoto(error.message || 'No se pudo quitar la foto.');
+    }
+  };
 
   const perfilActual = useMemo(() => {
     const recepcionistaActual = recepcionistas.find((persona) => persona.correo === perfilActualApi.correo);
@@ -116,9 +150,19 @@ const Perfil = () => {
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
         <article className="tarjeta-sistema flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#0d0d0d] p-6 text-center shadow-2xl sm:p-8">
-          <div className="flex h-28 w-28 items-center justify-center rounded-full border border-red-500/20 bg-red-600/10 text-3xl font-black text-red-500 shadow-xl shadow-red-950/20 sm:h-32 sm:w-32">
-            {obtenerInicialesCuenta({ name: perfilActual.nombre, email: perfilActual.correo }, 'RC')}
+          <Avatar fotoUrl={fotoUrl} nombre={perfilActual.nombre} email={perfilActual.correo} tamano={112} respaldo="RC" />
+          <div className="mt-3 flex items-center gap-2">
+            <label className="cursor-pointer rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-200 transition hover:bg-white/10">
+              Cambiar foto
+              <input type="file" accept="image/*" className="hidden" onChange={cambiarFoto} />
+            </label>
+            {fotoUrl && (
+              <button type="button" onClick={quitarFoto} className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-400 transition hover:text-white">
+                Quitar foto
+              </button>
+            )}
           </div>
+          {errorFoto && <p className="mt-2 text-xs text-red-400">{errorFoto}</p>}
           <h2 className="mt-5 max-w-full break-words text-xl font-black text-white">{perfilActual.nombre}</h2>
           <p className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-red-500">Recepcionista</p>
           <div className="mt-4 inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-gray-400">
