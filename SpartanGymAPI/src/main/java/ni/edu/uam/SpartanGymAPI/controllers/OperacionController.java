@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.*;
 import ni.edu.uam.SpartanGymAPI.dto.ProgresoSemana;
+import ni.edu.uam.SpartanGymAPI.dto.ActualizarFotoRequest;
+import ni.edu.uam.SpartanGymAPI.util.FotoPerfilValidator;
 import ni.edu.uam.SpartanGymAPI.services.EjercicioCompletadoService;
 import ni.edu.uam.SpartanGymAPI.services.RutinaResponseMapper;
 
@@ -54,6 +56,17 @@ public class OperacionController {
             data.put("tipo", "personal");
         });
         return ResponseEntity.ok(data);
+    }
+
+    @PutMapping("/me/foto")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> actualizarFoto(
+            @RequestBody ActualizarFotoRequest request, Authentication auth) {
+        Usuario usuario = usuarioAutenticado(auth);
+        usuario.setFotoUrl(FotoPerfilValidator.validar(request.getFotoUrl()));
+        usuarioRepository.save(usuario);
+        return ResponseEntity.ok(Map.of("fotoUrl",
+                usuario.getFotoUrl() == null ? "" : usuario.getFotoUrl()));
     }
 
     @GetMapping("/recepcion/inicio")
