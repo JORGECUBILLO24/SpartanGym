@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CreditCard, DollarSign, Box,
@@ -7,11 +7,11 @@ import {
 } from 'lucide-react';
 
 import ControlSesion from '../../components/ControlSesion';
+import Avatar from '../../components/Avatar';
 import {
   cerrarSesionActual,
   EVENTO_CUENTA_ACTUAL,
   leerCuentaActual,
-  obtenerInicialesCuenta,
 } from '../../utils/cuentaActual';
 import { useLogosApp } from '../../utils/logosApp';
 import { SucursalProvider } from '../../context/SucursalContext';
@@ -34,8 +34,6 @@ const AdminLayout = () => {
       window.removeEventListener(EVENTO_CUENTA_ACTUAL, actualizarCuenta);
     };
   }, []);
-
-  const inicialesCuenta = useMemo(() => obtenerInicialesCuenta(cuentaActual), [cuentaActual]);
 
   const cerrarSesion = () => {
     cerrarSesionActual('manual');
@@ -146,11 +144,16 @@ const AdminLayout = () => {
             </Link>
             <Link
               to="/admin/perfil"
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-red-800 text-sm font-bold text-white shadow-lg transition duration-300 hover:-translate-y-0.5 hover:scale-105"
+              className="flex h-9 w-9 items-center justify-center rounded-xl shadow-lg transition duration-300 hover:-translate-y-0.5 hover:scale-105"
               title={cuentaActual.name || cuentaActual.username || 'Perfil administrador'}
               aria-label="Editar perfil de administrador"
             >
-              {inicialesCuenta}
+              <Avatar
+                fotoUrl={cuentaActual.fotoUrl}
+                nombre={cuentaActual.name || cuentaActual.username}
+                email={cuentaActual.email}
+                tamano={36}
+              />
             </Link>
           </div>
         </header>
