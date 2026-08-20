@@ -364,6 +364,7 @@ fun PantallaUsuario(
                             entrenador = dashboard?.nombreEntrenador.apiValor(),
                             ejercicios = dashboard?.totalEjercicios.apiValor(),
                             sucursal = perfilActual?.sucursal.apiValor(sucursalPrincipalTexto(appConfig)),
+                            fotoUrl = perfilActual?.fotoUrl,
                             appConfig = appConfig
                         )
                         else -> {}
@@ -2004,6 +2005,7 @@ private fun TabPerfilCredencial(
     entrenador: String,
     ejercicios: String,
     sucursal: String,
+    fotoUrl: String? = null,
     appConfig: AppConfigResponse
 ) {
     CredencialSistemaCard(
@@ -2023,6 +2025,7 @@ private fun TabPerfilCredencial(
             "Rutina" to ejercicios.ifBlank { "0 ejercicios" }
         ),
         integradaPantalla = true,
+        fotoUrl = fotoUrl,
         appConfig = appConfig,
         modifier = Modifier.fillMaxWidth()
     )

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -64,6 +65,7 @@ internal fun CredencialSistemaCard(
     permisos: String,
     detalles: List<Pair<String, String>> = emptyList(),
     integradaPantalla: Boolean = false,
+    fotoUrl: String? = null,
     appConfig: AppConfigResponse = AppConfigResponse(),
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
@@ -76,6 +78,7 @@ internal fun CredencialSistemaCard(
             sucursal = sucursal,
             permisos = permisos,
             detalles = detalles,
+            fotoUrl = fotoUrl,
             appConfig = appConfig,
             modifier = modifier
         )
@@ -145,12 +148,17 @@ internal fun CredencialSistemaCard(
                         border = BorderStroke(1.dp, Color(0xFF00AEEF))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Outlined.CameraAlt,
-                                contentDescription = null,
-                                tint = Color(0xFF7E8796),
-                                modifier = Modifier.size(27.dp)
-                            )
+                            FotoPerfilCredencial(
+                                fotoUrl = fotoUrl,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CameraAlt,
+                                    contentDescription = null,
+                                    tint = Color(0xFF7E8796),
+                                    modifier = Modifier.size(27.dp)
+                                )
+                            }
                         }
                     }
 
@@ -240,6 +248,7 @@ private fun CredencialPantallaIntegrada(
     sucursal: String,
     permisos: String,
     detalles: List<Pair<String, String>>,
+    fotoUrl: String? = null,
     appConfig: AppConfigResponse,
     modifier: Modifier = Modifier
 ) {
@@ -292,11 +301,16 @@ private fun CredencialPantallaIntegrada(
                 color = Color(0xFF0B1118),
                 border = BorderStroke(1.dp, apariencia.accent)
             ) {
-                LogoConfiguracion(
-                    source = logo,
-                    fallbackTint = apariencia.textMuted,
-                    modifier = Modifier.padding(10.dp)
-                )
+                FotoPerfilCredencial(
+                    fotoUrl = fotoUrl,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    LogoConfiguracion(
+                        source = logo,
+                        fallbackTint = apariencia.textMuted,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(22.dp))
@@ -620,6 +634,40 @@ private fun CredencialBloqueSucursal(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun FotoPerfilCredencial(
+    fotoUrl: String?,
+    modifier: Modifier = Modifier,
+    respaldo: @Composable () -> Unit
+) {
+    val fuente = fotoUrl?.trim()?.takeIf { it.isNotBlank() }
+    var imageBitmap by remember(fuente) {
+        mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null)
+    }
+
+    LaunchedEffect(fuente) {
+        imageBitmap = if (fuente == null) {
+            null
+        } else {
+            withContext(Dispatchers.IO) { cargarImagenConfiguracion(fuente)?.asImageBitmap() }
+        }
+    }
+
+    val imagen = imageBitmap
+    if (imagen != null) {
+        Image(
+            bitmap = imagen,
+            contentDescription = "Foto de perfil",
+            contentScale = ContentScale.Crop,
+            modifier = modifier.fillMaxSize()
+        )
+    } else {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            respaldo()
         }
     }
 }
