@@ -26,8 +26,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -38,7 +40,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.example.spartangymapp.R
 import com.example.spartangymapp.network.*
 import java.util.Calendar
@@ -292,10 +296,30 @@ private fun TabClientes(clientes: List<EntrenadorClienteResponse>, ap: EntAp) {
                 items(clientes) { c ->
                     val ini = "${c.nombres?.firstOrNull() ?: ""}${c.apellidos?.firstOrNull() ?: ""}".uppercase().ifBlank { "?" }
                     val activo = c.estadoAcceso?.lowercase()?.contains("activ") == true
+                    val fotoCliente = c.fotoUrl?.trim()?.takeIf { it.isNotBlank() }
+                    var bitmapCliente by remember(fotoCliente) {
+                        mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null)
+                    }
+                    LaunchedEffect(fotoCliente) {
+                        bitmapCliente = if (fotoCliente == null) null
+                        else withContext(Dispatchers.IO) {
+                            cargarImagenConfiguracion(fotoCliente)?.asImageBitmap()
+                        }
+                    }
                     Surface(Modifier.fillMaxWidth(), RoundedCornerShape(14.dp), color = ENT_CARD, border = BorderStroke(1.dp, ENT_BORDE)) {
                         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(44.dp).background(ap.soft, CircleShape), contentAlignment = Alignment.Center) {
-                                Text(ini, color = ap.accent, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                                val imagenCliente = bitmapCliente
+                                if (imagenCliente != null) {
+                                    Image(
+                                        bitmap = imagenCliente,
+                                        contentDescription = "Foto de ${c.nombres ?: ""}",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.size(44.dp).clip(CircleShape)
+                                    )
+                                } else {
+                                    Text(ini, color = ap.accent, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                                }
                             }
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
