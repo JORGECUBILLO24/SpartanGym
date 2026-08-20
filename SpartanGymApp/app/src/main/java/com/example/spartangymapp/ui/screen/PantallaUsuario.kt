@@ -3,6 +3,7 @@ package com.example.spartangymapp.ui.screen
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.util.Size as CameraSize
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.spartangymapp.R
+import com.example.spartangymapp.network.ActualizarFotoRequest
 import com.example.spartangymapp.network.AppConfigResponse
 import com.example.spartangymapp.network.AsistenciaQrRequest
 import com.example.spartangymapp.network.AsistenciaQrValidationResponse
@@ -72,6 +74,7 @@ import com.example.spartangymapp.network.ProductoCatalogoResponse
 import com.example.spartangymapp.network.RegistroProgresoRequest
 import com.example.spartangymapp.network.RetrofitClient
 import com.example.spartangymapp.network.RutinaResumenResponse
+import com.example.spartangymapp.util.comprimirParaPerfil
 import com.example.spartangymapp.util.rotarLuminancia
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -199,6 +202,44 @@ fun PantallaUsuario(
     var cargando by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    // Mensaje local para el flujo de foto de perfil: NO reutiliza `error`, ya que
+    // `error != null` reemplaza toda la pantalla (PantallaError) — no queremos que
+    // un fallo al subir la foto saque al socio de la pestaña en la que está.
+    var mensajeFoto by remember { mutableStateOf<String?>(null) }
+
+    val seleccionarFoto = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val fotoAnterior = perfilActual?.fotoUrl
+        scope.launch {
+            mensajeFoto = null
+            val dataUrl = try {
+                withContext(Dispatchers.IO) {
+                    val bitmap = context.contentResolver.openInputStream(uri).use {
+                        BitmapFactory.decodeStream(it)
+                    } ?: throw java.io.IOException("No se pudo leer la imagen.")
+                    comprimirParaPerfil(bitmap)
+                }
+            } catch (_: Exception) {
+                mensajeFoto = "No se pudo procesar la imagen."
+                return@launch
+            }
+            // Actualizacion optimista: refleja el cambio de inmediato
+            perfilActual = perfilActual?.copy(fotoUrl = dataUrl)
+            try {
+                val resp = RetrofitClient.apiService.actualizarFotoPerfil(ActualizarFotoRequest(dataUrl))
+                if (!resp.isSuccessful) {
+                    throw java.io.IOException("No se pudo actualizar la foto (${resp.code()}).")
+                }
+            } catch (_: Exception) {
+                // Revertir si la llamada falla
+                perfilActual = perfilActual?.copy(fotoUrl = fotoAnterior)
+                mensajeFoto = "No se pudo actualizar la foto."
+            }
+        }
+    }
 
     LaunchedEffect(socioId, refreshKey) {
         cargando = true
@@ -365,7 +406,15 @@ fun PantallaUsuario(
                             ejercicios = dashboard?.totalEjercicios.apiValor(),
                             sucursal = perfilActual?.sucursal.apiValor(sucursalPrincipalTexto(appConfig)),
                             fotoUrl = perfilActual?.fotoUrl,
-                            appConfig = appConfig
+                            appConfig = appConfig,
+                            mensajeFoto = mensajeFoto,
+                            onCambiarFoto = {
+                                seleccionarFoto.launch(
+                                    androidx.activity.result.PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    )
+                                )
+                            }
                         )
                         else -> {}
                     }
@@ -2006,27 +2055,50 @@ private fun TabPerfilCredencial(
     ejercicios: String,
     sucursal: String,
     fotoUrl: String? = null,
-    appConfig: AppConfigResponse
+    appConfig: AppConfigResponse,
+    mensajeFoto: String? = null,
+    onCambiarFoto: () -> Unit = {}
 ) {
-    CredencialSistemaCard(
-        titulo = "",
-        nombre = nombre,
-        correo = correo,
-        bloqueTitulo = "Membresia asignada",
-        bloqueValor = membresia.ifBlank { "Sin asignar" },
-        sucursal = sucursal,
-        permisos = estado.ifBlank { "Activo" },
-        detalles = listOf(
-            "Telefono" to telefono.ifBlank { "N/A" },
-            "Rol" to rolLegible(rol).ifBlank { "Socio" },
-            "Estado" to estado.ifBlank { "Activo" },
-            "Vencimiento" to vencimiento.ifBlank { "N/A" },
-            "Entrenador" to entrenador.ifBlank { "N/A" },
-            "Rutina" to ejercicios.ifBlank { "0 ejercicios" }
-        ),
-        integradaPantalla = true,
-        fotoUrl = fotoUrl,
-        appConfig = appConfig,
-        modifier = Modifier.fillMaxWidth()
-    )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        CredencialSistemaCard(
+            titulo = "",
+            nombre = nombre,
+            correo = correo,
+            bloqueTitulo = "Membresia asignada",
+            bloqueValor = membresia.ifBlank { "Sin asignar" },
+            sucursal = sucursal,
+            permisos = estado.ifBlank { "Activo" },
+            detalles = listOf(
+                "Telefono" to telefono.ifBlank { "N/A" },
+                "Rol" to rolLegible(rol).ifBlank { "Socio" },
+                "Estado" to estado.ifBlank { "Activo" },
+                "Vencimiento" to vencimiento.ifBlank { "N/A" },
+                "Entrenador" to entrenador.ifBlank { "N/A" },
+                "Rutina" to ejercicios.ifBlank { "0 ejercicios" }
+            ),
+            integradaPantalla = true,
+            fotoUrl = fotoUrl,
+            appConfig = appConfig,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onCambiarFoto,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Cambiar foto de perfil", color = Color.White, fontWeight = FontWeight.Bold)
+        }
+        mensajeFoto?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                it,
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+        }
+    }
 }
