@@ -217,6 +217,10 @@ export const finanzasApi = {
 
 export const operacionApi = {
   perfil: () => apiRequest('/operacion/me'),
+  actualizarFoto: (fotoUrl) => apiRequest('/operacion/me/foto', {
+    method: 'PUT',
+    body: JSON.stringify({ fotoUrl }),
+  }),
   inicioRecepcion: () => apiRequest('/operacion/recepcion/inicio'),
   asistenciasRecientes: () => apiRequest('/operacion/asistencias/recientes'),
   pagos: () => apiRequest('/operacion/pagos'),
