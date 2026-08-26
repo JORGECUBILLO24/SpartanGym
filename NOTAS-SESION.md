@@ -152,9 +152,9 @@ una está más abajo. Resumen:
 | 1 | Web Admin (`PerfilAdmin.jsx` + nav) | ✅ | ✅ (nav y tarjeta) | ✅ |
 | 2 | Web Recepcionista (`Perfil.jsx`) | ✅ | ✅ (tarjeta; sin nav, correcto) | ✅ |
 | 3 | Web tabla de socios (`RegistroSocioCompartido.jsx`, Task 9) | N/A (solo lectura) | N/A | ✅ |
-| 4 | App Android — socio, Photo Picker (Task 13) | ❌ **no se pudo ejecutar la app** | — | — |
-| 4b | Fallback: payload real de `ImagenPerfil.kt` contra el endpoint | ✅ | — | — |
-| 5 | App Android — "Mis Clientes" del entrenador (Task 14) | N/A (solo lectura) | ❌ **no se pudo ejecutar la app** | ⚠️ confirmado solo a nivel backend, no en la UI real |
+| 4 | App Android — socio, Photo Picker (Task 13) | ✅ (2026-08-25, ejecutado en la app real) | ✅ (force-stop + reapertura + re-login) | ✅ |
+| 4b | Fallback previo: payload real de `ImagenPerfil.kt` contra el endpoint (2026-08-24, antes de tener emulador con espacio) | ✅ | — | — |
+| 5 | App Android — "Mis Clientes" del entrenador (Task 14) | N/A (solo lectura) | N/A | ✅ (2026-08-25, confirmado en la UI real de Compose) |
 
 ### 1. Web — Admin (`PerfilAdmin.jsx` + avatar del nav)
 
@@ -178,27 +178,43 @@ una está más abajo. Resumen:
 
 ### 4. App Android — Socio, subida desde la credencial (Task 13)
 
-**No se pudo ejecutar el flujo real en la app — intento real documentado, no una declaración de "no disponible" sin probar:**
+**Ejecutado en la app real, en un emulador con espacio real, el 2026-08-25.**
 
-- Se encontró un AVD configurado (`Medium_Phone_API_36.1`), se arrancó (`emulator.exe -avd Medium_Phone_API_36.1`), se autorizó adb (`adb devices` → `device`, tras `kill-server`/`start-server`), y se confirmó `sys.boot_completed=1`.
-- Se compiló el APK real: `./gradlew :app:assembleDebug` → `BUILD SUCCESSFUL` (3m 57s), `app-debug.apk` de 28.8 MB.
-- Se empujó una foto real a la galería del emulador (`adb push ... /sdcard/Pictures/qa_test_photo.png` + broadcast de `MEDIA_SCANNER_SCAN_FILE`) para que el Photo Picker tuviera algo real que elegir.
-- **La instalación del APK falló de forma consistente**: `adb install` reportó `INSTALL_FAILED_DUPLICATE_PACKAGE` (sesión de instalación colgada de un intento previo con timeout) y, tras desinstalar y reintentar, `IOException: Requested internal only, but not enough space`. `adb shell df /data` confirmó la partición de datos del AVD al 98-100% de uso (6 GB totales, ~173 MB libres antes de intentar, 0 después de `pm trim-caches`). Se probó forzar instalación a almacenamiento externo (`pm set-install-location 2`) — falló por permisos del shell de adb sobre esa configuración. No es un problema del código ni de esta feature: es una limitación de espacio en disco del AVD de este entorno, no resuelta.
-- Conclusión: **el flujo de Photo Picker + guardado optimista con reversión (Task 13) no se ejecutó en la app real en esta sesión.** No reportar esto como "probado en la app" en ningún resumen futuro sin repetir el intento con un AVD que tenga espacio suficiente (o uno nuevo, con más almacenamiento asignado).
+**Intento previo (2026-08-24, documentado por transparencia):** con el AVD `Medium_Phone_API_36.1` la instalación del APK falló de forma consistente por falta de espacio (`IOException: Requested internal only, but not enough space`; `adb shell df /data` mostraba 98-100% de uso, 6 GB totales). Ese intento se cerró sin ejecutar nada en la app real, solo con el fallback 4b (payload directo al endpoint).
 
-**4b. Fallback ejecutado (payload real, mismo formato que `ImagenPerfil.kt`, contra el endpoint real):**
+**Este intento (2026-08-25):** el usuario abrió el mismo AVD (`Medium_Phone_API_36.1`) desde Android Studio. Se verificó `adb devices` → `emulator-5554 device` (autorizado) y `adb shell df /data` → **80% uso, 1 205 272 KB (~1.18 GB) libres** — espacio real, muy distinto del intento anterior. Con eso confirmado, se instaló el APK ya compilado (`adb install -r app-debug.apk`, mismo build de la sesión anterior, sin cambios de código desde entonces) → `Success`.
+
+Flujo ejecutado en la UI real, paso a paso, con capturas de pantalla e inspección de `uiautomator dump` para las coordenadas exactas de cada tap (no se asumió ninguna coordenada a ojo sin verificarla cuando falló al primer intento):
+
+1. Se generó una imagen de prueba **visualmente inequívoca** (600×600, fondo azul sólido, texto blanco "QA TEST PHOTO / 2026-08-25") — la imagen real usada originalmente (`Asset/WhatsApp_Image...png`) resultó ser, sin darse cuenta, el mismo mascot spartan que la app usa como logo por defecto, lo que hacía ambiguo distinguir "foto subida" de "fallback mostrado". Se corrigió el error de método antes de reportar nada.
+2. `adb push` de la imagen a `/sdcard/Pictures/` + broadcast de `MEDIA_SCANNER_SCAN_FILE`.
+3. Login real en la app con `qa-fotoperfil-socio-2026@example.com` → pantalla "Cargando tu perfil" → Inicio cargado ("Hola, QA").
+4. Navegación a la pestaña "Perfil" → credencial cargada, mostrando en el círculo de identidad la foto ya subida previamente (el mascot spartan del intento 4b — confirma retroactivamente que esa subida anterior sí se había renderizado bien, no era un fallback).
+5. Scroll hasta el botón "Cambiar foto de perfil" → tap → **se abrió el Android Photo Picker nativo del sistema** ("SpartanGymApp will only have access to the photos you select"), confirmando que `ActivityResultContracts.PickVisualMedia` funciona en un dispositivo real.
+6. Selección de "QA TEST PHOTO 2026-08-25" → tap en "Done".
+7. **Guardado optimista confirmado visualmente**: el círculo de identidad cambió de inmediato a la imagen azul distintiva, en la UI de Compose real, sin necesidad de recargar nada.
+8. Verificación de persistencia en backend: `GET /operacion/me` con token fresco de esa cuenta devolvió un `fotoUrl` con contenido distinto al anterior (nuevo prefijo base64), confirmando que el `PUT` desde la app (compresión real en Kotlin vía `ImagenPerfil.kt`, no el canvas del navegador) llegó y persistió.
+9. **Prueba de persistencia real, no en memoria**: `adb shell am force-stop com.example.spartangymapp` (mata el proceso por completo) → reapertura de la app → volvió a la pantalla de login (la app no persiste sesión entre reinicios, comportamiro esperado, no un bug de esta feature) → login de nuevo con la misma cuenta → pestaña Perfil → **la credencial mostró la foto azul "QA TEST PHOTO 2026-08-25" de nuevo**, cargada desde cero vía red, no desde ningún estado en memoria que hubiera sobrevivido al `force-stop`.
+
+Conclusión: **Task 13 (Photo Picker + guardado optimista + persistencia real) confirmado funcionando en la app real, no solo por contrato de API.**
+
+**4b. (Histórico, 2026-08-24) Fallback ejecutado cuando no había emulador con espacio — payload real, mismo formato que `ImagenPerfil.kt`, contra el endpoint real:**
 
 - Se generó el payload exacto que produciría la app: resize a máx. 512px de lado mayor + recodificación a webp calidad 0.8, replicando el algoritmo de `calcularDimensionesEscaladas`/`comprimirParaPerfil`, usando `canvas.toDataURL('image/webp', 0.8)` en el navegador sobre la misma imagen real (resultado: 506×493px, coincide con el cálculo esperado para una imagen de ese tamaño).
 - Se envió `PUT https://spartangym-api.onrender.com/api/operacion/me/foto` directo (vía `fetch` desde el navegador, con el token real de `qa-fotoperfil-socio-2026@example.com`) → `200 OK`, cuerpo de respuesta con el `fotoUrl` completo (46 037 caracteres, coincide con lo enviado).
-- Esto confirma que el backend acepta el payload exacto que la app generaría, con los mismos parámetros (512px, webp 0.8) — pero es una confirmación de **contrato de API**, no una prueba de que el Photo Picker, la compresión real en Kotlin, o el guardado optimista con reversión de Task 13 funcionen en la app de verdad.
+- En su momento esto solo confirmaba el contrato de API. Ya no es la única evidencia — ver el flujo real de arriba.
 
 ### 5. App Android — "Mis Clientes" del entrenador (Task 14, solo lectura)
 
-- **No se pudo abrir la app real** (mismo bloqueo de espacio en disco del emulador que la superficie 4).
-- Confirmación a nivel de backend únicamente: `GET https://spartangym-api.onrender.com/api/operacion/entrenador/clientes` (el endpoint exacto que `Pantallaentrenador.kt`/`TabClientes` consume vía `obtenerClientesEntrenador()`) con el token real de `qa-fotoperfil-entrenador-2026@example.com` devolvió la entrada de `QA SocioPrueba` con `fotoUrl` poblado con la data URL real.
-- Esto confirma que el dato que la app necesita para mostrar la foto le llega correctamente desde el backend — **no confirma que la UI de Compose (`FotoPerfilCredencial` reusada en `TabClientes`, Task 14 + fix de la revisión final) efectivamente la decodifique y renderice en pantalla.** Esa parte sigue sin probarse en un dispositivo/emulador real.
+**Ejecutado en la app real el 2026-08-25** (mismo emulador con espacio real que la superficie 4).
+
+- Login real con `qa-fotoperfil-entrenador-2026@example.com` → "Panel Entrenador", "15 Clientes" (la cuenta no tiene sucursal asignada, así que ve a todos los socios del sistema — comportamiento esperado según `sucursalDelEntrenador`/`sociosVisiblesPara` en `OperacionController.java`).
+- Tap en la pestaña "Clientes" → lista real de 15 socios cargada. **Nota:** esta lista incluye socios reales del gimnasio (no cuentas de prueba) porque el entrenador sin sucursal ve a todos — se observaron de pasada al buscar la fila de prueba, sin tocar ni interactuar con ninguna de esas cuentas, tal como se pidió.
+- Se hizo scroll hasta encontrar la fila de "QA SocioPrueba" (`qa-fotoperfil-socio-2026@example.com`), al final de la lista. **Su círculo mostró correctamente la foto real** ("QA TEST PHOTO 2026-08-25", la misma subida en la superficie 4), mientras que las 14 filas de socios reales sin foto mostraron correctamente sus iniciales en círculo de color (p. ej. "AL" para Ana Lopez, "CR" para Carlos Ramirez, etc.).
+- Conclusión: **Task 14 + el fix de la revisión final (`FotoPerfilCredencial` reusado en `TabClientes`) confirmado renderizando la foto correctamente en la UI de Compose real**, no solo a nivel de backend.
 
 ### Pendiente real
 
-- Repetir las superficies 4 y 5 en un entorno con un AVD que tenga espacio en disco suficiente (o uno nuevo con más almacenamiento asignado al crearlo) para confirmar el flujo completo en la app real, no solo el contrato de API.
+- ~~Repetir las superficies 4 y 5 en un entorno con un AVD que tenga espacio en disco suficiente~~ — hecho el 2026-08-25, ver arriba. Las 5 superficies de la feature quedaron confirmadas en vivo, contra producción, sin mocks.
 - Las 4 cuentas de prueba (`qa-fotoperfil-*`) quedaron con foto subida — quitarlas o borrar las cuentas cuando ya no hagan falta para pruebas futuras.
+- El AVD `Medium_Phone_API_36.1` volvió a tener espacio real (80% de uso, ~1.18 GB libres) el 2026-08-25, sin que se hiciera ninguna intervención manual de este lado — probablemente el usuario limpió/reinició el AVD entre sesiones. Si vuelve a quedarse sin espacio, la causa más probable son builds/instalaciones repetidas acumulando caché sin limpiar entre sesiones de prueba.
