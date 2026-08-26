@@ -112,3 +112,30 @@ archivo, que sí forzó la reescritura (confirmado por cambio de
   anteriores tampoco están en el APK que tengan instalado).
 - Confirmar si Render tiene auto-deploy por push a `main` o si hay que
   dispararlo a mano — nunca se confirmó a lo largo de ninguna sesión.
+
+## Cuentas de prueba descartables (verificación en vivo de foto de perfil, 2026-08-21)
+
+No había cuentas de prueba documentadas para admin/recepcionista/socio
+más allá del admin semilla del schema (`admin@spartangym`, ROLE_SUPERADMIN,
+`spartan_gym_schema.sql`). Para verificar la feature de foto de perfil
+contra la API real de producción (`https://spartangym-api.onrender.com`)
+sin tocar cuentas reales del gimnasio, se crearon 4 cuentas descartables
+directamente contra prod vía `curl`:
+
+| Rol | Email | Password | Creada para |
+|---|---|---|---|
+| ROLE_ADMIN | `qa-fotoperfil-admin-2026@example.com` | `[REDACTADO]` | Verificar subida de foto en `PerfilAdmin.jsx` + avatar del nav |
+| ROLE_RECEPCIONISTA | `qa-fotoperfil-recepcion-2026@example.com` | `[REDACTADO]` | Verificar subida de foto en `Recepcionista/Perfil.jsx` |
+| ROLE_ENTRENADOR | `qa-fotoperfil-entrenador-2026@example.com` | `[REDACTADO]` | Verificar lectura de foto en "Mis Clientes" (app, Task 14) — sin sucursal asignada, ve todos los socios |
+| ROLE_SOCIO | `qa-fotoperfil-socio-2026@example.com` | `[REDACTADO]` | Verificar subida desde la app + lectura en tabla de socios (web) y en "Mis Clientes" (app) |
+
+**Bootstrap:** las 3 cuentas de staff (admin/recepción/entrenador) se
+crearon vía `POST /api/personal/registrar`, que exige rol ADMIN — para
+eso se hizo login con `admin@spartangym` **una sola vez**, únicamente
+para esa llamada de creación, sin tocar nada más con esa cuenta (nunca
+se le subió foto ni se usó para ninguna otra prueba). La cuenta de
+socio se creó vía `POST /api/auth/register` (público, no requiere admin).
+
+**Son descartables.** Se pueden borrar cuando ya no hagan falta (no hay
+endpoint de auto-borrado de cuenta; requeriría acceso directo a la DB
+de Neon o un endpoint de admin para desactivar/eliminar usuario).
