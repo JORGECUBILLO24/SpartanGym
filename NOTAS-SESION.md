@@ -139,3 +139,66 @@ socio se creó vía `POST /api/auth/register` (público, no requiere admin).
 **Son descartables.** Se pueden borrar cuando ya no hagan falta (no hay
 endpoint de auto-borrado de cuenta; requeriría acceso directo a la DB
 de Neon o un endpoint de admin para desactivar/eliminar usuario).
+
+## Cierre: verificación en vivo de foto de perfil contra producción (2026-08-24)
+
+Verificación real contra `https://spartangym-api.onrender.com`, sin mocks,
+usando las 4 cuentas descartables de arriba. Cada superficie se probó por
+separado; el detalle real (comando/acción + resultado observado) de cada
+una está más abajo. Resumen:
+
+| # | Superficie | Subida verificada | Persiste tras refresh real | Avatar visible donde corresponde |
+|---|---|---|---|---|
+| 1 | Web Admin (`PerfilAdmin.jsx` + nav) | ✅ | ✅ (nav y tarjeta) | ✅ |
+| 2 | Web Recepcionista (`Perfil.jsx`) | ✅ | ✅ (tarjeta; sin nav, correcto) | ✅ |
+| 3 | Web tabla de socios (`RegistroSocioCompartido.jsx`, Task 9) | N/A (solo lectura) | N/A | ✅ |
+| 4 | App Android — socio, Photo Picker (Task 13) | ❌ **no se pudo ejecutar la app** | — | — |
+| 4b | Fallback: payload real de `ImagenPerfil.kt` contra el endpoint | ✅ | — | — |
+| 5 | App Android — "Mis Clientes" del entrenador (Task 14) | N/A (solo lectura) | ❌ **no se pudo ejecutar la app** | ⚠️ confirmado solo a nivel backend, no en la UI real |
+
+### 1. Web — Admin (`PerfilAdmin.jsx` + avatar del nav)
+
+- Login real como `qa-fotoperfil-admin-2026@example.com` en `http://localhost:5173` (Vite dev server local, `VITE_API_BASE_URL` apuntando a producción — sin mocks).
+- Se inyectó un archivo PNG real (`Asset/WhatsApp_Image_2026-05-20...png`, 342 KB) en el `<input type="file">` de "Cambiar foto" vía `fetch` + `DataTransfer` + evento `change` (el input no acepta asignación directa de `value` por seguridad del navegador).
+- `GET https://spartangym-api.onrender.com/api/operacion/me` con un token fresco de esa cuenta confirmó `fotoUrl` seteado a un `data:image/webp;base64,...` real — el `PUT` se hizo y persistió en la base, no fue solo optimismo de UI.
+- Se forzó `window.location.reload()` (recarga real de documento, no navegación SPA) y se releyó el DOM: tanto el avatar del nav (`Editar perfil de administrador`) como la tarjeta de perfil mostraron un `<img>` completo (`complete: true`, 506×493px, redimensionado correctamente bajo 512px) con la misma data URL. Esto confirma que el fix de la condición de carrera de Task 7 (hidratación al montar vs. subida optimista) funciona con un refresh real, no solo en memoria.
+
+### 2. Web — Recepcionista (`Recepcionista/Perfil.jsx`)
+
+- Login real como `qa-fotoperfil-recepcion-2026@example.com`.
+- Misma técnica de inyección de archivo real en el input de "Cambiar foto" de `/recepcion/perfil`.
+- `GET /operacion/me` con token fresco confirmó `fotoUrl` persistido en la base.
+- `window.location.reload()` real → el avatar de la tarjeta de perfil mostró `<img complete:true, 506×493px>` con la data URL correcta.
+- `RecepcionistaLayout.jsx` no tiene avatar personalizado en el nav (ícono genérico + etiqueta estática "Recepcionista", confirmado en sesión anterior) — no se buscó ahí, como se indicó.
+
+### 3. Web — Tabla de socios (`RegistroSocioCompartido.jsx`, solo lectura)
+
+- Con la sesión admin activa, se navegó a `/admin/registrar-socio` (la misma tabla compartida con Recepción).
+- Se inspeccionó el DOM de la fila de `QA SocioPrueba` (el socio de prueba, con foto subida por API — ver superficie 4b): la celda "Socio" mostró un `<img complete:true, 506px de ancho>` con `src` en formato `data:image/webp;base64,...`, junto al nombre. Confirma que Task 9 muestra correctamente el avatar de un socio con foto ya subida.
+
+### 4. App Android — Socio, subida desde la credencial (Task 13)
+
+**No se pudo ejecutar el flujo real en la app — intento real documentado, no una declaración de "no disponible" sin probar:**
+
+- Se encontró un AVD configurado (`Medium_Phone_API_36.1`), se arrancó (`emulator.exe -avd Medium_Phone_API_36.1`), se autorizó adb (`adb devices` → `device`, tras `kill-server`/`start-server`), y se confirmó `sys.boot_completed=1`.
+- Se compiló el APK real: `./gradlew :app:assembleDebug` → `BUILD SUCCESSFUL` (3m 57s), `app-debug.apk` de 28.8 MB.
+- Se empujó una foto real a la galería del emulador (`adb push ... /sdcard/Pictures/qa_test_photo.png` + broadcast de `MEDIA_SCANNER_SCAN_FILE`) para que el Photo Picker tuviera algo real que elegir.
+- **La instalación del APK falló de forma consistente**: `adb install` reportó `INSTALL_FAILED_DUPLICATE_PACKAGE` (sesión de instalación colgada de un intento previo con timeout) y, tras desinstalar y reintentar, `IOException: Requested internal only, but not enough space`. `adb shell df /data` confirmó la partición de datos del AVD al 98-100% de uso (6 GB totales, ~173 MB libres antes de intentar, 0 después de `pm trim-caches`). Se probó forzar instalación a almacenamiento externo (`pm set-install-location 2`) — falló por permisos del shell de adb sobre esa configuración. No es un problema del código ni de esta feature: es una limitación de espacio en disco del AVD de este entorno, no resuelta.
+- Conclusión: **el flujo de Photo Picker + guardado optimista con reversión (Task 13) no se ejecutó en la app real en esta sesión.** No reportar esto como "probado en la app" en ningún resumen futuro sin repetir el intento con un AVD que tenga espacio suficiente (o uno nuevo, con más almacenamiento asignado).
+
+**4b. Fallback ejecutado (payload real, mismo formato que `ImagenPerfil.kt`, contra el endpoint real):**
+
+- Se generó el payload exacto que produciría la app: resize a máx. 512px de lado mayor + recodificación a webp calidad 0.8, replicando el algoritmo de `calcularDimensionesEscaladas`/`comprimirParaPerfil`, usando `canvas.toDataURL('image/webp', 0.8)` en el navegador sobre la misma imagen real (resultado: 506×493px, coincide con el cálculo esperado para una imagen de ese tamaño).
+- Se envió `PUT https://spartangym-api.onrender.com/api/operacion/me/foto` directo (vía `fetch` desde el navegador, con el token real de `qa-fotoperfil-socio-2026@example.com`) → `200 OK`, cuerpo de respuesta con el `fotoUrl` completo (46 037 caracteres, coincide con lo enviado).
+- Esto confirma que el backend acepta el payload exacto que la app generaría, con los mismos parámetros (512px, webp 0.8) — pero es una confirmación de **contrato de API**, no una prueba de que el Photo Picker, la compresión real en Kotlin, o el guardado optimista con reversión de Task 13 funcionen en la app de verdad.
+
+### 5. App Android — "Mis Clientes" del entrenador (Task 14, solo lectura)
+
+- **No se pudo abrir la app real** (mismo bloqueo de espacio en disco del emulador que la superficie 4).
+- Confirmación a nivel de backend únicamente: `GET https://spartangym-api.onrender.com/api/operacion/entrenador/clientes` (el endpoint exacto que `Pantallaentrenador.kt`/`TabClientes` consume vía `obtenerClientesEntrenador()`) con el token real de `qa-fotoperfil-entrenador-2026@example.com` devolvió la entrada de `QA SocioPrueba` con `fotoUrl` poblado con la data URL real.
+- Esto confirma que el dato que la app necesita para mostrar la foto le llega correctamente desde el backend — **no confirma que la UI de Compose (`FotoPerfilCredencial` reusada en `TabClientes`, Task 14 + fix de la revisión final) efectivamente la decodifique y renderice en pantalla.** Esa parte sigue sin probarse en un dispositivo/emulador real.
+
+### Pendiente real
+
+- Repetir las superficies 4 y 5 en un entorno con un AVD que tenga espacio en disco suficiente (o uno nuevo con más almacenamiento asignado al crearlo) para confirmar el flujo completo en la app real, no solo el contrato de API.
+- Las 4 cuentas de prueba (`qa-fotoperfil-*`) quedaron con foto subida — quitarlas o borrar las cuentas cuando ya no hagan falta para pruebas futuras.
