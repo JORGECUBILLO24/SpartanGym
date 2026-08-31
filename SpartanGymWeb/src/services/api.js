@@ -1,4 +1,11 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const FALLBACK_API_BASE_URL = 'http://localhost:8080/api';
+
+function normalizeApiBaseUrl(rawValue) {
+  const baseUrl = (rawValue || FALLBACK_API_BASE_URL).trim();
+  return baseUrl.replace(/\/+$/, '');
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 export const authStorage = {
   getToken: () => localStorage.getItem('spartan_token'),

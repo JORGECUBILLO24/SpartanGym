@@ -41,29 +41,25 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
-        try {
-            http
-                    .csrf(AbstractHttpConfigurer::disable)
-                    .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                    .authorizeHttpRequests(auth -> auth
-                            .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
-                            .requestMatchers("/api/auth/**").permitAll()
-                            .requestMatchers("/error").permitAll()
-                            .requestMatchers(HttpMethod.GET, "/api/configuracion").permitAll()
-                            .requestMatchers(HttpMethod.GET, "/api/asistencia/estado/**", "/api/asistencias/estado/**").permitAll()
-                            .requestMatchers(HttpMethod.POST, "/api/asistencia/qr-validacion/estado", "/api/asistencias/qr-validacion/estado").permitAll()
-                            .anyRequest().authenticated()
-                    )
-                    .sessionManagement(session -> session
-                            .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                    )
-                    .authenticationProvider(authenticationProvider())
-                    .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/configuracion").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/asistencia/estado/**", "/api/asistencias/estado/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/asistencia/qr-validacion/estado", "/api/asistencias/qr-validacion/estado").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-            return http.build();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return http.build();
     }
 
     @Bean
@@ -91,12 +87,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) {
-        try {
-            return config.getAuthenticationManager();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 
     @Bean
