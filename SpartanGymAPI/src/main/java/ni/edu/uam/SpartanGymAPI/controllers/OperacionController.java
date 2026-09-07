@@ -102,7 +102,10 @@ public class OperacionController {
         return ResponseEntity.ok(pagoRepository.findAllByOrderByFechaTransaccionDesc().stream().map(this::pagoMap).toList());
     }
 
+    // Historial de pagos de un socio: el personal ve el de cualquiera, el socio solo el suyo.
     @GetMapping("/pagos/socio/{socioId}")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN', 'RECEPCIONISTA') "
+            + "or @accesoSocio.esElMismo(authentication, #socioId)")
     @Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> pagosSocio(@PathVariable UUID socioId) {
         return ResponseEntity.ok(pagoRepository.findBySocioUsuarioIdOrderByFechaTransaccionDesc(socioId).stream().map(this::pagoMap).toList());
@@ -133,7 +136,10 @@ public class OperacionController {
         return ResponseEntity.ok(notificacionMap(notificacionRepository.save(notificacion)));
     }
 
+    // Rutinas de un socio: se suma ENTRENADOR, que sí necesita ver las de sus clientes.
     @GetMapping("/socio/{socioId}/rutinas")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN', 'RECEPCIONISTA', 'ENTRENADOR') "
+            + "or @accesoSocio.esElMismo(authentication, #socioId)")
     @Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> rutinasSocio(@PathVariable UUID socioId) {
         return ResponseEntity.ok(rutinaRepository.findBySocioUsuarioIdOrderByFechaAsignacionDesc(socioId).stream().map(this::rutinaMap).toList());
