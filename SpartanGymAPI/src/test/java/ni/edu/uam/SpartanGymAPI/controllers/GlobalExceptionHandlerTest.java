@@ -51,6 +51,22 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void runtimePeladaConCause_seTrataComoFallaTecnicaNoComoErrorDeNegocio() {
+        // Patron real del proyecto: PasswordResetService/AsistenciaService envuelven fallos
+        // tecnicos (HMAC, digest, serializacion) en "new RuntimeException(mensaje, cause)".
+        // No tiene subclase propia, pero al tener cause tampoco es un error de negocio escrito
+        // a mano: debe loguearse con stack trace completo (verificable solo por inspeccion de
+        // logs), y la respuesta al cliente se mantiene igual que antes de este cambio.
+        RuntimeException ex = new RuntimeException(
+                "No se pudo firmar el QR de asistencia.", new IllegalStateException("HMAC no disponible"));
+
+        ResponseEntity<String> respuesta = handler.handleRuntime(ex, peticion());
+
+        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
+        assertEquals("No se pudo firmar el QR de asistencia.", respuesta.getBody());
+    }
+
+    @Test
     void excepcionNoRuntime_devuelve500Generico() {
         ResponseEntity<String> respuesta = handler.handleGenerico(new Exception("fallo raro"), peticion());
 

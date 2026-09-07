@@ -81,11 +81,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleRuntime(RuntimeException ex, HttpServletRequest request) {
         String mensaje = ex.getMessage();
 
-        // En este proyecto los errores de negocio se lanzan como RuntimeException "pelada"
-        // con un mensaje pensado para el usuario ("El enlace de restablecimiento expiro", etc.).
-        // Cualquier subclase (NPE, IllegalStateException, ...) es casi siempre un bug real:
-        // ahí sí hace falta el stack trace completo para poder diagnosticarlo.
+        // En este proyecto los errores de negocio se lanzan como RuntimeException "pelada",
+        // sin cause, con un mensaje pensado para el usuario ("El enlace de restablecimiento
+        // expiro", etc.). Cuando SÍ hay cause (p.ej. "No se pudo firmar el QR de asistencia",
+        // que envuelve un fallo real de HMAC) es una falla técnica con forma de RuntimeException
+        // pelada, no una regla de negocio — igual que una subclase, necesita el stack completo.
         boolean errorDeNegocio = ex.getClass() == RuntimeException.class
+                && ex.getCause() == null
                 && mensaje != null
                 && !mensaje.isBlank();
 

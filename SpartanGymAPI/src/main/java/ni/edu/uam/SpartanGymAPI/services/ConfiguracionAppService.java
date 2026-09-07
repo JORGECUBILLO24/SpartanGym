@@ -1,6 +1,7 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ni.edu.uam.SpartanGymAPI.models.ConfiguracionApp;
 import ni.edu.uam.SpartanGymAPI.repositories.ConfiguracionAppRepository;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ConfiguracionAppService {
@@ -46,6 +48,10 @@ public class ConfiguracionAppService {
         try {
             return objectMapper.readValue(json, new TypeReference<>() {});
         } catch (Exception e) {
+            // Antes esto quedaba en total silencio: la config guardada (nombre del gym, logo)
+            // se perdía sin dejar ningún rastro de por qué. Ahora al menos queda en el log.
+            log.warn("No se pudo leer la configuracion guardada, se usan los valores por defecto: {}",
+                    e.getMessage(), e);
             return new LinkedHashMap<>();
         }
     }
