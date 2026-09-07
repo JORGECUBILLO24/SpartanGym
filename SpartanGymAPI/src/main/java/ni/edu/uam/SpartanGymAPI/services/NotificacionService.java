@@ -64,7 +64,7 @@ public class NotificacionService {
             mailSender.send(mensaje);
             log.info("Correo HTML de vencimiento enviado exitosamente a: {}", correoDestino);
         } catch (Exception e) {
-            log.error("Error al enviar el correo a {}: {}", correoDestino, e.getMessage());
+            log.error("Error al enviar el correo de vencimiento a {}: {}", correoDestino, e.getMessage(), e);
         }
     }
 
@@ -88,7 +88,7 @@ public class NotificacionService {
             mailSender.send(mensaje);
             log.info("Correo HTML de bienvenida enviado exitosamente a: {}", correoDestino);
         } catch (Exception e) {
-            log.error("Error al enviar el correo de bienvenida a {}: {}", correoDestino, e.getMessage());
+            log.error("Error al enviar el correo de bienvenida a {}: {}", correoDestino, e.getMessage(), e);
         }
     }
 
@@ -135,7 +135,7 @@ public class NotificacionService {
             mailSender.send(mensaje);
             log.info("Correo de rutina asignada enviado exitosamente a: {}", correoDestino);
         } catch (Exception e) {
-            log.error("Error al enviar correo de rutina asignada a {}: {}", correoDestino, e.getMessage());
+            log.error("Error al enviar correo de rutina asignada a {}: {}", correoDestino, e.getMessage(), e);
         }
     }
 
@@ -160,7 +160,7 @@ public class NotificacionService {
             mailSender.send(mensaje);
             log.info("Correo de recuperacion enviado exitosamente a: {}", correoDestino);
         } catch (Exception e) {
-            log.error("Error al enviar recuperacion de contraseña a {}: {}", correoDestino, e.getMessage());
+            log.error("Error al enviar recuperacion de contraseña a {}: {}", correoDestino, e.getMessage(), e);
             log.warn("Enlace de recuperacion para {}: {}", correoDestino, enlace);
         }
     }
@@ -202,7 +202,7 @@ public class NotificacionService {
             mailSender.send(mensaje);
             log.info("Mensaje global enviado por correo a {} usuarios activos.", correosDestino.size());
         } catch (Exception e) {
-            log.error("Error al enviar mensaje global por correo: {}", e.getMessage());
+            log.error("Error al enviar mensaje global por correo: {}", e.getMessage(), e);
         }
     }
 
