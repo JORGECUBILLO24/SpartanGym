@@ -8,6 +8,8 @@ import ni.edu.uam.SpartanGymAPI.models.Usuario;
 import ni.edu.uam.SpartanGymAPI.repositories.NotificacionRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -31,6 +33,7 @@ public class NotificacionService {
     private final NotificacionRepository notificacionRepository;
     private final UsuarioRepository usuarioRepository;
     private final ConfiguracionAppService configuracionAppService;
+    private final Environment environment;
 
     @Value("${spring.mail.username:}")
     private String correoEmisor;
@@ -142,7 +145,7 @@ public class NotificacionService {
     @Async
     public void enviarCorreoRecuperacionPassword(String correoDestino, String nombreUsuario, String enlace, long minutosValidez) {
         if (!correoDisponible(correoDestino)) {
-            log.warn("MAIL_USERNAME no configurado. Enlace de recuperacion para {}: {}", correoDestino, enlace);
+            registrarEnlaceSoloEnLocal(correoDestino, enlace);
             return;
         }
 
@@ -161,7 +164,21 @@ public class NotificacionService {
             log.info("Correo de recuperacion enviado exitosamente a: {}", correoDestino);
         } catch (Exception e) {
             log.error("Error al enviar recuperacion de contraseña a {}: {}", correoDestino, e.getMessage(), e);
-            log.warn("Enlace de recuperacion para {}: {}", correoDestino, enlace);
+            registrarEnlaceSoloEnLocal(correoDestino, enlace);
+        }
+    }
+
+    /**
+     * El enlace lleva el token de restablecimiento en texto plano: quien lo tenga puede cambiar
+     * la contraseña de esa cuenta sin conocer la anterior. En la base solo se guarda su hash
+     * justamente por eso, así que el log no puede devolverlo en claro.
+     *
+     * Solo en el perfil "local" se imprime, para poder probar el flujo en la máquina propia
+     * sin tener el correo configurado. En cualquier otro entorno (Render) no sale nunca.
+     */
+    private void registrarEnlaceSoloEnLocal(String correoDestino, String enlace) {
+        if (environment.acceptsProfiles(Profiles.of("local"))) {
+            log.warn("[solo perfil local] Enlace de recuperacion para {}: {}", correoDestino, enlace);
         }
     }
 
