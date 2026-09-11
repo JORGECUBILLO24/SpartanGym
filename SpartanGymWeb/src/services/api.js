@@ -1,4 +1,12 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+const FALLBACK_API_BASE_URL = 'http://localhost:8080/api';
+
+const normalizeApiBaseUrl = (rawValue) => {
+  const value = String(rawValue ?? '').trim();
+  if (!value) return FALLBACK_API_BASE_URL;
+  return value.replace(/\/+$/, '');
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 export const authStorage = {
   getToken: () => localStorage.getItem('spartan_token'),
@@ -26,7 +34,8 @@ export async function apiRequest(path, options = {}) {
   const token = options.skipAuth ? null : authStorage.getToken();
   const sucursalId = localStorage.getItem('global_sucursal_id');
   const { skipAuth, ignoreSucursal, ...fetchOptions } = options;
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const normalizedPath = String(path ?? '').startsWith('/') ? path : `/${String(path ?? '')}`;
+  const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
     ...fetchOptions,
     headers: {
       'Content-Type': 'application/json',

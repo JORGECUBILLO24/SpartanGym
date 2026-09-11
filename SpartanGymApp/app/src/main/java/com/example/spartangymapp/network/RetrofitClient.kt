@@ -1,5 +1,6 @@
 package com.example.spartangymapp.network
 
+import com.example.spartangymapp.BuildConfig
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -7,10 +8,6 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
-    // URL de la API en produccion (Render, conectada a Neon). La app se conecta
-    // automaticamente aqui desde cualquier red, sin configuracion manual.
-    private const val BASE_URL = "https://spartangym-api.onrender.com/"
-
     private var authToken: String? = null
 
     fun setAuthToken(token: String?) {
@@ -36,7 +33,7 @@ object RetrofitClient {
 
     val apiService: SpartanGymApi by lazy {
         Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(BuildConfig.API_BASE_URL)
             .client(httpClient)
             .addConverterFactory(GsonConverterFactory.create()) // Convierte de JSON a Kotlin automatico
             .build()

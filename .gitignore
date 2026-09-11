@@ -4,5 +4,8 @@ dist
 .eslintcache
 *.log
 .env
+SpartanGymApp/local.properties
+SpartanGymApp/.gradle/
+SpartanGymApp/.idea/
 NOTAS-SESION.md
 docs/superpowers/
