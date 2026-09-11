@@ -1,10 +1,12 @@
 package ni.edu.uam.SpartanGymAPI.security;
 
 import lombok.RequiredArgsConstructor;
+import ni.edu.uam.SpartanGymAPI.exceptions.RespuestaError;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -33,6 +35,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
+    private final RespuestaError respuestaError;
 
     // Origenes permitidos para CORS. En local: el web en 5173. En produccion se
     // configura con la variable APP_CORS_ORIGINS (lista separada por comas).
@@ -58,6 +61,16 @@ public class SecurityConfig {
                             .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                     )
                     .authenticationProvider(authenticationProvider())
+                    // Sin esto, Spring Security responde 403 a lo no autenticado y el web
+                    // (que solo cierra la sesión ante un 401) nunca manda al login a una
+                    // sesión vencida.
+                    .exceptionHandling(errores -> errores
+                            .authenticationEntryPoint((request, response, ex) -> respuestaError.escribir(
+                                    response, HttpStatus.UNAUTHORIZED, "NO_AUTENTICADO",
+                                    "Tu sesión expiró o no iniciaste sesión. Vuelve a iniciar sesión.", request))
+                            .accessDeniedHandler((request, response, ex) -> respuestaError.escribir(
+                                    response, HttpStatus.FORBIDDEN, "ACCESO_DENEGADO",
+                                    "No tienes permisos para realizar esta acción.", request)))
                     .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
             return http.build();
