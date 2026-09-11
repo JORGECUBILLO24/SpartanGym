@@ -11,7 +11,12 @@ public class RutinaDetalleRequest {
     private Integer repeticiones;
     private String tipoEjercicio;
     private LocalDate diaProgramado;
+    private Integer diaSemana;
     private Double pesoSugeridoKg;
+    private Double velocidadNivel;
+    private Double inclinacion;
+    private Integer duracionSegundos;
+    private Double distanciaMetros;
     private Integer tiempoDescansoSegundos;
     private String notas;
     private Integer orden;

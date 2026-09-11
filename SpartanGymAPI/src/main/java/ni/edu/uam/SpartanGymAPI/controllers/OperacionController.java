@@ -11,6 +11,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.*;
+import ni.edu.uam.SpartanGymAPI.dto.ProgresoSemana;
+import ni.edu.uam.SpartanGymAPI.dto.ActualizarFotoRequest;
+import ni.edu.uam.SpartanGymAPI.util.FotoPerfilValidator;
+import ni.edu.uam.SpartanGymAPI.services.EjercicioCompletadoService;
+import ni.edu.uam.SpartanGymAPI.services.RutinaResponseMapper;
 
 @RestController
 @RequestMapping("/api/operacion")
@@ -24,6 +29,8 @@ public class OperacionController {
     private final AsistenciaRepository asistenciaRepository;
     private final RutinaRepository rutinaRepository;
     private final NotificacionRepository notificacionRepository;
+    private final EjercicioCompletadoService ejercicioCompletadoService;
+    private final RutinaResponseMapper rutinaResponseMapper;
 
     @GetMapping("/me")
     @Transactional(readOnly = true)
@@ -49,6 +56,17 @@ public class OperacionController {
             data.put("tipo", "personal");
         });
         return ResponseEntity.ok(data);
+    }
+
+    @PutMapping("/me/foto")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> actualizarFoto(
+            @RequestBody ActualizarFotoRequest request, Authentication auth) {
+        Usuario usuario = usuarioAutenticado(auth);
+        usuario.setFotoUrl(FotoPerfilValidator.validar(request.getFotoUrl()));
+        usuarioRepository.save(usuario);
+        return ResponseEntity.ok(Map.of("fotoUrl",
+                usuario.getFotoUrl() == null ? "" : usuario.getFotoUrl()));
     }
 
     @GetMapping("/recepcion/inicio")
@@ -84,7 +102,10 @@ public class OperacionController {
         return ResponseEntity.ok(pagoRepository.findAllByOrderByFechaTransaccionDesc().stream().map(this::pagoMap).toList());
     }
 
+    // Historial de pagos de un socio: el personal ve el de cualquiera, el socio solo el suyo.
     @GetMapping("/pagos/socio/{socioId}")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN', 'RECEPCIONISTA') "
+            + "or @accesoSocio.esElMismo(authentication, #socioId)")
     @Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> pagosSocio(@PathVariable UUID socioId) {
         return ResponseEntity.ok(pagoRepository.findBySocioUsuarioIdOrderByFechaTransaccionDesc(socioId).stream().map(this::pagoMap).toList());
@@ -115,7 +136,10 @@ public class OperacionController {
         return ResponseEntity.ok(notificacionMap(notificacionRepository.save(notificacion)));
     }
 
+    // Rutinas de un socio: se suma ENTRENADOR, que sí necesita ver las de sus clientes.
     @GetMapping("/socio/{socioId}/rutinas")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN', 'RECEPCIONISTA', 'ENTRENADOR') "
+            + "or @accesoSocio.esElMismo(authentication, #socioId)")
     @Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> rutinasSocio(@PathVariable UUID socioId) {
         return ResponseEntity.ok(rutinaRepository.findBySocioUsuarioIdOrderByFechaAsignacionDesc(socioId).stream().map(this::rutinaMap).toList());
@@ -196,6 +220,7 @@ public class OperacionController {
         data.put("email", usuario.getEmail());
         data.put("rol", usuario.getRol().getNombre());
         data.put("activo", usuario.getActivo());
+        data.put("fotoUrl", usuario.getFotoUrl());
         return data;
     }
 
@@ -209,6 +234,7 @@ public class OperacionController {
         data.put("sucursal", socio.getSucursal() != null ? socio.getSucursal().getNombre() : null);
         data.put("estadoAcceso", socio.getEstadoAcceso());
         data.put("email", socio.getUsuario().getEmail());
+        data.put("fotoUrl", socio.getUsuario().getFotoUrl());
         return data;
     }
 
@@ -245,39 +271,8 @@ public class OperacionController {
     }
 
     private Map<String, Object> rutinaMap(Rutina rutina) {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("id", rutina.getId());
-        data.put("socioId", rutina.getSocio().getUsuarioId());
-        data.put("socio", rutina.getSocio().getNombres() + " " + rutina.getSocio().getApellidos());
-        data.put("entrenador", rutina.getEntrenador().getNombres() + " " + rutina.getEntrenador().getApellidos());
-        data.put("fechaAsignacion", rutina.getFechaAsignacion());
-        data.put("nombre", rutina.getNombre());
-        data.put("tipoRutina", rutina.getTipoRutina());
-        data.put("generoObjetivo", rutina.getGeneroObjetivo());
-        data.put("esGlobal", Boolean.TRUE.equals(rutina.getEsGlobal()));
-        data.put("fechaInicio", rutina.getFechaInicio());
-        data.put("fechaFin", rutina.getFechaFin());
-        data.put("objetivo", rutina.getObjetivo());
-        data.put("notas", rutina.getNotas());
-        data.put("ejercicios", rutina.getDetalles().stream()
-                .sorted(Comparator.comparing(detalle -> Objects.requireNonNullElse(detalle.getOrden(), 0)))
-                .map(detalle -> {
-            Map<String, Object> ejercicio = new LinkedHashMap<>();
-            ejercicio.put("ejercicioId", detalle.getEjercicio().getId());
-            ejercicio.put("ejercicio", detalle.getEjercicio().getNombre());
-            ejercicio.put("grupoMuscular", detalle.getEjercicio().getGrupoMuscular().getNombre());
-            ejercicio.put("grupoMuscularId", detalle.getEjercicio().getGrupoMuscular().getId());
-            ejercicio.put("tipoEjercicio", detalle.getTipoEjercicio());
-            ejercicio.put("diaProgramado", detalle.getDiaProgramado());
-            ejercicio.put("series", detalle.getSeries());
-            ejercicio.put("repeticiones", detalle.getRepeticiones());
-            ejercicio.put("pesoSugeridoKg", detalle.getPesoSugeridoKg());
-            ejercicio.put("tiempoDescansoSegundos", detalle.getTiempoDescansoSegundos());
-            ejercicio.put("notas", detalle.getNotas());
-            ejercicio.put("orden", detalle.getOrden());
-            return ejercicio;
-        }).toList());
-        return data;
+        ProgresoSemana progresoSemana = ejercicioCompletadoService.calcularProgreso(rutina);
+        return rutinaResponseMapper.mapear(rutina, progresoSemana);
     }
 
     private Map<String, Object> notificacionMap(Notificacion notificacion) {

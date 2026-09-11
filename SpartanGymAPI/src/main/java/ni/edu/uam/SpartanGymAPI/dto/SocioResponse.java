@@ -21,6 +21,7 @@ public class SocioResponse {
     private UUID sucursalId;
     private String sucursal;
     private String estadoAcceso;
+    private String fotoUrl;
     private String tipoMembresia;
     private String estadoMembresia;
     private LocalDate fechaVencimiento;

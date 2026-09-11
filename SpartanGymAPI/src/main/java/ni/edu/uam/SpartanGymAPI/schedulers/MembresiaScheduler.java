@@ -34,28 +34,46 @@ public class MembresiaScheduler {
         List<MembresiaSocio> vencidas = membresiaRepository.findByEstadoAndFechaVencimientoBefore("Activa", LocalDate.now());
 
         int contador = 0;
+        int fallidas = 0;
         for (MembresiaSocio membresia : vencidas) {
-            // 1. Vencemos la membresía
-            membresia.setEstado("Vencida");
-            membresiaRepository.save(membresia);
+            // Cada socio se procesa aislado: si uno falla (dato corrupto, lo que sea), el
+            // resto del lote de esa noche debe seguir igual. Antes una excepcion ac + su rollback
+            // dejaba a todos los que venian despues en la lista sin vencer, sin que quedara
+            // ningun rastro de que el proceso se corto a mitad de camino.
+            try {
+                // 1. Vencemos la membresía
+                membresia.setEstado("Vencida");
+                membresiaRepository.save(membresia);
 
-            // 2. Le bloqueamos el torniquete al socio
-            Socio socio = membresia.getSocio();
-            socio.setEstadoAcceso("Inactivo");
-            socioRepository.save(socio);
+                // 2. Le bloqueamos el torniquete al socio
+                Socio socio = membresia.getSocio();
+                socio.setEstadoAcceso("Inactivo");
+                socioRepository.save(socio);
 
-            contador++;
-            log.info("Membresía vencida para el socio: {} {}", socio.getNombres(), socio.getApellidos());
+                contador++;
+                log.info("Membresía vencida para el socio: {} {}", socio.getNombres(), socio.getApellidos());
 
-            notificacionService.registrarNotificacion(
-                    socio.getUsuario(),
-                    "alerta",
-                    "Membresía vencida",
-                    "Tu membresía ha vencido. Acércate a recepción para renovarla."
-            );
-            notificacionService.enviarCorreoVencimiento(socio.getUsuario().getEmail(), socio.getNombres());
+                notificacionService.registrarNotificacion(
+                        socio.getUsuario(),
+                        "alerta",
+                        "Membresía vencida",
+                        "Tu membresía ha vencido. Acércate a recepción para renovarla."
+                );
+                notificacionService.enviarCorreoVencimiento(socio.getUsuario().getEmail(), socio.getNombres());
+            } catch (Exception e) {
+                fallidas++;
+                log.error("No se pudo vencer la membresía {} (socio {})",
+                        membresia.getId(),
+                        membresia.getSocio() != null ? membresia.getSocio().getUsuarioId() : null,
+                        e);
+            }
         }
 
-        log.info("Revisión terminada. Membresías actualizadas: {}", contador);
+        if (fallidas > 0) {
+            log.warn("Revisión terminada con errores: {} actualizadas, {} fallidas de {} encontradas.",
+                    contador, fallidas, vencidas.size());
+        } else {
+            log.info("Revisión terminada. Membresías actualizadas: {}", contador);
+        }
     }
 }

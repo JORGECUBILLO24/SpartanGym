@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CreditCard, DollarSign, Box,
@@ -7,14 +7,16 @@ import {
 } from 'lucide-react';
 
 import ControlSesion from '../../components/ControlSesion';
+import Avatar from '../../components/Avatar';
 import {
   cerrarSesionActual,
   EVENTO_CUENTA_ACTUAL,
+  guardarCuentaActual,
   leerCuentaActual,
-  obtenerInicialesCuenta,
 } from '../../utils/cuentaActual';
 import { useLogosApp } from '../../utils/logosApp';
 import { SucursalProvider } from '../../context/SucursalContext';
+import { operacionApi } from '../../services/api';
 
 const AdminLayout = () => {
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -35,7 +37,17 @@ const AdminLayout = () => {
     };
   }, []);
 
-  const inicialesCuenta = useMemo(() => obtenerInicialesCuenta(cuentaActual), [cuentaActual]);
+  useEffect(() => {
+    operacionApi.perfil()
+      .then((datos) => {
+        const remota = datos.fotoUrl || '';
+        const cuenta = leerCuentaActual();
+        if ((cuenta.fotoUrl || '') !== remota) {
+          guardarCuentaActual({ ...cuenta, fotoUrl: remota });
+        }
+      })
+      .catch(() => { /* sin sesion API valida: se queda con el valor local */ });
+  }, []);
 
   const cerrarSesion = () => {
     cerrarSesionActual('manual');
@@ -146,11 +158,17 @@ const AdminLayout = () => {
             </Link>
             <Link
               to="/admin/perfil"
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-red-600 to-red-800 text-sm font-bold text-white shadow-lg transition duration-300 hover:-translate-y-0.5 hover:scale-105"
+              className="flex h-9 w-9 items-center justify-center rounded-xl shadow-lg transition duration-300 hover:-translate-y-0.5 hover:scale-105"
               title={cuentaActual.name || cuentaActual.username || 'Perfil administrador'}
               aria-label="Editar perfil de administrador"
             >
-              {inicialesCuenta}
+              <Avatar
+                fotoUrl={cuentaActual.fotoUrl}
+                nombre={cuentaActual.name || cuentaActual.username}
+                email={cuentaActual.email}
+                tamano={36}
+                respaldo="AD"
+              />
             </Link>
           </div>
         </header>

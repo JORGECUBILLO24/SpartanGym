@@ -1,6 +1,7 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ni.edu.uam.SpartanGymAPI.models.PasswordResetToken;
 import ni.edu.uam.SpartanGymAPI.models.Personal;
 import ni.edu.uam.SpartanGymAPI.models.Socio;
@@ -24,6 +25,12 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.UUID;
 
+/**
+ * Cada paso del flujo deja una línea en el log (solicitud, enlace emitido, contraseña cambiada)
+ * para poder rastrear en Render un "no me llegó el correo" de punta a punta. Ninguna línea
+ * lleva el token: ver NotificacionService.registrarEnlaceSoloEnLocal.
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PasswordResetService {
@@ -52,7 +59,13 @@ public class PasswordResetService {
 
         usuarioRepository.findByEmailIgnoreCase(emailNormalizado)
                 .filter(usuario -> Boolean.TRUE.equals(usuario.getActivo()))
-                .ifPresent(this::crearYEnviarToken);
+                .ifPresentOrElse(
+                        this::crearYEnviarToken,
+                        // Solo va al log del servidor: la respuesta al cliente sigue siendo la misma
+                        // exista o no el correo. Sirve para responder "no me llegó" (correo mal escrito).
+                        () -> log.info("Solicitud de restablecimiento para un correo no registrado o inactivo: {}",
+                                emailNormalizado)
+                );
     }
 
     @Transactional
@@ -73,6 +86,7 @@ public class PasswordResetService {
         token.setUsado(true);
         tokenRepository.save(token);
         invalidarTokensActivos(usuario.getId());
+        log.info("Contraseña restablecida por enlace para {}", usuario.getEmail());
     }
 
     @Transactional
@@ -81,6 +95,7 @@ public class PasswordResetService {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         validarPermisoGestion(actor, usuario);
+        log.info("{} solicitó un enlace de restablecimiento para {}", actor.getEmail(), usuario.getEmail());
         crearYEnviarToken(usuario);
     }
 
@@ -95,6 +110,7 @@ public class PasswordResetService {
         usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
         usuarioRepository.save(usuario);
         invalidarTokensActivos(usuario.getId());
+        log.info("{} cambió directamente la contraseña de {}", actor.getEmail(), usuario.getEmail());
     }
 
     private void crearYEnviarToken(Usuario usuario) {
@@ -106,6 +122,7 @@ public class PasswordResetService {
         token.setTokenHash(hashToken(tokenPlano));
         token.setFechaExpiracion(LocalDateTime.now().plusMinutes(expirationMinutes));
         tokenRepository.save(token);
+        log.info("Enlace de restablecimiento emitido para {} (vence en {} min)", usuario.getEmail(), expirationMinutes);
 
         String enlace = construirEnlace(tokenPlano);
         notificacionService.enviarCorreoRecuperacionPassword(

@@ -3,6 +3,7 @@ package com.example.spartangymapp.ui.screen
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.util.Size as CameraSize
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.spartangymapp.R
+import com.example.spartangymapp.network.ActualizarFotoRequest
 import com.example.spartangymapp.network.AppConfigResponse
 import com.example.spartangymapp.network.AsistenciaQrRequest
 import com.example.spartangymapp.network.AsistenciaQrValidationResponse
@@ -62,14 +64,18 @@ import com.example.spartangymapp.network.CompraMembresiaAppRequest
 import com.example.spartangymapp.network.CompraProductoAppRequest
 import com.example.spartangymapp.network.ControlBiometricoResponse
 import com.example.spartangymapp.network.DashboardResponse
+import com.example.spartangymapp.network.EjercicioRutinaResponse
 import com.example.spartangymapp.network.FacturaMembresiaAppResponse
 import com.example.spartangymapp.network.TipoMembresiaResponse
+import com.example.spartangymapp.network.MarcarEjercicioRequest
 import com.example.spartangymapp.network.PagoSocioResponse
 import com.example.spartangymapp.network.PerfilActualResponse
 import com.example.spartangymapp.network.ProductoCatalogoResponse
 import com.example.spartangymapp.network.RegistroProgresoRequest
 import com.example.spartangymapp.network.RetrofitClient
 import com.example.spartangymapp.network.RutinaResumenResponse
+import com.example.spartangymapp.util.comprimirParaPerfil
+import com.example.spartangymapp.util.rotarLuminancia
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.zxing.BinaryBitmap
@@ -96,6 +102,7 @@ private val VerdeEstado = Color(0xFF22C55E)
 
 // ─── Modelos internos ──────────────────────────────────────────────────────
 private data class EjercicioSocio(
+    val ejercicioId: Long,
     val nombre: String,
     val detalle: String,
     val zona: String,
@@ -103,6 +110,7 @@ private data class EjercicioSocio(
 )
 
 private data class RutinaSocio(
+    val id: String,
     val nombre: String,
     val objetivo: String,
     val dificultad: String,
@@ -117,28 +125,47 @@ private data class SocioNavItem(
     val icon: ImageVector
 )
 
-private fun RutinaResumenResponse.toRutinaSocio(index: Int): RutinaSocio {
-    val ejerciciosMapeados = ejercicios.orEmpty().map { e ->
-        val partes = listOfNotNull(
-            e.series?.let { "$it series" },
-            e.repeticiones?.let { "$it reps" },
-            e.pesoSugeridoKg?.let { "${it}kg" },
-            e.tiempoDescansoSegundos?.let { "${it}s descanso" }
+private fun EjercicioRutinaResponse.detalleTexto(): String {
+    val partes = if (tipoEjercicio == "Cardio") {
+        listOfNotNull(
+            duracionSegundos?.let { "${it / 60} min" },
+            velocidadNivel?.let { "${it} vel/nivel" },
+            inclinacion?.let { "${it}% incl" },
+            distanciaMetros?.let { "${it}m" },
+            tiempoDescansoSegundos?.let { "${it}s descanso" }
         )
+    } else {
+        listOfNotNull(
+            series?.let { "$it series" },
+            repeticiones?.let { "$it reps" },
+            pesoSugeridoKg?.let { "${it}kg" },
+            duracionSegundos?.let { "${it / 60} min" },
+            tiempoDescansoSegundos?.let { "${it}s descanso" }
+        )
+    }
+    return partes.joinToString(" · ").ifBlank { "—" }
+}
+
+private fun RutinaResumenResponse.toRutinaSocio(index: Int): RutinaSocio {
+    val ejerciciosMapeados = ejercicios.orEmpty().mapNotNull { e ->
+        val ejercicioId = e.ejercicioId ?: return@mapNotNull null
         EjercicioSocio(
+            ejercicioId = ejercicioId,
             nombre = e.ejercicio ?: "Ejercicio ${index + 1}",
-            detalle = partes.joinToString(" · ").ifBlank { "—" },
-            zona = e.grupoMuscular ?: "General"
+            detalle = e.detalleTexto(),
+            zona = e.grupoMuscular ?: "General",
+            completado = e.completadoEstaSemana ?: false
         )
     }
     val zonas = ejerciciosMapeados.map { it.zona }.distinct().take(3).joinToString(" · ")
     return RutinaSocio(
+        id = id.orEmpty(),
         nombre = nombre?.ifBlank { null } ?: objetivo?.ifBlank { null } ?: "Rutina ${index + 1}",
         objetivo = objetivo ?: "—",
         dificultad = tipoRutina?.ifBlank { null } ?: "Asignada",
         dias = ejerciciosMapeados.size,
         foco = zonas.ifBlank { "—" },
-        progreso = 0f,
+        progreso = (progresoSemana ?: 0.0).toFloat(),
         ejercicios = ejerciciosMapeados
     )
 }
@@ -174,6 +201,54 @@ fun PantallaUsuario(
     var refreshKey by remember { mutableStateOf(0) }
     var cargando by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    // Mensaje local para el flujo de foto de perfil: NO reutiliza `error`, ya que
+    // `error != null` reemplaza toda la pantalla (PantallaError) — no queremos que
+    // un fallo al subir la foto saque al socio de la pestaña en la que está.
+    var mensajeFoto by remember { mutableStateOf<String?>(null) }
+    // Evita subidas superpuestas: mientras una foto está en proceso (comprimir + subir),
+    // el botón se deshabilita para que no se pueda lanzar una segunda selección que
+    // corra en paralelo y termine revirtiendo el resultado de la primera fuera de orden.
+    var subiendoFoto by remember { mutableStateOf(false) }
+
+    val seleccionarFoto = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val fotoAnterior = perfilActual?.fotoUrl
+        subiendoFoto = true
+        scope.launch {
+            mensajeFoto = null
+            try {
+                val dataUrl = try {
+                    withContext(Dispatchers.IO) {
+                        val bitmap = context.contentResolver.openInputStream(uri).use {
+                            BitmapFactory.decodeStream(it)
+                        } ?: throw java.io.IOException("No se pudo leer la imagen.")
+                        comprimirParaPerfil(bitmap)
+                    }
+                } catch (_: Exception) {
+                    mensajeFoto = "No se pudo procesar la imagen."
+                    return@launch
+                }
+                // Actualizacion optimista: refleja el cambio de inmediato
+                perfilActual = perfilActual?.copy(fotoUrl = dataUrl)
+                try {
+                    val resp = RetrofitClient.apiService.actualizarFotoPerfil(ActualizarFotoRequest(dataUrl))
+                    if (!resp.isSuccessful) {
+                        throw java.io.IOException("No se pudo actualizar la foto (${resp.code()}).")
+                    }
+                } catch (_: Exception) {
+                    // Revertir si la llamada falla
+                    perfilActual = perfilActual?.copy(fotoUrl = fotoAnterior)
+                    mensajeFoto = "No se pudo actualizar la foto."
+                }
+            } finally {
+                subiendoFoto = false
+            }
+        }
+    }
 
     LaunchedEffect(socioId, refreshKey) {
         cargando = true
@@ -243,10 +318,42 @@ fun PantallaUsuario(
                         DetalleRutinaUsuario(
                             rutina = rutinas[rutinaSeleccionada],
                             onToggleEjercicio = { idx ->
-                                val r = rutinas[rutinaSeleccionada]
-                                val lista = r.ejercicios.toMutableList()
-                                lista[idx] = lista[idx].copy(completado = !lista[idx].completado)
-                                rutinas[rutinaSeleccionada] = r.copy(ejercicios = lista)
+                                val posicionRutina = rutinaSeleccionada
+                                val r = rutinas[posicionRutina]
+                                val ejercicio = r.ejercicios[idx]
+                                val nuevoEstado = !ejercicio.completado
+
+                                // Actualizacion optimista: refleja el cambio de inmediato
+                                val listaOptimista = r.ejercicios.toMutableList()
+                                listaOptimista[idx] = ejercicio.copy(completado = nuevoEstado)
+                                val completadosOptimista = listaOptimista.count { it.completado }
+                                val progresoOptimista = if (listaOptimista.isEmpty()) 0f
+                                    else completadosOptimista.toFloat() / listaOptimista.size
+                                rutinas[posicionRutina] = r.copy(ejercicios = listaOptimista, progreso = progresoOptimista)
+
+                                scope.launch {
+                                    try {
+                                        val resp = RetrofitClient.apiService.marcarEjercicioCompletado(
+                                            rutinaId = r.id,
+                                            ejercicioId = ejercicio.ejercicioId,
+                                            request = MarcarEjercicioRequest(completado = nuevoEstado)
+                                        )
+                                        if (!resp.isSuccessful) {
+                                            throw java.io.IOException("No se pudo actualizar el ejercicio (${resp.code()}).")
+                                        }
+                                    } catch (_: Exception) {
+                                        // Revertir si la llamada falla
+                                        val listaRevertida = rutinas[posicionRutina].ejercicios.toMutableList()
+                                        listaRevertida[idx] = ejercicio.copy(completado = !nuevoEstado)
+                                        val completadosRevertido = listaRevertida.count { it.completado }
+                                        val progresoRevertido = if (listaRevertida.isEmpty()) 0f
+                                            else completadosRevertido.toFloat() / listaRevertida.size
+                                        rutinas[posicionRutina] = rutinas[posicionRutina].copy(
+                                            ejercicios = listaRevertida,
+                                            progreso = progresoRevertido
+                                        )
+                                    }
+                                }
                             },
                             onVolver = { subPantalla = "" }
                         )
@@ -307,7 +414,17 @@ fun PantallaUsuario(
                             entrenador = dashboard?.nombreEntrenador.apiValor(),
                             ejercicios = dashboard?.totalEjercicios.apiValor(),
                             sucursal = perfilActual?.sucursal.apiValor(sucursalPrincipalTexto(appConfig)),
-                            appConfig = appConfig
+                            fotoUrl = perfilActual?.fotoUrl,
+                            appConfig = appConfig,
+                            mensajeFoto = mensajeFoto,
+                            subiendoFoto = subiendoFoto,
+                            onCambiarFoto = {
+                                seleccionarFoto.launch(
+                                    androidx.activity.result.PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    )
+                                )
+                            }
                         )
                         else -> {}
                     }
@@ -1667,7 +1784,13 @@ private fun decodificarQr(imageProxy: ImageProxy): String? {
         }
     }
 
-    val source = PlanarYUVLuminanceSource(datos, ancho, alto, 0, 0, ancho, alto, false)
+    // CameraX entrega el frame en la orientacion nativa del sensor (normalmente
+    // apaisada). rotationDegrees indica cuanto hay que rotarlo en sentido horario
+    // para que quede "de pie" como lo ve el usuario; sin esto ZXing recibe el
+    // frame mal orientado y falla en la mayoria de posiciones normales del telefono.
+    val frame = rotarLuminancia(datos, ancho, alto, imageProxy.imageInfo.rotationDegrees)
+
+    val source = PlanarYUVLuminanceSource(frame.datos, frame.ancho, frame.alto, 0, 0, frame.ancho, frame.alto, false)
     val bitmap = BinaryBitmap(HybridBinarizer(source))
 
     return try {
@@ -1941,26 +2064,60 @@ private fun TabPerfilCredencial(
     entrenador: String,
     ejercicios: String,
     sucursal: String,
-    appConfig: AppConfigResponse
+    fotoUrl: String? = null,
+    appConfig: AppConfigResponse,
+    mensajeFoto: String? = null,
+    subiendoFoto: Boolean = false,
+    onCambiarFoto: () -> Unit = {}
 ) {
-    CredencialSistemaCard(
-        titulo = "",
-        nombre = nombre,
-        correo = correo,
-        bloqueTitulo = "Membresia asignada",
-        bloqueValor = membresia.ifBlank { "Sin asignar" },
-        sucursal = sucursal,
-        permisos = estado.ifBlank { "Activo" },
-        detalles = listOf(
-            "Telefono" to telefono.ifBlank { "N/A" },
-            "Rol" to rolLegible(rol).ifBlank { "Socio" },
-            "Estado" to estado.ifBlank { "Activo" },
-            "Vencimiento" to vencimiento.ifBlank { "N/A" },
-            "Entrenador" to entrenador.ifBlank { "N/A" },
-            "Rutina" to ejercicios.ifBlank { "0 ejercicios" }
-        ),
-        integradaPantalla = true,
-        appConfig = appConfig,
-        modifier = Modifier.fillMaxWidth()
-    )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        CredencialSistemaCard(
+            titulo = "",
+            nombre = nombre,
+            correo = correo,
+            bloqueTitulo = "Membresia asignada",
+            bloqueValor = membresia.ifBlank { "Sin asignar" },
+            sucursal = sucursal,
+            permisos = estado.ifBlank { "Activo" },
+            detalles = listOf(
+                "Telefono" to telefono.ifBlank { "N/A" },
+                "Rol" to rolLegible(rol).ifBlank { "Socio" },
+                "Estado" to estado.ifBlank { "Activo" },
+                "Vencimiento" to vencimiento.ifBlank { "N/A" },
+                "Entrenador" to entrenador.ifBlank { "N/A" },
+                "Rutina" to ejercicios.ifBlank { "0 ejercicios" }
+            ),
+            integradaPantalla = true,
+            fotoUrl = fotoUrl,
+            appConfig = appConfig,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onCambiarFoto,
+            enabled = !subiendoFoto,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                disabledContainerColor = BordeSutil
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            if (subiendoFoto) {
+                CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+            }
+            Text(if (subiendoFoto) "Subiendo foto" else "Cambiar foto de perfil", color = Color.White, fontWeight = FontWeight.Bold)
+        }
+        mensajeFoto?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                it,
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+        }
+    }
 }

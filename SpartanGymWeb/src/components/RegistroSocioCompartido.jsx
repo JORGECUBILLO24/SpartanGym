@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { membresiasApi, pagosApi, sociosApi, sucursalesApi, usuariosApi } from '../services/api';
+import Avatar from './Avatar';
 
 const formularioInicial = {
   nombres: '',
@@ -296,8 +297,19 @@ const RegistroSocioCompartido = ({
               {socios.map((socio) => (
                 <tr key={socio.id} className="hover:bg-white/[0.03]">
                   <td className="py-3 pr-4">
-                    <p className="font-black text-white">{socio.nombres} {socio.apellidos}</p>
-                    <p className="text-[10px] text-gray-500">{socio.email || socio.telefono || 'Sin contacto'}</p>
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        fotoUrl={socio.fotoUrl}
+                        nombre={`${socio.nombres || ''} ${socio.apellidos || ''}`.trim()}
+                        email={socio.email}
+                        tamano={36}
+                        respaldo="SC"
+                      />
+                      <div>
+                        <p className="font-black text-white">{socio.nombres} {socio.apellidos}</p>
+                        <p className="text-[10px] text-gray-500">{socio.email || socio.telefono || 'Sin contacto'}</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="py-3 pr-4 text-gray-400">{socio.tipoMembresia}</td>
                   <td className="py-3 pr-4 text-gray-400">{socio.sucursal || 'Sin sucursal'}</td>

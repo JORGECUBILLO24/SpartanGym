@@ -26,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -295,7 +296,12 @@ private fun TabClientes(clientes: List<EntrenadorClienteResponse>, ap: EntAp) {
                     Surface(Modifier.fillMaxWidth(), RoundedCornerShape(14.dp), color = ENT_CARD, border = BorderStroke(1.dp, ENT_BORDE)) {
                         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(44.dp).background(ap.soft, CircleShape), contentAlignment = Alignment.Center) {
-                                Text(ini, color = ap.accent, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                                FotoPerfilCredencial(
+                                    fotoUrl = c.fotoUrl,
+                                    modifier = Modifier.size(44.dp).clip(CircleShape)
+                                ) {
+                                    Text(ini, color = ap.accent, fontWeight = FontWeight.Black, fontSize = 15.sp)
+                                }
                             }
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {

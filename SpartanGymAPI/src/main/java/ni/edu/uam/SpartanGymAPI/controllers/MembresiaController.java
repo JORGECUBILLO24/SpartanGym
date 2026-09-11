@@ -1,6 +1,7 @@
 package ni.edu.uam.SpartanGymAPI.controllers;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ni.edu.uam.SpartanGymAPI.dto.CompraMembresiaRequest;
 import ni.edu.uam.SpartanGymAPI.dto.TipoMembresiaRequest;
 import ni.edu.uam.SpartanGymAPI.models.MembresiaSocio;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/membresias")
 @RequiredArgsConstructor
@@ -49,6 +51,9 @@ public class MembresiaController {
             MembresiaSocio membresia = membresiaService.comprarMembresia(emailSocio, request);
             return ResponseEntity.ok(membresia);
         } catch (RuntimeException e) {
+            // Este catch no pasa por GlobalExceptionHandler, asi que si no se registra aca
+            // la compra fallida no deja ningun rastro en los logs.
+            log.error("Error al comprar membresia: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }

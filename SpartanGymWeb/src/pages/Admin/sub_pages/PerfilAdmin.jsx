@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   AlertCircle,
@@ -26,6 +26,8 @@ import {
   obtenerInicialesCuenta,
 } from '../../../utils/cuentaActual';
 import { gimnasiosDisponibles } from '../../../utils/gimnasiosCompartidos';
+import { prepararImagen } from '../../../utils/imagen';
+import Avatar from '../../../components/Avatar';
 import {
   EVENTO_PERSONAL,
   eliminarPersonalCompartido,
@@ -86,6 +88,24 @@ const PerfilAdmin = () => {
   const [gimnasioParaGlobal, setGimnasioParaGlobal] = useState(null);
   const [personalCompartido, setPersonalCompartido] = useState(() => leerPersonalCompartido());
   const [modalValidacionQr, setModalValidacionQr] = useState(false);
+  const [fotoUrl, setFotoUrl] = useState(() => leerCuentaActual().fotoUrl || '');
+  const [errorFoto, setErrorFoto] = useState('');
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const fotoTocadaLocalmente = useRef(false);
+
+  useEffect(() => {
+    operacionApi.perfil()
+      .then((datos) => {
+        if (fotoTocadaLocalmente.current) return;
+        const remota = datos.fotoUrl || '';
+        setFotoUrl(remota);
+        const cuenta = leerCuentaActual();
+        if ((cuenta.fotoUrl || '') !== remota) {
+          guardarCuentaActual({ ...cuenta, fotoUrl: remota });
+        }
+      })
+      .catch(() => { /* sin sesion API valida: se queda con el valor local */ });
+  }, []);
 
   useEffect(() => {
     const cargarGimnasios = async () => {
@@ -149,10 +169,6 @@ const PerfilAdmin = () => {
     };
   }, []);
 
-  const iniciales = useMemo(
-    () => obtenerInicialesCuenta({ name: perfil.nombre, email: perfil.correo }, 'AD'),
-    [perfil.correo, perfil.nombre]
-  );
   const conteoUsuariosPorSucursal = useMemo(
     () => gimnasiosAdministrados.map((gimnasio) => ({
       sucursal: gimnasio.nombre,
@@ -261,6 +277,46 @@ const PerfilAdmin = () => {
     }, 700);
   };
 
+  const persistirFotoLocal = (nueva) => {
+    const cuenta = leerCuentaActual();
+    guardarCuentaActual({ ...cuenta, fotoUrl: nueva });
+  };
+
+  const cambiarFoto = async (evento) => {
+    const archivo = evento.target.files?.[0];
+    evento.target.value = '';
+    if (!archivo || subiendoFoto) return;
+    setErrorFoto('');
+    setSubiendoFoto(true);
+    fotoTocadaLocalmente.current = true;
+    try {
+      const dataUrl = await prepararImagen(archivo, { maxLado: 512, calidad: 0.8, maxBytesEntrada: 5 * 1024 * 1024 });
+      await operacionApi.actualizarFoto(dataUrl);
+      setFotoUrl(dataUrl);
+      persistirFotoLocal(dataUrl);
+    } catch (error) {
+      setErrorFoto(error.message || 'No se pudo actualizar la foto.');
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
+  const quitarFoto = async () => {
+    if (subiendoFoto) return;
+    setErrorFoto('');
+    setSubiendoFoto(true);
+    fotoTocadaLocalmente.current = true;
+    try {
+      await operacionApi.actualizarFoto('');
+      setFotoUrl('');
+      persistirFotoLocal('');
+    } catch (error) {
+      setErrorFoto(error.message || 'No se pudo quitar la foto.');
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
   return (
     <div className="perfil-admin flex min-h-screen flex-col gap-6 pb-10 text-white">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -272,8 +328,27 @@ const PerfilAdmin = () => {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
         <aside className="tarjeta-perfil relative overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-6 text-center shadow-2xl">
           <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-70" />
-          <div className="mx-auto mt-3 flex h-28 w-28 items-center justify-center rounded-2xl border border-red-500/20 bg-red-600/10 text-4xl font-black text-red-500 shadow-xl shadow-red-950/20">
-            {iniciales}
+          <div className="mx-auto mt-3 flex flex-col items-center gap-3">
+            <Avatar fotoUrl={fotoUrl} nombre={perfil.nombre} email={perfil.correo} tamano={112} respaldo="AD" />
+            <div className="flex items-center gap-2">
+              <label className={`rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-200 transition hover:bg-white/10 ${
+                subiendoFoto ? 'pointer-events-none cursor-wait opacity-50' : 'cursor-pointer'
+              }`}>
+                {subiendoFoto ? 'Guardando...' : 'Cambiar foto'}
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={subiendoFoto} onChange={cambiarFoto} />
+              </label>
+              {fotoUrl && (
+                <button
+                  type="button"
+                  onClick={quitarFoto}
+                  disabled={subiendoFoto}
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-400 transition hover:text-white disabled:cursor-wait disabled:opacity-50 disabled:hover:text-gray-400"
+                >
+                  Quitar foto
+                </button>
+              )}
+            </div>
+            {errorFoto && <p className="text-xs text-red-400">{errorFoto}</p>}
           </div>
 
           <h2 className="mt-5 text-xl font-black text-white">{perfil.nombre || 'Administrador'}</h2>

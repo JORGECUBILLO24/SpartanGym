@@ -11,53 +11,7 @@ import {
   useConfiguracionApp,
 } from '../../../utils/configuracionApp';
 import { inventarioApi, sucursalesApi } from '../../../services/api';
-
-const TAMANO_MAXIMO_IMAGEN = 3 * 1024 * 1024;
-
-const leerArchivoComoDataUrl = (archivo) =>
-  new Promise((resolver, rechazar) => {
-    const lector = new FileReader();
-    lector.onload = () => resolver(lector.result);
-    lector.onerror = rechazar;
-    lector.readAsDataURL(archivo);
-  });
-
-const cargarImagen = (src) =>
-  new Promise((resolver, rechazar) => {
-    const imagen = new window.Image();
-    imagen.onload = () => resolver(imagen);
-    imagen.onerror = rechazar;
-    imagen.src = src;
-  });
-
-const prepararImagenProducto = async (archivo) => {
-  if (!archivo?.type?.startsWith('image/')) {
-    throw new Error('Selecciona un archivo de imagen valido.');
-  }
-
-  if (archivo.size > TAMANO_MAXIMO_IMAGEN) {
-    throw new Error('La imagen no debe superar 3 MB.');
-  }
-
-  const dataUrl = await leerArchivoComoDataUrl(archivo);
-  if (archivo.type === 'image/svg+xml' || typeof document === 'undefined') {
-    return dataUrl;
-  }
-
-  const imagen = await cargarImagen(dataUrl);
-  const maximo = 720;
-  const escala = Math.min(1, maximo / imagen.width, maximo / imagen.height);
-  const ancho = Math.max(1, Math.round(imagen.width * escala));
-  const alto = Math.max(1, Math.round(imagen.height * escala));
-  const canvas = document.createElement('canvas');
-  const contexto = canvas.getContext('2d');
-
-  canvas.width = ancho;
-  canvas.height = alto;
-  contexto.drawImage(imagen, 0, 0, ancho, alto);
-
-  return canvas.toDataURL('image/webp', 0.86);
-};
+import { prepararImagen } from '../../../utils/imagen';
 
 const crearProductoInicial = (sucursalId = '') => ({
   nombre: '',
@@ -123,7 +77,7 @@ const Inventario = () => {
 
     setErrorApi('');
     try {
-      const imagenUrl = await prepararImagenProducto(archivo);
+      const imagenUrl = await prepararImagen(archivo, { maxLado: 720, calidad: 0.86, maxBytesEntrada: 3 * 1024 * 1024 });
       setNuevoProducto((actual) => ({ ...actual, imagenUrl }));
     } catch (error) {
       setErrorApi(error.message || 'No se pudo cargar la imagen.');

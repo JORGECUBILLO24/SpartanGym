@@ -1,0 +1,36 @@
+# Blueprint de Render para la API de Spartan Gym (conectada a Neon).
+# Al importar este archivo, Render crea el servicio; solo hay que llenar las
+# variables marcadas con sync:false (secretas) en el dashboard.
+services:
+  - type: web
+    name: spartangym-api
+    runtime: docker
+    rootDir: SpartanGymAPI
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: ohio
+    healthCheckPath: /api/configuracion
+    envVars:
+      # No usar el perfil "local" en la nube (ese carga application-local.properties de Neon local)
+      - key: SPRING_PROFILES_ACTIVE
+        value: default
+      # --- Secretas: se llenan en el dashboard de Render ---
+      # SPRING_DATASOURCE_URL ejemplo:
+      #   jdbc:postgresql://ep-rough-cloud-aq970w1a-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require&prepareThreshold=0
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      # Origen(es) del web desplegado para CORS (separados por coma). Ej:
+      #   https://spartangym.vercel.app,http://localhost:5173
+      - key: APP_CORS_ORIGINS
+        sync: false
+      # Opcionales para que funcionen los correos:
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false

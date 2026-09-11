@@ -19,4 +19,9 @@ public class DashboardResponse {
     private String objetivoRutina;
     private String nombreEntrenador;
     private Integer totalEjercicios;
+
+    // Progreso semanal real (lunes-domingo) de la rutina actual
+    private Double progresoSemana;
+    private Integer completadosSemana;
+    private Integer planificadosSemana;
 }

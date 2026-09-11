@@ -27,6 +27,9 @@ public class Usuario {
 
     private Boolean activo = true;
 
+    @Column(name = "foto_url", columnDefinition = "TEXT")
+    private String fotoUrl;
+
     @Column(name = "fecha_creacion", updatable = false)
     private LocalDateTime fechaCreacion = LocalDateTime.now();
 }

@@ -17,7 +17,10 @@ public class PagoController {
 
     private final PagoService pagoService;
 
+    // Cobro hecho en mostrador a nombre de un socio: lo registra el personal, no el socio
+    // (el socio tiene /mi-membresia, que saca su identidad del token).
     @PostMapping("/renovar")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN', 'RECEPCIONISTA')")
     public ResponseEntity<FacturaMembresiaResponse> registrarPago(@RequestBody PagoRequest request) {
         return ResponseEntity.ok(pagoService.registrarPagoYMembresia(request));
     }

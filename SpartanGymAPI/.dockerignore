@@ -1,0 +1,7 @@
+target/
+.idea/
+*.iml
+*.iws
+HELP.md
+### No copiar credenciales locales a la imagen (Neon usa variables de entorno)
+src/main/resources/application-local.properties

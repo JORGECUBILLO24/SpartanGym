@@ -45,7 +45,8 @@ data class PerfilActualResponse(
     val tipo: String? = null,
     val especialidad: String? = null,
     val sucursalId: String? = null,
-    val sucursal: String? = null
+    val sucursal: String? = null,
+    val fotoUrl: String? = null
 )
 
 data class AppConfigResponse(
@@ -173,12 +174,18 @@ data class EjercicioRutinaResponse(
     val grupoMuscularId: Int? = null,
     val tipoEjercicio: String? = null,
     val diaProgramado: String? = null,
+    val diaSemana: Int? = null,
     val series: Int? = null,
     val repeticiones: Int? = null,
     val pesoSugeridoKg: Double? = null,
+    val velocidadNivel: Double? = null,
+    val inclinacion: Double? = null,
+    val duracionSegundos: Int? = null,
+    val distanciaMetros: Double? = null,
     val tiempoDescansoSegundos: Int? = null,
     val notas: String? = null,
-    val orden: Int? = null
+    val orden: Int? = null,
+    val completadoEstaSemana: Boolean? = null
 )
 
 data class RutinaResumenResponse(
@@ -195,6 +202,7 @@ data class RutinaResumenResponse(
     val fechaFin: String? = null,
     val objetivo: String? = null,
     val notas: String? = null,
+    val progresoSemana: Double? = null,
     val ejercicios: List<EjercicioRutinaResponse>? = emptyList()
 )
 
@@ -247,6 +255,11 @@ data class RutinaRequest(
     val detalles: List<RutinaDetalleRequest>
 )
 
+data class MarcarEjercicioRequest(
+    val completado: Boolean,
+    val fecha: String? = null
+)
+
 data class EntrenadorDashboardResponse(
     val clientesAsignados: Int? = null,
     val rutinasCreadas: Int? = null,
@@ -260,7 +273,8 @@ data class EntrenadorClienteResponse(
     val apellidos: String? = null,
     val telefono: String? = null,
     val estadoAcceso: String? = null,
-    val email: String? = null
+    val email: String? = null,
+    val fotoUrl: String? = null
 )
 
 data class EntrenadorPerfilResponse(
@@ -284,4 +298,12 @@ data class PagoSocioResponse(
     val monto: Double? = null,
     val metodoPago: String? = null,
     val fechaTransaccion: String? = null
+)
+
+data class ActualizarFotoRequest(
+    val fotoUrl: String?
+)
+
+data class ActualizarFotoResponse(
+    val fotoUrl: String? = null
 )
