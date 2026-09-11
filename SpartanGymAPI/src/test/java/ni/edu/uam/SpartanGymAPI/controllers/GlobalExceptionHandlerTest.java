@@ -1,84 +1,112 @@
 package ni.edu.uam.SpartanGymAPI.controllers;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.ConflictoException;
+import ni.edu.uam.SpartanGymAPI.exceptions.RecursoNoEncontradoException;
+import ni.edu.uam.SpartanGymAPI.exceptions.RespuestaError;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import tools.jackson.databind.json.JsonMapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Fija el contrato de respuesta del handler. El logging se agrego para poder
- * diagnosticar en Render, pero lo que ven la web y la app no debe cambiar.
+ * Fija el contrato de respuesta del handler: status HTTP según el tipo de error y, sin
+ * opt-in, el mismo cuerpo de texto que ven hoy la web y la app.
  */
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+    private final JsonMapper json = JsonMapper.builder().build();
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler(new RespuestaError(json));
 
     private MockHttpServletRequest peticion() {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setMethod("POST");
-        request.setRequestURI("/api/auth/reset-password");
-        return request;
+        return new MockHttpServletRequest("POST", "/api/auth/reset-password");
+    }
+
+    private MockHttpServletRequest peticionProblem() {
+        MockHttpServletRequest r = peticion();
+        r.addHeader("Accept", "application/problem+json, */*");
+        return r;
     }
 
     @Test
-    void runtimeDeNegocio_devuelve400ConSuMensaje() {
-        RuntimeException ex = new RuntimeException("El enlace de restablecimiento expiro. Solicita uno nuevo.");
+    void excepcionTipada_usaSuStatusYConservaElMensaje() {
+        ResponseEntity<String> r = handler.handleApi(new RecursoNoEncontradoException("Socio no encontrado"), peticion());
 
-        ResponseEntity<String> respuesta = handler.handleRuntime(ex, peticion());
-
-        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
-        assertEquals("El enlace de restablecimiento expiro. Solicita uno nuevo.", respuesta.getBody());
+        assertEquals(HttpStatus.NOT_FOUND, r.getStatusCode());
+        assertEquals("Socio no encontrado", r.getBody());
     }
 
     @Test
-    void runtimeSinMensaje_devuelve400ConTextoGenerico() {
-        ResponseEntity<String> respuesta = handler.handleRuntime(new RuntimeException(), peticion());
+    void excepcionTipada_conOptInDevuelveCodigo() {
+        ResponseEntity<String> r = handler.handleApi(new ConflictoException("QR ya utilizado."), peticionProblem());
 
-        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
-        assertEquals("No se pudo procesar la solicitud.", respuesta.getBody());
+        assertEquals(HttpStatus.CONFLICT, r.getStatusCode());
+        assertEquals("CONFLICTO", json.readTree(r.getBody()).get("codigo").asString());
+        assertEquals("QR ya utilizado.", json.readTree(r.getBody()).get("detail").asString());
     }
 
     @Test
-    void subclaseDeRuntime_conservaElMismo400YMensajeQueAntes() {
-        // Se loguea con stack trace por ser probable bug, pero la respuesta no cambia.
-        ResponseEntity<String> respuesta =
-                handler.handleRuntime(new IllegalStateException("estado invalido al procesar la solicitud"), peticion());
+    void runtimeDeNegocioLegado_sigueSiendo400ConSuMensaje() {
+        ResponseEntity<String> r = handler.handleRuntime(
+                new RuntimeException("El enlace de restablecimiento expiro. Solicita uno nuevo."), peticion());
 
-        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
-        assertEquals("estado invalido al procesar la solicitud", respuesta.getBody());
+        assertEquals(HttpStatus.BAD_REQUEST, r.getStatusCode());
+        assertEquals("El enlace de restablecimiento expiro. Solicita uno nuevo.", r.getBody());
     }
 
     @Test
-    void runtimePeladaConCause_seTrataComoFallaTecnicaNoComoErrorDeNegocio() {
-        // Patron real del proyecto: PasswordResetService/AsistenciaService envuelven fallos
-        // tecnicos (HMAC, digest, serializacion) en "new RuntimeException(mensaje, cause)".
-        // No tiene subclase propia, pero al tener cause tampoco es un error de negocio escrito
-        // a mano: debe loguearse con stack trace completo (verificable solo por inspeccion de
-        // logs), y la respuesta al cliente se mantiene igual que antes de este cambio.
+    void runtimeConCause_esFallaTecnica500ConSuMensaje() {
+        // Patrón real del proyecto: fallos técnicos (HMAC, digest) envueltos con un mensaje en español.
         RuntimeException ex = new RuntimeException(
                 "No se pudo firmar el QR de asistencia.", new IllegalStateException("HMAC no disponible"));
 
-        ResponseEntity<String> respuesta = handler.handleRuntime(ex, peticion());
+        ResponseEntity<String> r = handler.handleRuntime(ex, peticion());
 
-        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
-        assertEquals("No se pudo firmar el QR de asistencia.", respuesta.getBody());
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, r.getStatusCode());
+        assertEquals("No se pudo firmar el QR de asistencia.", r.getBody());
+    }
+
+    @Test
+    void subclaseInesperada_es500ConTextoGenerico() {
+        // El mensaje de un NPE no es para el usuario.
+        ResponseEntity<String> r = handler.handleRuntime(new NullPointerException("Cannot invoke x"), peticion());
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, r.getStatusCode());
+        assertEquals("No se pudo procesar la solicitud.", r.getBody());
+    }
+
+    @Test
+    void runtimeSinMensaje_es500ConTextoGenerico() {
+        ResponseEntity<String> r = handler.handleRuntime(new RuntimeException(), peticion());
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, r.getStatusCode());
+        assertEquals("No se pudo procesar la solicitud.", r.getBody());
+    }
+
+    @Test
+    void integridadDeDatos_es409() {
+        ResponseEntity<String> r = handler.handleDataIntegrity(new DataIntegrityViolationException("dup"), peticion());
+
+        assertEquals(HttpStatus.CONFLICT, r.getStatusCode());
+        assertEquals("Ya existe un registro con esos datos (por ejemplo, el correo ya está en uso).", r.getBody());
     }
 
     @Test
     void excepcionNoRuntime_devuelve500Generico() {
-        ResponseEntity<String> respuesta = handler.handleGenerico(new Exception("fallo raro"), peticion());
+        ResponseEntity<String> r = handler.handleGenerico(new Exception("fallo raro"), peticion());
 
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, respuesta.getStatusCode());
-        assertEquals("No se pudo procesar la solicitud.", respuesta.getBody());
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, r.getStatusCode());
+        assertEquals("No se pudo procesar la solicitud.", r.getBody());
     }
 
     @Test
     void peticionNula_noRompeElHandler() {
-        ResponseEntity<String> respuesta = handler.handleRuntime(new RuntimeException("x"), null);
+        ResponseEntity<String> r = handler.handleRuntime(new RuntimeException("x"), null);
 
-        assertEquals(HttpStatus.BAD_REQUEST, respuesta.getStatusCode());
-        assertEquals("x", respuesta.getBody());
+        assertEquals(HttpStatus.BAD_REQUEST, r.getStatusCode());
+        assertEquals("x", r.getBody());
     }
 }
