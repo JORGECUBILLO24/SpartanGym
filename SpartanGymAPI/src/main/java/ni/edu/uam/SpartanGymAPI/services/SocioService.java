@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.EstadoSocioResponse;
 import ni.edu.uam.SpartanGymAPI.dto.SocioResponse;
@@ -30,7 +31,7 @@ public class SocioService {
 
     public EstadoSocioResponse consultarEstado(UUID socioId) {
         Socio socio = socioRepository.findById(socioId)
-                .orElseThrow(() -> new RuntimeException("Error: Socio no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Error: Socio no encontrado"));
 
         EstadoSocioResponse response = new EstadoSocioResponse();
         response.setNombres(socio.getNombres());

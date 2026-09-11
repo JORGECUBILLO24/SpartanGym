@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.controllers;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.models.*;
 import ni.edu.uam.SpartanGymAPI.repositories.*;
@@ -131,7 +132,7 @@ public class OperacionController {
     @Transactional
     public ResponseEntity<Map<String, Object>> marcarLeida(@PathVariable UUID id) {
         Notificacion notificacion = notificacionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Notificación no encontrada"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Notificación no encontrada"));
         notificacion.setLeida(true);
         return ResponseEntity.ok(notificacionMap(notificacionRepository.save(notificacion)));
     }
@@ -151,7 +152,7 @@ public class OperacionController {
     public ResponseEntity<Map<String, Object>> perfilEntrenador(Authentication auth) {
         Usuario usuario = usuarioAutenticado(auth);
         Personal personal = personalRepository.findById(usuario.getId())
-                .orElseThrow(() -> new RuntimeException("Entrenador no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Entrenador no encontrado"));
         Map<String, Object> data = usuarioBase(usuario);
         data.put("nombres", personal.getNombres());
         data.put("apellidos", personal.getApellidos());
@@ -210,8 +211,8 @@ public class OperacionController {
     }
 
     private Usuario usuarioAutenticado(Authentication auth) {
-        if (auth == null || auth.getName() == null) throw new RuntimeException("Usuario no autenticado");
-        return usuarioRepository.findByEmail(auth.getName()).orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        if (auth == null || auth.getName() == null) throw new NoAutenticadoException("Usuario no autenticado");
+        return usuarioRepository.findByEmail(auth.getName()).orElseThrow(() -> new NoAutenticadoException("Usuario no encontrado"));
     }
 
     private Map<String, Object> usuarioBase(Usuario usuario) {

@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.controllers;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.MovimientoFinancieroRequest;
 import ni.edu.uam.SpartanGymAPI.models.MovimientoFinanciero;
@@ -41,7 +42,7 @@ public class FinanzaController {
         movimiento.setUsuario(auth == null ? "Administrador" : auth.getName());
         if (request.getSucursalId() != null) {
             movimiento.setSucursal(sucursalRepository.findById(request.getSucursalId())
-                    .orElseThrow(() -> new RuntimeException("Sucursal no encontrada")));
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Sucursal no encontrada")));
         }
         return ResponseEntity.ok(repository.save(movimiento));
     }

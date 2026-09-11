@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.ControlBiometricoRequest;
 import ni.edu.uam.SpartanGymAPI.models.ControlBiometrico;
@@ -23,7 +24,7 @@ public class ControlBiometricoService {
     @Transactional
     public ControlBiometrico registrarProgreso(ControlBiometricoRequest request) {
         Socio socio = socioRepository.findById(request.getIdSocio())
-                .orElseThrow(() -> new RuntimeException("Error: Socio no encontrado."));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Error: Socio no encontrado."));
 
         ControlBiometrico control = new ControlBiometrico();
         control.setSocio(socio);

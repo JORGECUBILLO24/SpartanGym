@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.controllers;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.ProductoCatalogoResponse;
 import ni.edu.uam.SpartanGymAPI.dto.ProductoInventarioRequest;
@@ -87,7 +88,7 @@ public class InventarioController {
     @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     public ResponseEntity<ProductoInventario> actualizar(@PathVariable UUID id, @RequestBody ProductoInventarioRequest request) {
         ProductoInventario producto = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado"));
         producto.setNombre(request.getNombre());
         producto.setCategoria(request.getCategoria());
         producto.setPrecio(request.getPrecio());
@@ -110,6 +111,6 @@ public class InventarioController {
         }
 
         return sucursalRepository.findById(request.getSucursalId())
-                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Sucursal no encontrada"));
     }
 }

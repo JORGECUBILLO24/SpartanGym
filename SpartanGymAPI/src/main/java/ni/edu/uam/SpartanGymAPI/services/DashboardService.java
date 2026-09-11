@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.DashboardResponse;
 import ni.edu.uam.SpartanGymAPI.dto.ProgresoSemana;
@@ -32,7 +33,7 @@ public class DashboardService {
 
         // 1. Datos del Socio
         Socio socio = socioRepository.findById(socioId)
-                .orElseThrow(() -> new RuntimeException("Socio no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Socio no encontrado"));
         response.setNombreCompleto(socio.getNombres() + " " + socio.getApellidos());
         response.setEstadoAcceso(socio.getEstadoAcceso());
 

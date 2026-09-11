@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.models.Ejercicio;
 import ni.edu.uam.SpartanGymAPI.models.GrupoMuscular;
@@ -29,7 +30,7 @@ public class CatalogoService {
     public Ejercicio crearEjercicio(Ejercicio ejercicio) {
         // Validamos que el grupo muscular exista
         GrupoMuscular grupo = grupoMuscularRepository.findById(ejercicio.getGrupoMuscular().getId())
-                .orElseThrow(() -> new RuntimeException("Grupo muscular no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Grupo muscular no encontrado"));
 
         ejercicio.setGrupoMuscular(grupo);
         return ejercicioRepository.save(ejercicio);

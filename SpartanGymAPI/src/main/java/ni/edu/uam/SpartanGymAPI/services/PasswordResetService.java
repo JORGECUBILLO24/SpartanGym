@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import ni.edu.uam.SpartanGymAPI.models.PasswordResetToken;
@@ -72,12 +73,12 @@ public class PasswordResetService {
     public void restablecerPassword(String tokenPlano, String nuevaPassword) {
         validarPassword(nuevaPassword);
         PasswordResetToken token = tokenRepository.findByTokenHashAndUsadoFalse(hashToken(tokenPlano))
-                .orElseThrow(() -> new RuntimeException("El enlace de restablecimiento no es valido o ya fue usado"));
+                .orElseThrow(() -> new ReglaNegocioException("El enlace de restablecimiento no es valido o ya fue usado"));
 
         if (token.getFechaExpiracion().isBefore(LocalDateTime.now())) {
             token.setUsado(true);
             tokenRepository.save(token);
-            throw new RuntimeException("El enlace de restablecimiento expiro. Solicita uno nuevo.");
+            throw new ReglaNegocioException("El enlace de restablecimiento expiro. Solicita uno nuevo.");
         }
 
         Usuario usuario = token.getUsuario();
@@ -93,7 +94,7 @@ public class PasswordResetService {
     public void enviarRestablecimientoGestionado(UUID usuarioId, Authentication auth) {
         Usuario actor = usuarioAutenticado(auth);
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado"));
         validarPermisoGestion(actor, usuario);
         log.info("{} solicitó un enlace de restablecimiento para {}", actor.getEmail(), usuario.getEmail());
         crearYEnviarToken(usuario);
@@ -104,7 +105,7 @@ public class PasswordResetService {
         validarPassword(nuevaPassword);
         Usuario actor = usuarioAutenticado(auth);
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado"));
         validarPermisoGestion(actor, usuario);
 
         usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
@@ -148,7 +149,7 @@ public class PasswordResetService {
 
     private String hashToken(String tokenPlano) {
         if (tokenPlano == null || tokenPlano.isBlank()) {
-            throw new RuntimeException("Token requerido");
+            throw new ReglaNegocioException("Token requerido");
         }
 
         try {
@@ -167,10 +168,10 @@ public class PasswordResetService {
 
     private Usuario usuarioAutenticado(Authentication auth) {
         if (auth == null || auth.getName() == null) {
-            throw new RuntimeException("Usuario no autenticado");
+            throw new NoAutenticadoException("Usuario no autenticado");
         }
         return usuarioRepository.findByEmailIgnoreCase(auth.getName())
-                .orElseThrow(() -> new RuntimeException("Usuario autenticado no encontrado"));
+                .orElseThrow(() -> new NoAutenticadoException("Usuario autenticado no encontrado"));
     }
 
     private void validarPermisoGestion(Usuario actor, Usuario objetivo) {
@@ -187,12 +188,12 @@ public class PasswordResetService {
             return;
         }
 
-        throw new RuntimeException("No tienes permisos para gestionar la contraseña de este usuario");
+        throw new AccesoDenegadoException("No tienes permisos para gestionar la contraseña de este usuario");
     }
 
     private void validarPassword(String password) {
         if (password == null || password.length() < 6) {
-            throw new RuntimeException("La nueva contraseña debe tener al menos 6 caracteres");
+            throw new ReglaNegocioException("La nueva contraseña debe tener al menos 6 caracteres");
         }
     }
 

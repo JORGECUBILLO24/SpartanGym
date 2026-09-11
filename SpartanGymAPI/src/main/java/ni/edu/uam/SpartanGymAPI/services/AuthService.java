@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.AuthResponse;
 import ni.edu.uam.SpartanGymAPI.dto.LoginRequest;
@@ -37,7 +38,7 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         Rol rolSocio = rolRepository.findByNombre("ROLE_SOCIO")
-                .orElseThrow(() -> new RuntimeException("Error: Rol ROLE_SOCIO no encontrado en BD."));
+                .orElseThrow(() -> new IllegalStateException("Error: Rol ROLE_SOCIO no encontrado en BD."));
 
         Usuario usuario = new Usuario();
         usuario.setEmail(request.getEmail());
@@ -55,7 +56,7 @@ public class AuthService {
         socio.setEstadoAcceso("Activo");
         if (request.getSucursalId() != null) {
             Sucursal sucursal = sucursalRepository.findById(request.getSucursalId())
-                    .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Sucursal no encontrada"));
             socio.setSucursal(sucursal);
         }
 
@@ -83,7 +84,7 @@ public class AuthService {
         );
 
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado tras autenticación."));
+                .orElseThrow(() -> new IllegalStateException("Usuario no encontrado tras autenticación."));
 
         UserDetailsImpl userDetails = new UserDetailsImpl(usuario);
         String token = jwtService.generateToken(userDetails);
