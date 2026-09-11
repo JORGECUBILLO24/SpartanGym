@@ -73,6 +73,7 @@ import com.example.spartangymapp.network.PerfilActualResponse
 import com.example.spartangymapp.network.ProductoCatalogoResponse
 import com.example.spartangymapp.network.RegistroProgresoRequest
 import com.example.spartangymapp.network.RetrofitClient
+import com.example.spartangymapp.network.mensajeDeError
 import com.example.spartangymapp.network.RutinaResumenResponse
 import com.example.spartangymapp.util.comprimirParaPerfil
 import com.example.spartangymapp.util.rotarLuminancia
@@ -1116,7 +1117,7 @@ private fun RenovarMembresiaUsuario(
                 )
                 val cuerpo = resp.body()
                 if (!resp.isSuccessful || cuerpo == null) {
-                    val detalle = resp.errorBody()?.string()?.takeIf { it.isNotBlank() }
+                    val detalle = mensajeDeError(resp.errorBody()?.string())
                     error = detalle ?: "No se pudo procesar el pago (${resp.code()})."
                 } else {
                     factura = cuerpo
@@ -1334,7 +1335,7 @@ private fun ProductosUsuario(
                 val resp = RetrofitClient.apiService.comprarProducto(CompraProductoAppRequest(productoId = id, cantidad = 1))
                 val cuerpo = resp.body()
                 if (!resp.isSuccessful || cuerpo == null) {
-                    val detalle = resp.errorBody()?.string()?.takeIf { it.isNotBlank() }
+                    val detalle = mensajeDeError(resp.errorBody()?.string())
                     esError = true
                     mensaje = detalle ?: "No se pudo completar la compra (${resp.code()})."
                 } else {
@@ -1505,7 +1506,7 @@ private fun TabQrAsistencia(appConfig: AppConfigResponse) {
                 val cuerpo = respuesta.body()
 
                 if (!respuesta.isSuccessful || cuerpo == null) {
-                    val detalleError = respuesta.errorBody()?.string()?.takeIf { it.isNotBlank() }
+                    val detalleError = mensajeDeError(respuesta.errorBody()?.string())
                     errorQr = detalleError ?: "No se pudo validar la asistencia (${respuesta.code()})."
                     mensajeQr = null
                     ultimoTokenEnviado = ""

@@ -20,16 +20,14 @@ object RetrofitClient {
     private val httpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .addInterceptor(Interceptor { chain ->
-                val original: Request = chain.request()
                 val token = authToken
-                val request: Request = if (token.isNullOrBlank()) {
-                    original
-                } else {
-                    original.newBuilder()
-                        .addHeader("Authorization", "Bearer $token")
-                        .build()
+                val builder: Request.Builder = chain.request().newBuilder()
+                    // Pide el formato de error RFC 9457; ver mensajeDeError().
+                    .header("Accept", ACCEPT_ERRORES)
+                if (!token.isNullOrBlank()) {
+                    builder.addHeader("Authorization", "Bearer $token")
                 }
-                chain.proceed(request)
+                chain.proceed(builder.build())
             })
             .build()
     }
