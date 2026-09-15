@@ -3,8 +3,12 @@ package com.example.spartangymapp.network
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 
-/** Pide a la API el formato de error RFC 9457. Sin este header la API responde texto plano. */
-const val ACCEPT_ERRORES = "application/problem+json, application/json;q=0.9, */*;q=0.8"
+/**
+ * Pide a la API el formato de error RFC 9457. Sin este header la API responde texto plano.
+ * application/json va primero: si problem+json tuviera más prioridad, Spring también
+ * negociaría las respuestas exitosas como problem+json.
+ */
+const val ACCEPT_ERRORES = "application/json, application/problem+json;q=0.9, */*;q=0.8"
 
 /**
  * Mensaje para mostrarle al usuario a partir del cuerpo de un error de la API.

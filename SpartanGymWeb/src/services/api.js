@@ -43,8 +43,10 @@ export async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...fetchOptions,
     headers: {
-      // Pide el formato de error RFC 9457; sin esto la API responde texto plano.
-      Accept: 'application/problem+json, application/json;q=0.9, */*;q=0.8',
+      // application/json va primero: si problem+json tuviera más prioridad, Spring también
+      // negociaría las respuestas EXITOSAS como problem+json. Basta con que problem+json
+      // aparezca en la lista para que la API devuelva los errores en formato RFC 9457.
+      Accept: 'application/json, application/problem+json;q=0.9, */*;q=0.8',
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(sucursalId && !ignoreSucursal ? { 'X-Sucursal-Id': sucursalId } : {}),
@@ -75,7 +77,8 @@ export async function apiRequest(path, options = {}) {
   if (response.status === 204) return null;
 
   const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) return response.text();
+  // Cualquier variante JSON (application/json, application/*+json) se parsea como JSON.
+  if (!contentType.includes('json')) return response.text();
 
   return response.json();
 }
