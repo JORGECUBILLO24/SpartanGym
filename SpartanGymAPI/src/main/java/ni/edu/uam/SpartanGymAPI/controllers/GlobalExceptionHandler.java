@@ -1,7 +1,10 @@
 package ni.edu.uam.SpartanGymAPI.controllers;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import ni.edu.uam.SpartanGymAPI.exceptions.ApiException;
+import ni.edu.uam.SpartanGymAPI.exceptions.RespuestaError;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,35 +18,46 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.Objects;
 
 /**
- * Traduce las excepciones a respuestas limpias (mensaje + status correcto),
- * en vez de devolver 500 con un stack trace. El cuerpo es texto plano con el
- * mensaje, mismo formato que ya devolvía MembresiaController, para que web y app
- * lo muestren directamente.
+ * Traduce las excepciones a respuestas con el status HTTP correcto y el mismo mensaje
+ * que se le muestra al usuario. El formato del cuerpo lo decide RespuestaError: texto
+ * plano por defecto (clientes viejos) o RFC 9457 con "codigo" si el cliente lo pide.
  *
- * Además deja constancia en el log de TODA excepción que pasa por acá, con el
- * método y la ruta que fallaron: en Render el plan free no tiene request logs,
- * así que estas líneas son la única forma de saber qué pasó. El stack trace va
- * al log, nunca al cuerpo de la respuesta.
+ * Además deja constancia en el log de TODA excepción que pasa por acá, con el método y
+ * la ruta que fallaron: en Render el plan free no tiene request logs, así que estas
+ * líneas son la única forma de saber qué pasó. El stack trace va al log, nunca al
+ * cuerpo de la respuesta.
  */
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private static final String MENSAJE_GENERICO = "No se pudo procesar la solicitud.";
+
+    private final RespuestaError respuestaError;
+
+    // Errores de negocio tipados: el status y el código vienen de la excepción.
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<String> handleApi(ApiException ex, HttpServletRequest request) {
+        log.warn("{} en {}: {}", ex.getStatus().value(), origen(request), ex.getMessage());
+        return respuestaError.construir(ex.getStatus(), ex.getCodigo(), ex.getMessage(), request);
+    }
 
     // Falta de permisos (@PreAuthorize) -> 403
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<String> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         log.warn("403 en {}: {}", origen(request), ex.getMessage());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body("No tienes permisos para realizar esta acción.");
+        return respuestaError.construir(HttpStatus.FORBIDDEN, "ACCESO_DENEGADO",
+                "No tienes permisos para realizar esta acción.", request);
     }
 
-    // Credenciales inválidas al iniciar sesión -> 400 (evita el flujo de "sesión expirada" del front)
-    // Va en debug: un login fallido es esperable y no ensucia el log con algo que no es un problema.
+    // Credenciales inválidas al iniciar sesión -> 400 a propósito: un 401 dispararía en el
+    // web el flujo de "sesión expirada". Va en debug: un login fallido es esperable.
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<String> handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
         log.debug("Autenticación fallida en {}: {}", origen(request), ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body("Correo o contraseña incorrectos.");
+        return respuestaError.construir(HttpStatus.BAD_REQUEST, "CREDENCIALES_INVALIDAS",
+                "Correo o contraseña incorrectos.", request);
     }
 
     // Validación de @Valid en los DTO -> 400 con el primer mensaje de campo
@@ -55,58 +69,53 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .orElse("Datos inválidos en la solicitud.");
         log.warn("400 por validación en {}: {}", origen(request), mensaje);
-        return ResponseEntity.badRequest().body(mensaje);
+        return respuestaError.construir(HttpStatus.BAD_REQUEST, "VALIDACION", mensaje, request);
     }
 
-    // Violación de restricciones de BD (ej. correo duplicado) -> 400 con mensaje amigable
+    // Violación de restricciones de BD (ej. correo duplicado) -> 409
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<String> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
         log.warn("Violación de integridad de datos en {}: {}", origen(request), ex.getMostSpecificCause().getMessage());
-        return ResponseEntity.badRequest()
-                .body("Ya existe un registro con esos datos (por ejemplo, el correo ya está en uso).");
+        return respuestaError.construir(HttpStatus.CONFLICT, "CONFLICTO",
+                "Ya existe un registro con esos datos (por ejemplo, el correo ya está en uso).", request);
     }
 
-    // Excepciones propias de Spring MVC (404 de ruta desconocida, 405, etc.):
-    // conservamos su status original en vez de convertirlas en 400.
+    // Excepciones propias de Spring MVC (404 de ruta desconocida, 405, etc.): conservan su status.
     @ExceptionHandler(ErrorResponseException.class)
     public ResponseEntity<String> handleErrorResponse(ErrorResponseException ex, HttpServletRequest request) {
         String detalle = ex.getBody() != null ? ex.getBody().getDetail() : null;
         log.warn("{} en {}: {}", ex.getStatusCode().value(), origen(request), detalle);
-        return ResponseEntity.status(ex.getStatusCode())
-                .body(detalle != null && !detalle.isBlank() ? detalle : "No se pudo procesar la solicitud.");
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        return respuestaError.construir(status, "ERROR_HTTP",
+                detalle != null && !detalle.isBlank() ? detalle : MENSAJE_GENERICO, request);
     }
 
-    // Errores de negocio lanzados en los servicios -> 400 con su mensaje
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<String> handleRuntime(RuntimeException ex, HttpServletRequest request) {
         String mensaje = ex.getMessage();
+        boolean conMensaje = mensaje != null && !mensaje.isBlank();
+        boolean pelada = ex.getClass() == RuntimeException.class;
 
-        // En este proyecto los errores de negocio se lanzan como RuntimeException "pelada",
-        // sin cause, con un mensaje pensado para el usuario ("El enlace de restablecimiento
-        // expiro", etc.). Cuando SÍ hay cause (p.ej. "No se pudo firmar el QR de asistencia",
-        // que envuelve un fallo real de HMAC) es una falla técnica con forma de RuntimeException
-        // pelada, no una regla de negocio — igual que una subclase, necesita el stack completo.
-        boolean errorDeNegocio = ex.getClass() == RuntimeException.class
-                && ex.getCause() == null
-                && mensaje != null
-                && !mensaje.isBlank();
-
-        if (errorDeNegocio) {
+        // Legado sin migrar: RuntimeException pelada, sin cause y con un mensaje escrito para
+        // el usuario. Se mantiene 400 para no cambiar lo que todavía no se tipó.
+        if (pelada && ex.getCause() == null && conMensaje) {
             log.warn("400 en {}: {}", origen(request), mensaje);
-            return ResponseEntity.badRequest().body(mensaje);
+            return respuestaError.construir(HttpStatus.BAD_REQUEST, "REGLA_NEGOCIO", mensaje, request);
         }
 
+        // Falla técnica. Con cause (fallo real envuelto con un mensaje en español, p.ej.
+        // "No se pudo firmar el QR de asistencia") se conserva ese mensaje; cualquier otra
+        // subclase (NPE, etc.) o sin mensaje es un bug, y su texto no es para el usuario.
         log.error("Error inesperado en {}", origen(request), ex);
-        return ResponseEntity.badRequest()
-                .body(mensaje == null || mensaje.isBlank() ? "No se pudo procesar la solicitud." : mensaje);
+        String paraUsuario = pelada && ex.getCause() != null && conMensaje ? mensaje : MENSAJE_GENERICO;
+        return respuestaError.construir(HttpStatus.INTERNAL_SERVER_ERROR, "ERROR_INTERNO", paraUsuario, request);
     }
 
     // Red de seguridad: lo que no sea RuntimeException tampoco puede quedar sin rastro.
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGenerico(Exception ex, HttpServletRequest request) {
         log.error("Error no controlado en {}", origen(request), ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("No se pudo procesar la solicitud.");
+        return respuestaError.construir(HttpStatus.INTERNAL_SERVER_ERROR, "ERROR_INTERNO", MENSAJE_GENERICO, request);
     }
 
     /** Método + ruta de la petición, para reemplazar lo que darían los request logs. */

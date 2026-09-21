@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.CompraMembresiaRequest;
 import ni.edu.uam.SpartanGymAPI.dto.TipoMembresiaRequest;
@@ -46,21 +47,21 @@ public class MembresiaService {
 
         // 1. Identificar al usuario a partir del email extraído de su token
         Usuario usuario = usuarioRepository.findByEmail(emailSocio)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado en el sistema"));
+                .orElseThrow(() -> new NoAutenticadoException("Usuario no encontrado en el sistema"));
 
         Socio socio = socioRepository.findById(usuario.getId())
-                .orElseThrow(() -> new RuntimeException("El perfil de socio no existe"));
+                .orElseThrow(() -> new AccesoDenegadoException("El perfil de socio no existe"));
 
         // 2. Buscar el catálogo de membresía seleccionado
         TipoMembresia tipo = tipoMembresiaRepository.findById(request.getTipoMembresiaId())
-                .orElseThrow(() -> new RuntimeException("Tipo de membresía inválido"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Tipo de membresía inválido"));
 
         // 3. Regla de Negocio: Prevenir compras si ya tiene una activa (Evita romper el Index de BD)
         Optional<MembresiaSocio> membresiaActiva = membresiaSocioRepository
                 .findBySocioUsuarioIdAndEstado(socio.getUsuarioId(), "Activa");
 
         if (membresiaActiva.isPresent()) {
-            throw new RuntimeException("Error: Ya posees una membresía Activa. Espera a que caduque para renovar.");
+            throw new ConflictoException("Error: Ya posees una membresía Activa. Espera a que caduque para renovar.");
         }
 
         // 4. Registrar el pago en la tabla inmutable

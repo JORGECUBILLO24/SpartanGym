@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.ProgresoSemana;
 import ni.edu.uam.SpartanGymAPI.dto.RutinaRequest;
@@ -46,10 +47,10 @@ public class RutinaService {
         validarRutina(request);
 
         Personal entrenador = personalRepository.findById(request.getIdEntrenador())
-                .orElseThrow(() -> new RuntimeException("Entrenador no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Entrenador no encontrado"));
 
         Socio socio = socioRepository.findById(request.getIdSocio())
-                .orElseThrow(() -> new RuntimeException("Socio no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Socio no encontrado"));
 
         validarMismaSucursal(entrenador, socio);
 
@@ -63,7 +64,7 @@ public class RutinaService {
         validarRutina(request);
 
         Personal entrenador = personalRepository.findById(request.getIdEntrenador())
-                .orElseThrow(() -> new RuntimeException("Entrenador no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Entrenador no encontrado"));
 
         // Si quien asigna es un entrenador, la rutina global solo alcanza a los socios de su sucursal.
         UUID sucursalEntrenador = esEntrenador(entrenador) && entrenador.getSucursal() != null
@@ -78,7 +79,7 @@ public class RutinaService {
                 .toList();
 
         if (sociosActivos.isEmpty()) {
-            throw new RuntimeException("No hay socios activos para asignar la rutina global");
+            throw new ReglaNegocioException("No hay socios activos para asignar la rutina global");
         }
 
         List<Rutina> guardadas = new ArrayList<>();
@@ -97,16 +98,16 @@ public class RutinaService {
 
     private void validarRutina(RutinaRequest request) {
         if (request.getDetalles() == null || request.getDetalles().isEmpty()) {
-            throw new RuntimeException("La rutina debe incluir al menos un ejercicio");
+            throw new ReglaNegocioException("La rutina debe incluir al menos un ejercicio");
         }
         if (request.getIdEntrenador() == null) {
-            throw new RuntimeException("Selecciona un entrenador");
+            throw new ReglaNegocioException("Selecciona un entrenador");
         }
         if (!Boolean.TRUE.equals(request.getEsGlobal()) && request.getIdSocio() == null) {
-            throw new RuntimeException("Selecciona un socio para la rutina personal");
+            throw new ReglaNegocioException("Selecciona un socio para la rutina personal");
         }
         if (request.getFechaInicio() != null && request.getFechaFin() != null && request.getFechaFin().isBefore(request.getFechaInicio())) {
-            throw new RuntimeException("La fecha final no puede ser anterior a la fecha inicial");
+            throw new ReglaNegocioException("La fecha final no puede ser anterior a la fecha inicial");
         }
     }
 
@@ -126,7 +127,7 @@ public class RutinaService {
 
         List<RutinaDetalle> detalles = request.getDetalles().stream().map(dto -> {
             Ejercicio ejercicio = ejercicioRepository.findById(dto.getIdEjercicio())
-                    .orElseThrow(() -> new RuntimeException("Ejercicio no encontrado con ID: " + dto.getIdEjercicio()));
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Ejercicio no encontrado con ID: " + dto.getIdEjercicio()));
 
             RutinaDetalle detalle = new RutinaDetalle();
             detalle.setRutina(rutina);
@@ -186,7 +187,7 @@ public class RutinaService {
         UUID sucursalEntrenador = entrenador.getSucursal() != null ? entrenador.getSucursal().getId() : null;
         UUID sucursalSocio = socio.getSucursal() != null ? socio.getSucursal().getId() : null;
         if (sucursalEntrenador == null || !sucursalEntrenador.equals(sucursalSocio)) {
-            throw new RuntimeException("El socio no pertenece a tu sucursal. Solo puedes asignar rutinas a socios de tu gimnasio.");
+            throw new AccesoDenegadoException("El socio no pertenece a tu sucursal. Solo puedes asignar rutinas a socios de tu gimnasio.");
         }
     }
 

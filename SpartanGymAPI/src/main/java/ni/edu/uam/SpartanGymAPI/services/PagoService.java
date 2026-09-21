@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.FacturaMembresiaResponse;
 import ni.edu.uam.SpartanGymAPI.dto.PagoRequest;
@@ -43,7 +44,7 @@ public class PagoService {
     @Transactional
     public FacturaMembresiaResponse registrarPagoYMembresia(PagoRequest request) {
         Socio socio = socioRepository.findById(request.getIdSocio())
-                .orElseThrow(() -> new RuntimeException("Socio no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Socio no encontrado"));
         return procesarRenovacion(socio, request.getIdTipoMembresia(), request.getMetodoPago());
     }
 
@@ -51,15 +52,15 @@ public class PagoService {
     @Transactional
     public FacturaMembresiaResponse renovarMembresiaSocio(String email, Integer tipoMembresiaId, String metodoPago) {
         Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new NoAutenticadoException("Usuario no encontrado"));
         Socio socio = socioRepository.findById(usuario.getId())
-                .orElseThrow(() -> new RuntimeException("Perfil de socio no encontrado"));
+                .orElseThrow(() -> new AccesoDenegadoException("Perfil de socio no encontrado"));
         return procesarRenovacion(socio, tipoMembresiaId, metodoPago);
     }
 
     private FacturaMembresiaResponse procesarRenovacion(Socio socio, Integer tipoMembresiaId, String metodoPago) {
         TipoMembresia tipoMembresia = tipoMembresiaRepository.findById(tipoMembresiaId)
-                .orElseThrow(() -> new RuntimeException("Tipo de membresía no encontrado"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Tipo de membresía no encontrado"));
 
         // Apagamos la membresía activa anterior. saveAndFlush garantiza que el UPDATE
         // (Activa -> Renovada) ocurra antes del INSERT de la nueva, respetando el índice único.

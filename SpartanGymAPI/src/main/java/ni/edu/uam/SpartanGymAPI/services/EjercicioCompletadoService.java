@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.MarcarEjercicioRequest;
 import ni.edu.uam.SpartanGymAPI.dto.ProgresoSemana;
@@ -49,12 +50,12 @@ public class EjercicioCompletadoService {
     @Transactional
     public void marcarCompletado(String emailSocio, UUID rutinaId, Long ejercicioId, MarcarEjercicioRequest request) {
         Usuario usuario = usuarioRepository.findByEmail(emailSocio)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new NoAutenticadoException("Usuario no encontrado"));
         Socio socio = socioRepository.findById(usuario.getId())
-                .orElseThrow(() -> new RuntimeException("Perfil de socio no encontrado"));
+                .orElseThrow(() -> new AccesoDenegadoException("Perfil de socio no encontrado"));
 
         Rutina rutina = rutinaRepository.findById(rutinaId)
-                .orElseThrow(() -> new RuntimeException("Rutina no encontrada"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Rutina no encontrada"));
 
         if (!rutina.getSocio().getUsuarioId().equals(socio.getUsuarioId())) {
             throw new AccessDeniedException("Esta rutina no pertenece al socio autenticado.");
@@ -63,7 +64,7 @@ public class EjercicioCompletadoService {
         boolean perteneceARutina = rutina.getDetalles().stream()
                 .anyMatch(detalle -> detalle.getEjercicio().getId().equals(ejercicioId));
         if (!perteneceARutina) {
-            throw new RuntimeException("Ese ejercicio no pertenece a esta rutina.");
+            throw new ReglaNegocioException("Ese ejercicio no pertenece a esta rutina.");
         }
 
         LocalDate fecha = request.getFecha() != null ? request.getFecha() : LocalDate.now();

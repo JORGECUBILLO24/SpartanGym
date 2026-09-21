@@ -62,8 +62,16 @@ const Login = () => {
         loggedAt: new Date().toISOString(),
       });
       navigate(destination);
-    } catch {
-      setError('No se pudo iniciar sesion. Verifica tus credenciales y que la API este activa.');
+    } catch (error) {
+      // Con status: la API respondio (credenciales invalidas, cuenta inactiva, etc.), su
+      // detalle ya es un mensaje claro para el usuario. Sin status: el fetch nunca llego
+      // a la API (CORS, sin conexion, dominio bloqueado) y no hay que culpar a las
+      // credenciales por eso.
+      setError(
+        error.status
+          ? error.message
+          : 'No se pudo conectar con la API. Verifica tu conexion a internet.',
+      );
     } finally {
       setLoading(false);
     }

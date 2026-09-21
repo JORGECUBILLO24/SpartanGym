@@ -1,9 +1,11 @@
 package ni.edu.uam.SpartanGymAPI.util;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.ReglaNegocioException;
+
 /**
  * Validación pura y aislada de la foto de perfil (data URL base64), testeable
- * sin la capa web ni la base de datos. Convención de errores del proyecto:
- * RuntimeException plano, que GlobalExceptionHandler traduce a 400.
+ * sin la capa web ni la base de datos. Los errores son ReglaNegocioException,
+ * que GlobalExceptionHandler traduce a 400.
  */
 public final class FotoPerfilValidator {
 
@@ -17,10 +19,10 @@ public final class FotoPerfilValidator {
             return null;
         }
         if (!fotoUrl.startsWith("data:image/")) {
-            throw new RuntimeException("La foto debe ser una imagen válida.");
+            throw new ReglaNegocioException("La foto debe ser una imagen válida.");
         }
         if (fotoUrl.length() > LONGITUD_MAXIMA) {
-            throw new RuntimeException("La imagen es demasiado grande.");
+            throw new ReglaNegocioException("La imagen es demasiado grande.");
         }
         return fotoUrl;
     }

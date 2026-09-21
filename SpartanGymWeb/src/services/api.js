@@ -30,6 +30,20 @@ export const authStorage = {
   },
 };
 
+import { cerrarSesionActual } from '../utils/cuentaActual';
+
+// Error de la API con el mismo mensaje de siempre en `.message`, más el status HTTP y el
+// `codigo` estable del contrato de errores (RFC 9457). Los usos existentes de
+// `error.message` no cambian.
+export class ApiError extends Error {
+  constructor(message, status, codigo = null) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.codigo = codigo;
+  }
+}
+
 export async function apiRequest(path, options = {}) {
   const token = options.skipAuth ? null : authStorage.getToken();
   const sucursalId = localStorage.getItem('global_sucursal_id');
@@ -38,6 +52,10 @@ export async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
     ...fetchOptions,
     headers: {
+      // application/json va primero: si problem+json tuviera más prioridad, Spring también
+      // negociaría las respuestas EXITOSAS como problem+json. Basta con que problem+json
+      // aparezca en la lista para que la API devuelva los errores en formato RFC 9457.
+      Accept: 'application/json, application/problem+json;q=0.9, */*;q=0.8',
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(sucursalId && !ignoreSucursal ? { 'X-Sucursal-Id': sucursalId } : {}),
@@ -47,18 +65,29 @@ export async function apiRequest(path, options = {}) {
 
   if (!response.ok) {
     if (response.status === 401 && !skipAuth) {
-      authStorage.clear();
+      // La sesión vive en dos lugares (token/usuario y la cuenta actual): se limpian ambos.
+      cerrarSesionActual('sesion-expirada');
       window.location.href = '/login';
-      throw new Error('Sesion expirada. Por favor, inicia sesion de nuevo.');
+      throw new ApiError('Sesion expirada. Por favor, inicia sesion de nuevo.', 401, 'NO_AUTENTICADO');
+    }
+    const tipoError = response.headers.get('content-type') || '';
+    if (tipoError.includes('application/problem+json')) {
+      const problema = await response.json().catch(() => null);
+      throw new ApiError(
+        problema?.detail || `Error ${response.status} al conectar con la API`,
+        response.status,
+        problema?.codigo ?? null,
+      );
     }
     const errorBody = await response.text();
-    throw new Error(errorBody || `Error ${response.status} al conectar con la API`);
+    throw new ApiError(errorBody || `Error ${response.status} al conectar con la API`, response.status);
   }
 
   if (response.status === 204) return null;
 
   const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) return response.text();
+  // Cualquier variante JSON (application/json, application/*+json) se parsea como JSON.
+  if (!contentType.includes('json')) return response.text();
 
   return response.json();
 }

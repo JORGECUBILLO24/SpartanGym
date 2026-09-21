@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.AsistenciaQrRequest;
 import ni.edu.uam.SpartanGymAPI.dto.AsistenciaQrTokenResponse;
@@ -50,7 +51,7 @@ public class AsistenciaService {
     @Transactional
     public Asistencia registrarEntrada(AsistenciaRequest request) {
         Socio socio = socioRepository.findById(request.getIdSocio())
-                .orElseThrow(() -> new RuntimeException("Error: Socio no encontrado."));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Error: Socio no encontrado."));
 
         return registrarAsistencia(socio);
     }
@@ -58,7 +59,7 @@ public class AsistenciaService {
     public AsistenciaQrTokenResponse generarQrAsistencia(String emailUsuario) {
         Usuario usuario = buscarUsuarioAutenticado(emailUsuario);
         Socio socio = socioRepository.findById(usuario.getId())
-                .orElseThrow(() -> new RuntimeException("El usuario autenticado no tiene perfil de socio."));
+                .orElseThrow(() -> new AccesoDenegadoException("El usuario autenticado no tiene perfil de socio."));
         Instant generado = Instant.now();
         Instant expira = generado.plusSeconds(QR_TTL_SECONDS);
         String nonce = UUID.randomUUID().toString();
@@ -106,17 +107,17 @@ public class AsistenciaService {
         QrSocioPayload payload = validarTokenQrSocio(request != null ? request.getToken() : null);
 
         if (asistenciaRepository.existsByQrTokenHash(payload.tokenHash())) {
-            throw new RuntimeException("QR ya utilizado. Solicita al socio generar uno nuevo.");
+            throw new ConflictoException("QR ya utilizado. Solicita al socio generar uno nuevo.");
         }
 
         Socio socio = socioRepository.findById(payload.socioId())
-                .orElseThrow(() -> new RuntimeException("QR invalido: socio no encontrado."));
+                .orElseThrow(() -> new ReglaNegocioException("QR invalido: socio no encontrado."));
 
         try {
             Asistencia asistencia = registrarAsistencia(socio, payload.tokenHash());
             return construirRespuestaValidacion(asistencia, socio, "Asistencia validada.");
         } catch (DataIntegrityViolationException e) {
-            throw new RuntimeException("QR ya utilizado. Solicita al socio generar uno nuevo.");
+            throw new ConflictoException("QR ya utilizado. Solicita al socio generar uno nuevo.");
         }
     }
 
@@ -124,23 +125,23 @@ public class AsistenciaService {
     public AsistenciaQrValidationResponse registrarEntradaQrWeb(AsistenciaQrRequest request, String emailUsuario) {
         Usuario usuario = buscarUsuarioAutenticado(emailUsuario);
         Socio socio = socioRepository.findById(usuario.getId())
-                .orElseThrow(() -> new RuntimeException("El usuario autenticado no tiene perfil de socio."));
+                .orElseThrow(() -> new AccesoDenegadoException("El usuario autenticado no tiene perfil de socio."));
         QrWebPayload payload = validarTokenQrWeb(request != null ? request.getToken() : null, true);
         QrWebSession sesion = buscarSesionQrWeb(payload.sessionId());
 
         if (!sesion.tokenHash().equals(payload.tokenHash())) {
-            throw new RuntimeException("QR invalido: sesion no coincide con el token.");
+            throw new ReglaNegocioException("QR invalido: sesion no coincide con el token.");
         }
 
         if (asistenciaRepository.existsByQrTokenHash(payload.tokenHash())) {
-            throw new RuntimeException("QR ya utilizado. Solicita a recepcion generar uno nuevo.");
+            throw new ConflictoException("QR ya utilizado. Solicita a recepcion generar uno nuevo.");
         }
 
         try {
             Asistencia asistencia = registrarAsistencia(socio, payload.tokenHash());
             return construirRespuestaValidacion(asistencia, socio, "Asistencia validada.", payload.sessionId());
         } catch (DataIntegrityViolationException e) {
-            throw new RuntimeException("QR ya utilizado. Solicita a recepcion generar uno nuevo.");
+            throw new ConflictoException("QR ya utilizado. Solicita a recepcion generar uno nuevo.");
         }
     }
 
@@ -149,7 +150,7 @@ public class AsistenciaService {
         QrWebSession sesion = sesionesQrWeb.get(payload.sessionId());
 
         if (sesion != null && !sesion.tokenHash().equals(payload.tokenHash())) {
-            throw new RuntimeException("QR invalido: sesion no coincide con el token.");
+            throw new ReglaNegocioException("QR invalido: sesion no coincide con el token.");
         }
 
         return consultarEstadoQrValidacion(payload.sessionId(), payload.tokenHash(), payload.expirado());
@@ -176,7 +177,7 @@ public class AsistenciaService {
 
     private Usuario buscarUsuarioAutenticado(String emailUsuario) {
         return usuarioRepository.findByEmailIgnoreCase(emailUsuario)
-                .orElseThrow(() -> new RuntimeException("Usuario autenticado no encontrado."));
+                .orElseThrow(() -> new NoAutenticadoException("Usuario autenticado no encontrado."));
     }
 
     private Asistencia registrarAsistencia(Socio socio) {
@@ -250,7 +251,7 @@ public class AsistenciaService {
         try {
             socioId = UUID.fromString(partes[1]);
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("QR invalido: socio incorrecto.");
+            throw new ReglaNegocioException("QR invalido: socio incorrecto.");
         }
 
         validarFirmaYExpiracion(partes[1] + "|" + partes[2] + "|" + partes[3], partes[3], partes[4], true);
@@ -264,7 +265,7 @@ public class AsistenciaService {
         try {
             sessionId = UUID.fromString(partes[1]);
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("QR invalido: sesion incorrecta.");
+            throw new ReglaNegocioException("QR invalido: sesion incorrecta.");
         }
 
         boolean expirado = validarFirmaYExpiracion(
@@ -278,12 +279,12 @@ public class AsistenciaService {
 
     private String[] validarEstructuraToken(String token, String prefijoEsperado) {
         if (token == null || token.isBlank()) {
-            throw new RuntimeException("QR invalido: no se recibio token.");
+            throw new ReglaNegocioException("QR invalido: no se recibio token.");
         }
 
         String[] partes = token.split("\\|");
         if (partes.length != 5 || !prefijoEsperado.equals(partes[0])) {
-            throw new RuntimeException("QR invalido para Spartan Gym.");
+            throw new ReglaNegocioException("QR invalido para Spartan Gym.");
         }
         return partes;
     }
@@ -291,19 +292,19 @@ public class AsistenciaService {
     private boolean validarFirmaYExpiracion(String datos, String expiraTexto, String firmaRecibida, boolean rechazarExpirado) {
         String firmaEsperada = firmar(datos);
         if (!MessageDigest.isEqual(firmaEsperada.getBytes(StandardCharsets.UTF_8), firmaRecibida.getBytes(StandardCharsets.UTF_8))) {
-            throw new RuntimeException("QR invalido o alterado.");
+            throw new ReglaNegocioException("QR invalido o alterado.");
         }
 
         long expiraEpoch;
         try {
             expiraEpoch = Long.parseLong(expiraTexto);
         } catch (NumberFormatException e) {
-            throw new RuntimeException("QR invalido: expiracion incorrecta.");
+            throw new ReglaNegocioException("QR invalido: expiracion incorrecta.");
         }
 
         boolean expirado = Instant.now().getEpochSecond() > expiraEpoch;
         if (expirado && rechazarExpirado) {
-            throw new RuntimeException("QR expirado. Solicita generar uno nuevo.");
+            throw new ReglaNegocioException("QR expirado. Solicita generar uno nuevo.");
         }
         return expirado;
     }
@@ -313,11 +314,11 @@ public class AsistenciaService {
         QrWebSession sesion = sesionesQrWeb.get(sessionId);
 
         if (sesion == null) {
-            throw new RuntimeException("QR expirado o sesion no encontrada. Genera uno nuevo.");
+            throw new ReglaNegocioException("QR expirado o sesion no encontrada. Genera uno nuevo.");
         }
 
         if (sesion.expirado()) {
-            throw new RuntimeException("QR expirado. Solicita generar uno nuevo.");
+            throw new ReglaNegocioException("QR expirado. Solicita generar uno nuevo.");
         }
 
         return sesion;

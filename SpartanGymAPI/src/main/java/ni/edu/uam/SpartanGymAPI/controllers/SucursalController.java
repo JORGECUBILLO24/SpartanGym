@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.controllers;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.SucursalRequest;
 import ni.edu.uam.SpartanGymAPI.models.Sucursal;
@@ -34,7 +35,7 @@ public class SucursalController {
     @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     public ResponseEntity<Sucursal> actualizar(@PathVariable UUID id, @RequestBody SucursalRequest request) {
         Sucursal sucursal = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Sucursal no encontrada"));
         aplicarRequest(sucursal, request);
         return ResponseEntity.ok(repository.save(sucursal));
     }

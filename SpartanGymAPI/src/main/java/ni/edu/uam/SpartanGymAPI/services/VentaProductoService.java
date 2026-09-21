@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.FacturaDetalleResponse;
 import ni.edu.uam.SpartanGymAPI.dto.VentaProductoDetalleRequest;
@@ -56,29 +57,29 @@ public class VentaProductoService {
     public VentaProductoResponse obtener(UUID id) {
         return ventaRepository.findById(id)
                 .map(this::toResponse)
-                .orElseThrow(() -> new RuntimeException("Factura no encontrada"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Factura no encontrada"));
     }
 
     @Transactional
     public VentaProductoResponse vender(VentaProductoRequest request, Authentication auth) {
         if (request.getDetalles() == null || request.getDetalles().isEmpty()) {
-            throw new RuntimeException("Agrega al menos un producto a la venta");
+            throw new ReglaNegocioException("Agrega al menos un producto a la venta");
         }
         if (request.getSucursalId() == null) {
-            throw new RuntimeException("Selecciona una sucursal para facturar");
+            throw new ReglaNegocioException("Selecciona una sucursal para facturar");
         }
 
         boolean clienteEventual = Boolean.TRUE.equals(request.getClienteEventual());
         if (!clienteEventual && request.getSocioId() == null) {
-            throw new RuntimeException("Selecciona un socio o marca la venta como cliente eventual");
+            throw new ReglaNegocioException("Selecciona un socio o marca la venta como cliente eventual");
         }
 
         Sucursal sucursal = sucursalRepository.findById(request.getSucursalId())
-                .orElseThrow(() -> new RuntimeException("Sucursal no encontrada"));
+                .orElseThrow(() -> new RecursoNoEncontradoException("Sucursal no encontrada"));
         Socio socio = clienteEventual || request.getSocioId() == null
                 ? null
                 : socioRepository.findById(request.getSocioId())
-                        .orElseThrow(() -> new RuntimeException("Socio no encontrado"));
+                        .orElseThrow(() -> new RecursoNoEncontradoException("Socio no encontrado"));
         Usuario vendedor = obtenerVendedor(auth);
 
         String clienteNombre = clienteEventual
@@ -100,13 +101,13 @@ public class VentaProductoService {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (VentaProductoDetalleRequest detalleRequest : request.getDetalles()) {
             ProductoInventario producto = productoRepository.findById(detalleRequest.getProductoId())
-                    .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                    .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado"));
             int cantidad = detalleRequest.getCantidad() == null ? 0 : detalleRequest.getCantidad();
             if (cantidad <= 0) {
-                throw new RuntimeException("La cantidad debe ser mayor a cero");
+                throw new ReglaNegocioException("La cantidad debe ser mayor a cero");
             }
             if (producto.getStock() < cantidad) {
-                throw new RuntimeException("Stock insuficiente para " + producto.getNombre());
+                throw new ReglaNegocioException("Stock insuficiente para " + producto.getNombre());
             }
 
             producto.setStock(producto.getStock() - cantidad);
@@ -141,17 +142,17 @@ public class VentaProductoService {
     @Transactional
     public VentaProductoResponse comprarComoSocio(VentaProductoDetalleRequest detalle, Authentication auth) {
         if (auth == null || auth.getName() == null) {
-            throw new RuntimeException("Usuario no autenticado");
+            throw new NoAutenticadoException("Usuario no autenticado");
         }
         Usuario usuario = usuarioRepository.findByEmail(auth.getName())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new NoAutenticadoException("Usuario no encontrado"));
         Socio socio = socioRepository.findById(usuario.getId())
-                .orElseThrow(() -> new RuntimeException("Perfil de socio no encontrado"));
+                .orElseThrow(() -> new AccesoDenegadoException("Perfil de socio no encontrado"));
         if (socio.getSucursal() == null) {
-            throw new RuntimeException("Tu perfil no tiene una sucursal asignada. Acércate a recepción.");
+            throw new ReglaNegocioException("Tu perfil no tiene una sucursal asignada. Acércate a recepción.");
         }
         if (detalle == null || detalle.getProductoId() == null) {
-            throw new RuntimeException("Selecciona un producto para comprar");
+            throw new ReglaNegocioException("Selecciona un producto para comprar");
         }
 
         VentaProductoRequest request = new VentaProductoRequest();
@@ -207,20 +208,20 @@ public class VentaProductoService {
         String monedaPago = textoOpcional(request.getMonedaPago(), monedaVenta).toUpperCase(Locale.ROOT);
         BigDecimal montoRecibido = request.getMontoRecibido();
         if (montoRecibido == null || montoRecibido.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Ingresa el monto recibido en efectivo");
+            throw new ReglaNegocioException("Ingresa el monto recibido en efectivo");
         }
 
         BigDecimal tipoCambio = monedaPago.equals(monedaVenta)
                 ? BigDecimal.ONE
                 : request.getTipoCambio();
         if (tipoCambio == null || tipoCambio.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Ingresa un tipo de cambio valido para pago en efectivo");
+            throw new ReglaNegocioException("Ingresa un tipo de cambio valido para pago en efectivo");
         }
 
         BigDecimal montoConvertido = montoRecibido.multiply(tipoCambio).setScale(2, RoundingMode.HALF_UP);
         BigDecimal cambio = montoConvertido.subtract(venta.getTotal()).setScale(2, RoundingMode.HALF_UP);
         if (cambio.compareTo(BigDecimal.ZERO) < 0) {
-            throw new RuntimeException("El monto recibido no cubre el total de la factura");
+            throw new ReglaNegocioException("El monto recibido no cubre el total de la factura");
         }
 
         venta.setMonedaPago(monedaPago);
@@ -251,7 +252,7 @@ public class VentaProductoService {
     private String textoRequerido(String valor, String mensaje) {
         String limpio = limpiarTexto(valor);
         if (limpio == null || limpio.isBlank()) {
-            throw new RuntimeException(mensaje);
+            throw new ReglaNegocioException(mensaje);
         }
         return limpio;
     }
