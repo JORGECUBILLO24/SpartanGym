@@ -4,5 +4,8 @@ dist
 .eslintcache
 *.log
 .env
+**/.gradle/
+**/.idea/
+**/local.properties
 NOTAS-SESION.md
 docs/superpowers/

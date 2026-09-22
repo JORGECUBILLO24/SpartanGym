@@ -44,39 +44,33 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
-        try {
-            http
-                    .csrf(AbstractHttpConfigurer::disable)
-                    .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                    .authorizeHttpRequests(auth -> auth
-                            .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
-                            .requestMatchers("/api/auth/**").permitAll()
-                            .requestMatchers("/error").permitAll()
-                            .requestMatchers(HttpMethod.GET, "/api/configuracion").permitAll()
-                            .requestMatchers(HttpMethod.GET, "/api/asistencia/estado/**", "/api/asistencias/estado/**").permitAll()
-                            .requestMatchers(HttpMethod.POST, "/api/asistencia/qr-validacion/estado", "/api/asistencias/qr-validacion/estado").permitAll()
-                            .anyRequest().authenticated()
-                    )
-                    .sessionManagement(session -> session
-                            .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                    )
-                    .authenticationProvider(authenticationProvider())
-                    // Sin esto, Spring Security responde 403 a lo no autenticado y el web
-                    // (que solo cierra la sesión ante un 401) nunca manda al login a una
-                    // sesión vencida.
-                    .exceptionHandling(errores -> errores
-                            .authenticationEntryPoint((request, response, ex) -> respuestaError.escribir(
-                                    response, HttpStatus.UNAUTHORIZED, "NO_AUTENTICADO",
-                                    "Tu sesión expiró o no iniciaste sesión. Vuelve a iniciar sesión.", request))
-                            .accessDeniedHandler((request, response, ex) -> respuestaError.escribir(
-                                    response, HttpStatus.FORBIDDEN, "ACCESO_DENEGADO",
-                                    "No tienes permisos para realizar esta acción.", request)))
-                    .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/configuracion").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/asistencia/estado/**", "/api/asistencias/estado/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/asistencia/qr-validacion/estado", "/api/asistencias/qr-validacion/estado").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authenticationProvider(authenticationProvider())
+                // Devuelve errores JSON coherentes para sesiones vencidas y accesos prohibidos.
+                .exceptionHandling(errores -> errores
+                        .authenticationEntryPoint((request, response, ex) -> respuestaError.escribir(
+                                response, HttpStatus.UNAUTHORIZED, "NO_AUTENTICADO",
+                                "Tu sesión expiró o no iniciaste sesión. Vuelve a iniciar sesión.", request))
+                        .accessDeniedHandler((request, response, ex) -> respuestaError.escribir(
+                                response, HttpStatus.FORBIDDEN, "ACCESO_DENEGADO",
+                                "No tienes permisos para realizar esta acción.", request)))
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-            return http.build();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return http.build();
     }
 
     @Bean
@@ -105,11 +99,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) {
-        try {
-            return config.getAuthenticationManager();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return config.getAuthenticationManager();
     }
 
     @Bean
