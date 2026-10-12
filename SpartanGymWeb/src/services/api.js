@@ -162,7 +162,7 @@ export const rutinasApi = {
     method: 'POST',
     body: JSON.stringify(rutina),
   }),
-  crearGlobal: (rutina) => apiRequest('/rutinas', {
+  crearGlobal: (rutina) => apiRequest('/rutinas/global', {
     method: 'POST',
     body: JSON.stringify({ ...rutina, esGlobal: true, idSocio: null }),
   }),

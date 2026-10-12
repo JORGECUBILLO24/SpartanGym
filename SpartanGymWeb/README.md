@@ -1,19 +1,31 @@
-# SpartanGym - Interfaz Web (Frontend)
+# SpartanGym Web
 
-Bienvenido a la interfaz web de **SpartanGym**, el sistema integral de gestión para el gimnasio. Esta parte del proyecto está desarrollada con **React** y **Vite**.
+Frontend React/Vite para administración y recepción de SpartanGym.
 
-##  Requisitos Previos
+## Desarrollo
 
-Para ejecutar este proyecto, asegúrate de tener instalado:
+```powershell
+npm install
+Copy-Item .env.example .env
+npm run dev
+```
 
-* **Node.js**: (Recomendado versión LTS). Puedes descargarlo en [nodejs.org](https://nodejs.org/).
-* **npm**: Se instala automáticamente con Node.js.
+Configura `VITE_API_BASE_URL` en `.env`. Para la API local:
 
-##  Instalación y Configuración
+```dotenv
+VITE_API_BASE_URL=http://localhost:8080/api
+```
 
-Sigue estos pasos en tu terminal dentro de la carpeta `SpartanGymWeb`:
+No pongas secretos en variables `VITE_*`: quedan visibles en el bundle del
+navegador.
 
-1. **Instalar dependencias**:
-   Ejecuta el siguiente comando para descargar todas las librerías necesarias:
-   ```bash
-   npm install
+## Validación y producción
+
+```powershell
+npm run lint
+npm run build
+npm run preview
+```
+
+El proyecto usa rutas protegidas por rol para las áreas de administración y
+recepción. La sesión y el token JWT se gestionan desde `src/services/api.js`.

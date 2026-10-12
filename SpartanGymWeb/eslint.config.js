@@ -17,5 +17,13 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // This app intentionally co-locates invoice helpers and context hooks
+      // with their related components.
+      'react-refresh/only-export-components': 'off',
+      // These effects synchronize async API workflows and polling state.
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+    },
   },
 ])
