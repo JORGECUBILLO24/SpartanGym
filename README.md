@@ -1,30 +1,164 @@
-<img src="https://github.com/JORGECUBILLO24/SpartanGym/blob/main/Asset/WhatsApp_Image_2026-05-20_at_6.19.35_PM-removebg-preview%20(1).png?raw=true" align="left" width="130" height="130" style="margin-right: 20px; border-radius: 10px;">
+# SpartanGym
 
-<h1 style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif; text-transform: uppercase; letter-spacing: 2px;">SPARTAN GYM</h1>
-<h3 style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif; text-transform: uppercase;">¡EL SISTEMA QUE NECESITAS PARA SUPERAR TUS LIMITES!</h3>
+Sistema de gestión para gimnasios compuesto por una API REST, una aplicación web
+para administración y recepción, y una aplicación Android para socios y
+entrenadores.
 
-<br clear="left"/>
+## Componentes
 
-<hr style="border: 1px solid #8B0000;">
+| Componente | Ubicación | Tecnología |
+| --- | --- | --- |
+| API | `SpartanGymAPI` | Spring Boot 4, Java 17, PostgreSQL, JWT |
+| Web | `SpartanGymWeb` | React 19, Vite, Tailwind CSS |
+| Android | `SpartanGymApp` | Kotlin, Jetpack Compose, Retrofit |
 
-<h2 style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif; text-transform: uppercase;">¿QUÉ ES SPARTAN GYM?</h2>
+La API expone autenticación, socios, personal, membresías, pagos, asistencias,
+rutinas, inventario, ventas, finanzas, reportes, sucursales y notificaciones.
 
-<p style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif;">
-<strong style="color: #FF0000;">SPARTAN GYM</strong> es la aplicación definitiva diseñada para los verdaderos espartanos del hierro. Olvídate de los cuadernos viejos y las notas aburridas; este sistema está pensado para llevar el control de tus rutinas de <strong style="color: #FF0000;">hipertrofia y fuerza</strong> al siguiente nivel. Es una herramienta robusta, eficiente y con una estética completamente brutal.
-</p>
+## Requisitos
 
-<p style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif;">
-Si entrenás pesado, buscás optimizar tu volumen de entrenamiento por grupo muscular (Pecho, Espalda, Tríceps, Pierna) y querés ver un progreso real, ¡este proyecto está hecho a tu medida!
-</p>
+- Git
+- Java 17 o superior
+- Node.js LTS y npm
+- Android Studio con Android SDK para trabajar en la aplicación móvil
+- PostgreSQL para ejecutar la API localmente
 
-<hr style="border: 1px solid #8B0000;">
+## Inicio rápido
 
-<h2 style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif; text-transform: uppercase;">INSTALACIÓN Y CONFIGURACIÓN QUICK START</h2>
+### 1. Clonar y preparar la base de datos
 
-<p style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif;">¿Querés probar el proyecto en tu entorno local? Sigue estos sencillos pasos:</p>
-
-<p style="color: #8B0000; font-family: 'Cinzel', 'Georgia', 'Impact', serif;"><strong style="color: #FF0000;">1. Clonar el repositorio más salvaje de GitHub:</strong></p>
-
-```bash
+```powershell
 git clone https://github.com/JORGECUBILLO24/SpartanGym.git
+cd SpartanGym
 ```
+
+Crea una base de datos PostgreSQL llamada `spartangym_db` y ejecuta
+`spartan_gym_schema.sql`. El esquema se administra mediante ese archivo porque
+Hibernate está configurado con `ddl-auto=none`.
+
+### 2. Configurar y ejecutar la API
+
+Variables mínimas para desarrollo local:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "local"
+$env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5432/spartangym_db"
+$env:SPRING_DATASOURCE_USERNAME = "postgres"
+$env:SPRING_DATASOURCE_PASSWORD = "tu-clave-local"
+$env:JWT_SECRET = "una-clave-local-larga-y-segura"
+```
+
+Desde `SpartanGymAPI`:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+La API queda disponible en `http://localhost:8080`.
+
+Para no repetir variables en cada terminal también puedes crear
+`SpartanGymAPI/src/main/resources/application-local.properties`. Ese archivo
+está excluido de Git y no debe contener credenciales que se quieran compartir.
+
+### 3. Configurar y ejecutar el web
+
+Desde `SpartanGymWeb`:
+
+```powershell
+npm install
+Copy-Item .env.example .env
+npm run dev
+```
+
+Para desarrollo local, usa esta URL en `.env`:
+
+```dotenv
+VITE_API_BASE_URL=http://localhost:8080/api
+```
+
+El web queda disponible normalmente en `http://localhost:5173`.
+
+Comandos de validación:
+
+```powershell
+npm run lint
+npm run build
+```
+
+### 4. Configurar y ejecutar Android
+
+Abre `SpartanGymApp` desde Android Studio y espera la sincronización de Gradle.
+Si Gradle no encuentra el SDK, crea `SpartanGymApp/local.properties` con una ruta
+local, por ejemplo:
+
+```properties
+sdk.dir=C:\\Users\\TU_USUARIO\\AppData\\Local\\Android\\Sdk
+```
+
+La URL de la API se configura mediante propiedades de Gradle:
+
+```powershell
+.\gradlew.bat test
+.\gradlew.bat assembleDebug -PSPARTANGYM_API_BASE_URL_DEBUG=http://10.0.2.2:8080/
+```
+
+`10.0.2.2` apunta al equipo anfitrión cuando se usa el emulador Android. En un
+dispositivo físico debe usarse la IP accesible del equipo que ejecuta la API.
+
+## Despliegue
+
+- `render.yaml` contiene la definición del servicio de API para Render.
+- `SpartanGymWeb/.env.example` documenta la URL pública de la API para Vercel u
+  otro hosting estático.
+- Las variables de producción deben configurarse en el proveedor de despliegue;
+  nunca deben incluirse en Git.
+
+Variables importantes de producción:
+
+| Variable | Uso |
+| --- | --- |
+| `SPRING_DATASOURCE_URL` | URL JDBC de PostgreSQL |
+| `SPRING_DATASOURCE_USERNAME` | Usuario de PostgreSQL |
+| `SPRING_DATASOURCE_PASSWORD` | Contraseña de PostgreSQL |
+| `JWT_SECRET` | Clave de firma de tokens |
+| `APP_CORS_ORIGINS` | Orígenes web permitidos, separados por coma |
+| `APP_WEB_RESET_PASSWORD_URL` | URL web para restablecer contraseñas |
+| `MAIL_USERNAME` y `MAIL_PASSWORD` | Correo SMTP opcional |
+
+## Pruebas
+
+API:
+
+```powershell
+cd SpartanGymAPI
+.\mvnw.cmd test
+```
+
+Web:
+
+```powershell
+cd SpartanGymWeb
+npm install
+npm run lint
+npm run build
+```
+
+Android:
+
+```powershell
+cd SpartanGymApp
+.\gradlew.bat test
+```
+
+El workflow de GitHub Actions en `.github/workflows/ci.yml` ejecuta estas
+validaciones automáticamente para los cambios enviados al repositorio.
+
+## Seguridad y configuración
+
+- No subas `.env`, `application-local.properties`, `local.properties`, claves,
+  keystores ni archivos generados por Android Studio.
+- En producción usa un `JWT_SECRET` fuerte y exclusivo.
+- `VITE_*` se incorpora al bundle público del navegador; nunca pongas secretos
+  en esas variables.
+- La API devuelve errores estructurados y responde `401` o `403` según
+  corresponda.

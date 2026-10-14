@@ -108,7 +108,7 @@ const CheckIn = () => {
   const [estadoQr, setEstadoQr] = useState('cargando');
   const [qrSesion, setQrSesion] = useState(null);
   const [qrImagen, setQrImagen] = useState('');
-  const [ahora, setAhora] = useState(Date.now());
+  const [ahora, setAhora] = useState(() => Date.now());
 
   const cargarDatos = useCallback(async () => {
     try {
@@ -608,18 +608,6 @@ const CampoManual = ({ etiqueta, nombre, valor, placeholder, onChange }) => (
       className="campo-sistema w-full rounded-xl border border-white/10 bg-[#050505] px-4 py-3 text-sm font-bold text-white outline-none transition-all focus:border-red-600"
     />
   </label>
-);
-
-const DatoSocio = ({ icono: Icono, etiqueta, valor }) => (
-  <div className="flex items-center gap-4 rounded-xl border border-white/5 bg-[#0a0a0a] p-4">
-    <span className="rounded-lg bg-[#2a0808] p-2.5 text-red-500">
-      <Icono size={20} />
-    </span>
-    <div className="min-w-0">
-      <p className="text-[11px] font-black uppercase text-gray-500">{etiqueta}</p>
-      <p className="break-words text-base font-black text-white sm:text-lg">{valor}</p>
-    </div>
-  </div>
 );
 
 export default CheckIn;

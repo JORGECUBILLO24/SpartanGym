@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   AlertCircle,
@@ -25,7 +25,6 @@ import {
   leerCuentaActual,
   obtenerInicialesCuenta,
 } from '../../../utils/cuentaActual';
-import { gimnasiosDisponibles } from '../../../utils/gimnasiosCompartidos';
 import { prepararImagen } from '../../../utils/imagen';
 import Avatar from '../../../components/Avatar';
 import {
@@ -36,7 +35,7 @@ import {
   personalCreadoPorCuentaActual,
 } from '../../../utils/personalCompartido';
 import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
-import { finanzasApi, operacionApi, personalApi, sociosApi, sucursalesApi, asistenciasApi } from '../../../services/api';
+import { operacionApi, sociosApi, sucursalesApi, asistenciasApi } from '../../../services/api';
 import { useSucursalGlobal } from '../../../context/SucursalContext';
 import QRCode from 'qrcode';
 
@@ -566,7 +565,7 @@ const ModalValidacionQr = ({ onClose }) => {
     }
   };
 
-  const consultarEstadoQr = async () => {
+  const consultarEstadoQr = useCallback(async () => {
     if (!qrSesion?.token || estadoQr !== 'pendiente' || cargandoQr) return;
     try {
       const respuesta = await asistenciasApi.estadoQrValidacionPorToken(qrSesion.token);
@@ -577,10 +576,10 @@ const ModalValidacionQr = ({ onClose }) => {
         setEstadoQr('Rechazado');
         setMensajeQr(respuesta.mensaje || 'QR invalido o expirado.');
       }
-    } catch (error) {
+    } catch {
       // Ignorar 401 si expiro el QR
     }
-  };
+  }, [cargandoQr, estadoQr, qrSesion?.token]);
 
   useEffect(() => {
     generarQr();
@@ -589,7 +588,7 @@ const ModalValidacionQr = ({ onClose }) => {
   useEffect(() => {
     const intervalo = window.setInterval(consultarEstadoQr, 2500);
     return () => window.clearInterval(intervalo);
-  }, [qrSesion, estadoQr, cargandoQr]);
+  }, [consultarEstadoQr]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
