@@ -25,6 +25,7 @@ public class RutinaResponseMapper {
         data.put("entrenador", rutina.getEntrenador().getNombres() + " " + rutina.getEntrenador().getApellidos());
         data.put("fechaAsignacion", rutina.getFechaAsignacion());
         data.put("nombre", rutina.getNombre());
+        data.put("imagenUrl", rutina.getImagenUrl());
         data.put("tipoRutina", rutina.getTipoRutina());
         data.put("generoObjetivo", rutina.getGeneroObjetivo());
         data.put("esGlobal", Boolean.TRUE.equals(rutina.getEsGlobal()));

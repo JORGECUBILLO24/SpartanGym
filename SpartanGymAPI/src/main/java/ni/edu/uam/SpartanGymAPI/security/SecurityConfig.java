@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/sucursales/disponibles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/configuracion").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/asistencia/estado/**", "/api/asistencias/estado/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/asistencia/qr-validacion/estado", "/api/asistencias/qr-validacion/estado").permitAll()

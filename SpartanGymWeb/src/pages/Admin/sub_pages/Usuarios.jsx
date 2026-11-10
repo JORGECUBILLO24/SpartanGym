@@ -218,10 +218,10 @@ const Usuarios = () => {
   return (
     <div className="flex w-full flex-col gap-6">
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+      <div className="workspace-grid workspace-grid--split-wide">
         
         {/* COLUMNA IZQUIERDA: FORMULARIO */}
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6 lg:col-span-2 lg:p-8">
+        <div className="relative min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-4 shadow-2xl sm:p-6">
           
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-50"></div>
 
@@ -354,7 +354,7 @@ const Usuarios = () => {
         </div>
 
         {/* COLUMNA DERECHA: VISTA PREVIA */}
-        <div className="group relative flex min-h-[360px] flex-col items-center justify-start overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6 lg:min-h-[500px] lg:justify-center">
+        <div className="group relative flex min-w-0 flex-col items-center justify-start overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6 lg:justify-center">
           
           <h3 className="mb-6 w-full text-center text-xs font-bold uppercase tracking-widest text-gray-500">
             Credencial de Sistema
@@ -420,7 +420,7 @@ const Usuarios = () => {
               <div className="flex gap-1 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-gray-700"></span>
                 <span className="w-1.5 h-1.5 rounded-full bg-gray-700"></span>
-                <span className={`w-1.5 h-1.5 rounded-full ${formData.rol ? 'bg-green-500 animate-pulse' : 'bg-gray-700'}`}></span>
+                    <span className={`h-1.5 w-1.5 rounded-full ${formData.rol ? 'bg-green-500' : 'bg-gray-700'}`}></span>
               </div>
             </div>
 
@@ -486,7 +486,8 @@ const Usuarios = () => {
                         {persona.estado}
                       </span>
                     </td>
-                    <td className="flex flex-col gap-2 py-3 sm:flex-row">
+                    <td className="py-3">
+                      <div className="flex flex-col gap-2 sm:flex-row">
                       <select
                         value={persona.rol}
                         disabled={!persona.activo}
@@ -533,6 +534,7 @@ const Usuarios = () => {
                         <KeyRound size={13} />
                         Cambiar
                       </button>
+                      </div>
                     </td>
                   </tr>
                 );

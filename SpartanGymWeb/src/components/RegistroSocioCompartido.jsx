@@ -170,8 +170,8 @@ const RegistroSocioCompartido = ({
   };
 
   return (
-    <div className="pagina-stack flex flex-col gap-6">
-      <section className="tarjeta-sistema relative overflow-hidden rounded-2xl border border-white/10 bg-[#111111] p-5 shadow-2xl sm:p-6 lg:p-8">
+    <div className="workspace-page workspace-registration-layout">
+      <section className="tarjeta-sistema relative overflow-hidden rounded-2xl border border-white/10 bg-[#111111] p-4 shadow-2xl sm:p-5 lg:p-6">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-60" />
         <div className="mb-8">
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-400">{subtitulo}</p>
@@ -179,7 +179,7 @@ const RegistroSocioCompartido = ({
           <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-400">{descripcion}</p>
         </div>
 
-        <form onSubmit={guardarRegistro} className="relative z-10 space-y-6">
+        <form onSubmit={guardarRegistro} className="relative z-10 space-y-5">
           {errorRegistro && (
             <Mensaje tipo="error" texto={errorRegistro} />
           )}
@@ -259,7 +259,7 @@ const RegistroSocioCompartido = ({
         </form>
       </section>
 
-      <section className="tarjeta-sistema rounded-2xl border border-white/10 bg-[#111111] p-5 shadow-2xl sm:p-6">
+      <section className="tarjeta-sistema min-w-0 rounded-2xl border border-white/10 bg-[#111111] p-4 shadow-2xl sm:p-5">
         <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">Base de datos</p>

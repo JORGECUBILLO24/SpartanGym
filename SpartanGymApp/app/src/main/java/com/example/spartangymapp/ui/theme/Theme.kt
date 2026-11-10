@@ -23,6 +23,10 @@ private fun darkSpartanColorScheme(accentColor: Color) = darkColorScheme(
     tertiary = accentColor,
     background = Color.Black,
     surface = Color(0xFF101010),
+    surfaceVariant = Color(0xFF202020),
+    onSurfaceVariant = Color(0xFFB8B8B8),
+    outline = Color(0xFF767676),
+    outlineVariant = Color(0xFF343434),
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
@@ -45,7 +49,7 @@ private fun lightSpartanColorScheme(accentColor: Color) = lightColorScheme(
 
 @Composable
 fun SpartanGymAppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = false,
     accentColor: Color = SpartanDefaultRed,

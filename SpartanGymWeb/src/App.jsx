@@ -1,7 +1,8 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import { authStorage } from './services/api';
+import { obtenerNombreGimnasio, sincronizarConfiguracionRemota, useConfiguracionApp } from './utils/configuracionApp';
 
 const Login = lazy(() => import('./pages/Login.jsx'));
 const Registro = lazy(() => import('./pages/Registro.jsx'));
@@ -34,11 +35,17 @@ const Asistencias = lazy(() => import('./pages/Recepcionista/sub_pages/Asistenci
 const Notificaciones = lazy(() => import('./pages/Recepcionista/sub_pages/Notificaciones.jsx'));
 const Perfil = lazy(() => import('./pages/Recepcionista/sub_pages/Perfil.jsx'));
 
-const PantallaCarga = () => (
-  <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 text-center text-sm font-bold uppercase tracking-[0.2em] text-red-500">
-    Cargando Spartan Gym
-  </div>
-);
+const PantallaCarga = () => {
+  const configuracion = useConfiguracionApp();
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
+
+  return (
+    <div role="status" aria-live="polite" className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#050505] px-4 text-center text-gray-300">
+      <span aria-hidden="true" className="loading-indicator" />
+      <p className="text-sm font-medium">Cargando {nombreGimnasio}…</p>
+    </div>
+  );
+};
 
 const roleMatches = (actualRole, allowedRoles) => {
   if (!allowedRoles?.length) return true;
@@ -62,9 +69,29 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children;
 };
 
+function RestablecerScroll() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname]);
+  return null;
+}
+
 function App() {
+  const configuracion = useConfiguracionApp();
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
+
+  useEffect(() => {
+    void sincronizarConfiguracionRemota();
+  }, []);
+
+  useEffect(() => {
+    document.title = nombreGimnasio;
+  }, [nombreGimnasio]);
+
   return (
     <Router>
+      <RestablecerScroll />
       <div className="app-theme min-h-screen bg-[#050505] font-sans text-white transition-colors duration-300">
         <Suspense fallback={<PantallaCarga />}>
           <Routes>

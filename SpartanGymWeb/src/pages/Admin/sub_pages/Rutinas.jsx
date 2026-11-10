@@ -13,6 +13,7 @@ import {
   UserRound,
   Users,
 } from 'lucide-react';
+import { prepararImagen } from '../../../utils/imagen';
 import { catalogoApi, personalApi, rutinasApi, sociosApi } from '../../../services/api';
 
 const tiposRutina = ['Hipertrofia', 'Fuerza', 'Definicion', 'Resistencia', 'Salud'];
@@ -109,6 +110,7 @@ const crearFormularioInicial = () => ({
   idSocio: '',
   idEntrenador: '',
   nombre: 'Rutina hombre - Hipertrofia',
+  imagenUrl: '',
   generoObjetivo: 'Hombres',
   tipoRutina: 'Hipertrofia',
   fechaInicio: obtenerFechaIso(),
@@ -206,6 +208,25 @@ const Rutinas = () => {
     return { globales, personales };
   }, [rutinas]);
 
+  const subirPortada = async (archivo, rutinaId) => {
+    if (!archivo) return;
+    try {
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type)) throw new Error('Elige una foto JPG, PNG o WebP.');
+      let imagenUrl = await prepararImagen(archivo, { maxLado: 1200, calidad: 0.8 });
+      if (imagenUrl.length > 690000) imagenUrl = await prepararImagen(archivo, { maxLado: 900, calidad: 0.65 });
+      if (imagenUrl.length > 690000) throw new Error('La foto es demasiado grande. Elige otra imagen.');
+      if (rutinaId) {
+        await rutinasApi.actualizarImagen(rutinaId, imagenUrl);
+        setRutinas(actual => actual.map(r => r.id === rutinaId ? { ...r, imagenUrl } : r));
+        setMensaje({ tipo: 'exito', texto: 'Portada actualizada. Se mostrará al sincronizar la app.' });
+      } else {
+        setFormulario(actual => ({ ...actual, imagenUrl }));
+      }
+    } catch (error) {
+      setMensaje({ tipo: 'error', texto: error.message || 'No se pudo guardar la portada.' });
+    }
+  };
+
   const actualizarCampo = (campo, valor) => {
     setFormulario((actual) => ({ ...actual, [campo]: valor }));
     setMensaje(null);
@@ -285,6 +306,7 @@ const Rutinas = () => {
     idEntrenador: formulario.idEntrenador,
     esGlobal: formulario.alcance === 'global',
     nombre: formulario.nombre.trim(),
+    imagenUrl: formulario.imagenUrl || null,
     tipoRutina: formulario.tipoRutina,
     generoObjetivo: formulario.generoObjetivo,
     fechaInicio: formulario.fechaInicio || null,
@@ -368,10 +390,10 @@ const Rutinas = () => {
     });
 
   return (
-    <div className="pagina-stack flex flex-col gap-6 text-white">
+    <div className="workspace-page text-white">
       {mensaje && <Mensaje tipo={mensaje.tipo} texto={mensaje.texto} />}
 
-      <section className="tarjeta-sistema rounded-2xl border border-white/10 bg-[#101010] p-5 shadow-2xl sm:p-6 lg:p-8">
+      <section className="tarjeta-sistema rounded-2xl border border-white/10 bg-[#101010] p-4 shadow-2xl sm:p-5 lg:p-6">
         <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-400">Panel administrativo</p>
@@ -391,8 +413,8 @@ const Rutinas = () => {
           </div>
         </div>
 
-        <form onSubmit={guardarRutina} className="space-y-7">
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[290px_minmax(0,1fr)]">
+        <form onSubmit={guardarRutina} className="space-y-5">
+          <div className="workspace-grid workspace-grid--sidebar-main">
             <div className="space-y-4 rounded-2xl border border-white/10 bg-[#080808] p-4">
               <div>
                 <p className="mb-2 text-xs font-black uppercase tracking-widest text-gray-500">Alcance</p>
@@ -434,7 +456,7 @@ const Rutinas = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
+            <div className="workspace-grid--cards">
               {formulario.alcance === 'personal' && (
                 <CampoSelect
                   label="Socio"
@@ -462,6 +484,19 @@ const Rutinas = () => {
                   <option key={persona.id} value={persona.id}>{persona.nombres} {persona.apellidos} - {persona.rol}</option>
                 ))}
               </CampoSelect>
+
+              <div className="md:col-span-2 2xl:col-span-3 flex items-center gap-4 rounded-2xl bg-white/5 p-3">
+                {formulario.imagenUrl ? <img src={formulario.imagenUrl} alt="Portada de la rutina" className="h-24 w-36 rounded-xl object-cover" /> : <div className="flex h-24 w-36 shrink-0 items-center justify-center rounded-xl bg-white/5"><Dumbbell size={28} className="text-gray-500" /></div>}
+                <div>
+                  <p className="text-sm font-semibold text-white">Portada del entrenamiento</p>
+                  <p className="mt-1 text-xs text-gray-400">La misma foto se verá en la app del socio.</p>
+                  <label className="relative mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-semibold text-white focus-within:ring-2 focus-within:ring-red-500">
+                    <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Subir portada de rutina" className="absolute inset-0 cursor-pointer opacity-0" onChange={e => { subirPortada(e.target.files?.[0]); e.target.value = ''; }} />
+                    {formulario.imagenUrl ? 'Cambiar foto' : 'Subir foto'}
+                  </label>
+                  {formulario.imagenUrl && <button type="button" className="ml-3 text-xs text-gray-400" onClick={() => actualizarCampo('imagenUrl', '')}>Quitar</button>}
+                </div>
+              </div>
 
               <CampoTexto
                 label="Nombre de rutina"
@@ -554,7 +589,7 @@ const Rutinas = () => {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="workspace-routine-field-grid">
                       <CampoSelect
                         label="Grupo muscular"
                         value={detalle.grupoMuscularId}
@@ -591,9 +626,9 @@ const Rutinas = () => {
                       </CampoSelect>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap gap-3">
+                    <div className="workspace-routine-stats mt-3">
                       {[...camposDeTipo(detalle.tipoEjercicio).requeridos, ...camposDeTipo(detalle.tipoEjercicio).opcionales].map((campo) => (
-                        <div key={campo} className="w-28">
+                        <div key={campo} className="min-w-0">
                           <CampoNumero
                             label={ETIQUETAS_CAMPO[campo]}
                             value={detalle[campo]}
@@ -604,7 +639,7 @@ const Rutinas = () => {
                       ))}
                     </div>
 
-                    <div className="mt-3">
+                    <div className="workspace-routine-notes mt-3">
                       <CampoTexto
                         label="Nota del ejercicio"
                         value={detalle.notas}
@@ -665,6 +700,10 @@ const Rutinas = () => {
               {rutinas.map((rutina) => (
                 <tr key={rutina.id} className="hover:bg-white/[0.03]">
                   <td className="py-4 pr-4">
+                    <label className="relative mb-2 flex h-16 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-xl bg-white/5 focus-within:ring-2 focus-within:ring-red-500">
+                      {rutina.imagenUrl ? <img src={rutina.imagenUrl} alt={`Portada de ${rutina.nombre || 'rutina'}`} className="h-full w-full object-cover" /> : <span className="text-xs text-gray-400">Añadir foto</span>}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" aria-label={`Cambiar portada de ${rutina.nombre || 'rutina'}`} className="absolute inset-0 cursor-pointer opacity-0" onChange={e => { subirPortada(e.target.files?.[0], rutina.id); e.target.value = ''; }} />
+                    </label>
                     <p className="max-w-[260px] truncate font-black text-white">{rutina.nombre || rutina.objetivo}</p>
                     <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-red-300">{rutina.generoObjetivo || 'Todos'} / {rutina.tipoRutina || 'General'}</p>
                   </td>

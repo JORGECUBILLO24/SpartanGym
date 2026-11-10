@@ -1,6 +1,7 @@
 package ni.edu.uam.SpartanGymAPI.security;
 
 import ni.edu.uam.SpartanGymAPI.models.Usuario;
+import ni.edu.uam.SpartanGymAPI.repositories.SucursalRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.UsuarioRepository;
 import ni.edu.uam.SpartanGymAPI.services.DashboardService;
 import ni.edu.uam.SpartanGymAPI.services.ReporteService;
@@ -20,6 +21,7 @@ import java.util.UUID;
 
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -38,6 +40,7 @@ class AutorizacionEndpointsTest {
 
     @MockitoBean private ReporteService reporteService;
     @MockitoBean private DashboardService dashboardService;
+    @MockitoBean private SucursalRepository sucursalRepository;
     @MockitoBean private UsuarioRepository usuarioRepository;
 
     private MockMvc mockMvc;
@@ -48,6 +51,8 @@ class AutorizacionEndpointsTest {
                 .apply(springSecurity())
                 .build();
 
+        org.mockito.Mockito.when(sucursalRepository.findByEstadoIgnoreCase("Operativa")).thenReturn(List.of());
+
         Usuario socio = new Usuario();
         socio.setId(ID_SOCIO);
         socio.setEmail("socio@ejemplo.com");
@@ -55,6 +60,31 @@ class AutorizacionEndpointsTest {
                 .thenReturn(Optional.of(socio));
         // Los servicios quedan mockeados devolviendo null: acá solo importa el status,
         // no el cuerpo. Si la autorización deja pasar, el status es 200 igual.
+    }
+
+    @Test
+    void visitante_puedeConsultarSucursalesOperativasParaRegistrarse() throws Exception {
+        mockMvc.perform(get("/api/sucursales/disponibles"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void visitante_noPuedeConsultarElListadoAdministrativoDeSucursales() throws Exception {
+        mockMvc.perform(get("/api/sucursales"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void visitante_noPuedeCrearSucursal() throws Exception {
+        mockMvc.perform(post("/api/sucursales"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void usuarioAutenticado_puedeConsultarElListadoAdministrativoDeSucursales() throws Exception {
+        org.mockito.Mockito.when(sucursalRepository.findAll()).thenReturn(List.of());
+        mockMvc.perform(get("/api/sucursales").with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMIN")))
+                .andExpect(status().isOk());
     }
 
     @Test

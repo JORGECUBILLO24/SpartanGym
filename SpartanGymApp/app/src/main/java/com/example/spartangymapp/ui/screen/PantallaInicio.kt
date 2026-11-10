@@ -1,8 +1,14 @@
 package com.example.spartangymapp.ui.screen
 
 import android.widget.Toast
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Visibility
@@ -19,13 +26,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -33,12 +37,17 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.spartangymapp.R
+import com.example.spartangymapp.ui.components.applePressScale
+import com.example.spartangymapp.util.CredencialesBiometricasStore
 import com.example.spartangymapp.network.AppConfigResponse
 import com.example.spartangymapp.viewmodel.LoginViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import javax.crypto.Cipher
+
+private enum class AccionHuella { NINGUNA, INICIAR_SESION, GUARDAR_CREDENCIALES }
 
 @Composable
 fun PantallaInicio(
@@ -47,35 +56,127 @@ fun PantallaInicio(
     loginViewModel: LoginViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val scrollLogin = rememberScrollState()
+    val reducirMovimiento = movimientoReducido()
 
     var correo by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var mostrarRecuperacion by remember { mutableStateOf(false) }
     var correoRecuperacion by remember { mutableStateOf("") }
+    var mostrarDialogoHuella by remember { mutableStateOf(false) }
+    var accionHuella by remember { mutableStateOf(AccionHuella.NINGUNA) }
+    var loginPorHuella by remember { mutableStateOf(false) }
+    var huellaConfigurada by remember { mutableStateOf(CredencialesBiometricasStore.disponibles(context)) }
 
     val spartanRed = MaterialTheme.colorScheme.primary
-    val cardBorder = Color(0xFF6A0F15)
-    val darkCardBg = Color(0xEE080808)
-    val fieldBackground = Color(0xFF141414)
-    val fieldBorder = Color(0xFF292929)
+    val darkCardBg = Color(0xED1B1B22)
+    val fieldBackground = Color(0xFF222226)
+    val fieldBorder = Color(0xFF3A3A3F)
     val textLabel = Color(0xFFE0E0E0)
-    val textPlaceholder = Color(0xFF757575)
+    val textPlaceholder = Color(0xFFA6A6A6)
+    val actividad = context as? FragmentActivity
+    val huellaDisponible = remember(context) {
+        context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_FINGERPRINT) &&
+                BiometricManager.from(context).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) ==
+                BiometricManager.BIOMETRIC_SUCCESS
+    }
+    val loginInteractionSource = remember { MutableInteractionSource() }
+    val huellaInteractionSource = remember { MutableInteractionSource() }
+
+    fun completarAcceso() {
+        mostrarDialogoHuella = false
+        Toast.makeText(context, "Bienvenido", Toast.LENGTH_SHORT).show()
+        onLoginSuccess(
+            loginViewModel.userEmail.ifBlank { correo },
+            loginViewModel.userRole,
+            loginViewModel.userId
+        )
+        loginPorHuella = false
+        loginViewModel.limpiarEstado()
+    }
+
+    fun mostrarPromptHuella(cipher: Cipher, titulo: String, subtitulo: String, onAutenticado: (Cipher) -> Unit) {
+        val host = actividad
+        if (host == null) {
+            accionHuella = AccionHuella.NINGUNA
+            Toast.makeText(context, "La huella no está disponible en esta pantalla.", Toast.LENGTH_SHORT).show()
+            if (loginViewModel.loginSuccess) completarAcceso()
+            return
+        }
+
+        val prompt = BiometricPrompt(
+            host,
+            ContextCompat.getMainExecutor(context),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    val cipherAutenticado = result.cryptoObject?.cipher
+                    if (cipherAutenticado == null) {
+                        accionHuella = AccionHuella.NINGUNA
+                        Toast.makeText(context, "No se pudo abrir el acceso seguro.", Toast.LENGTH_SHORT).show()
+                        if (loginViewModel.loginSuccess) completarAcceso()
+                    } else {
+                        onAutenticado(cipherAutenticado)
+                    }
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    val accionCancelada = accionHuella
+                    accionHuella = AccionHuella.NINGUNA
+                    if (accionCancelada == AccionHuella.GUARDAR_CREDENCIALES) {
+                        Toast.makeText(context, "Puedes activar la huella más tarde.", Toast.LENGTH_SHORT).show()
+                        completarAcceso()
+                    } else if (accionCancelada == AccionHuella.INICIAR_SESION &&
+                        errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON &&
+                        errorCode != BiometricPrompt.ERROR_USER_CANCELED
+                    ) {
+                        Toast.makeText(context, errString, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        )
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(titulo)
+            .setSubtitle(subtitulo)
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            .setNegativeButtonText("Cancelar")
+            .setConfirmationRequired(false)
+            .build()
+        runCatching {
+            prompt.authenticate(promptInfo, BiometricPrompt.CryptoObject(cipher))
+        }.onFailure { error ->
+            accionHuella = AccionHuella.NINGUNA
+            Toast.makeText(context, error.message ?: "No se pudo iniciar la huella.", Toast.LENGTH_SHORT).show()
+            if (loginViewModel.loginSuccess) completarAcceso()
+        }
+    }
 
     LaunchedEffect(loginViewModel.loginSuccess) {
         if (loginViewModel.loginSuccess) {
-            Toast.makeText(context, "Bienvenido", Toast.LENGTH_SHORT).show()
-            onLoginSuccess(
-                loginViewModel.userEmail.ifBlank { correo },
-                loginViewModel.userRole,
-                loginViewModel.userId
-            )
-            loginViewModel.limpiarEstado()
+            val correoAutenticado = loginViewModel.userEmail.ifBlank { correo }
+            if (loginPorHuella || (huellaConfigurada && CredencialesBiometricasStore.correspondenA(context, correoAutenticado))) {
+                completarAcceso()
+            } else {
+                if (huellaConfigurada) {
+                    CredencialesBiometricasStore.borrar(context)
+                    huellaConfigurada = false
+                }
+                if (huellaDisponible && actividad != null) {
+                    mostrarDialogoHuella = true
+                } else {
+                    completarAcceso()
+                }
+            }
         }
     }
 
     LaunchedEffect(loginViewModel.errorMessage) {
         loginViewModel.errorMessage?.let {
+            if (loginPorHuella && it.contains("Credenciales incorrectas", ignoreCase = true)) {
+                CredencialesBiometricasStore.borrar(context)
+                huellaConfigurada = false
+                loginPorHuella = false
+            }
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
         }
     }
@@ -86,70 +187,138 @@ fun PantallaInicio(
         }
     }
 
+    if (mostrarDialogoHuella) {
+        AlertDialog(
+            onDismissRequest = {
+                mostrarDialogoHuella = false
+                completarAcceso()
+            },
+            icon = {
+                Icon(Icons.Outlined.Fingerprint, contentDescription = null, tint = spartanRed, modifier = Modifier.size(28.dp))
+            },
+            title = { Text("Acceso con huella", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "¿Quieres proteger este acceso en este dispositivo? La contraseña se guarda cifrada y solo se abre después de confirmar tu huella.",
+                    color = textPlaceholder
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val cipher = runCatching { CredencialesBiometricasStore.prepararCifrado() }.getOrElse {
+                            Toast.makeText(context, "No se pudo preparar el acceso seguro.", Toast.LENGTH_SHORT).show()
+                            completarAcceso()
+                            return@Button
+                        }
+                        accionHuella = AccionHuella.GUARDAR_CREDENCIALES
+                        mostrarPromptHuella(
+                            cipher,
+                            "Activar acceso con huella",
+                            "Confirma para cifrar tus credenciales en este dispositivo"
+                        ) { cipherAutenticado ->
+                            runCatching {
+                                CredencialesBiometricasStore.guardar(context, cipherAutenticado, correo, contrasena)
+                                huellaConfigurada = true
+                            }.onFailure {
+                                Toast.makeText(context, "No se pudo guardar el acceso biométrico.", Toast.LENGTH_SHORT).show()
+                            }
+                            accionHuella = AccionHuella.NINGUNA
+                            completarAcceso()
+                        }
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = spartanRed)
+                ) { Text("Activar") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    mostrarDialogoHuella = false
+                    completarAcceso()
+                }) { Text("Ahora no", color = textPlaceholder) }
+            },
+            containerColor = Color(0xFF1B1B1F),
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        ImagenConfiguracion(
+        ImagenMarca(
             source = appConfig.fondoLogin,
             fallbackResource = R.drawable.fondo_login,
-            contentDescription = "Fondo del gimnasio",
+            contentDescription = null,
             contentScale = ContentScale.Crop,
-            alignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                scaleX = 1.12f
+                scaleY = 1.12f
+                translationY = if (reducirMovimiento) 0f else (scrollLogin.value * 0.22f).coerceAtMost(70f)
+            }
         )
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.72f))
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        listOf(Color.Black.copy(alpha = 0.15f), Color.Black.copy(alpha = 0.32f), Color(0xF50A0A0D))
+                    )
+                )
         )
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .safeDrawingPadding()
+                .imePadding(),
+            contentAlignment = Alignment.Center
         ) {
-            Spacer(modifier = Modifier.height(70.dp))
-
-            ImagenConfiguracion(
-                source = appConfig.logoAcceso?.takeIf { it.isNotBlank() } ?: appConfig.logoPrincipal,
-                fallbackResource = R.drawable.logo_spartangym,
-                contentDescription = "Logo Spartan Gym",
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.95f)
-                    .padding(horizontal = 8.dp),
-                contentScale = ContentScale.Fit
+                    .widthIn(max = 440.dp)
+                    .fillMaxWidth()
+                    .verticalScroll(scrollLogin)
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+
+            MarcaAplicacion(
+                appConfig = appConfig,
+                alturaLogo = 148.dp,
+                mostrarNombre = false,
+                modifier = Modifier.fillMaxWidth(0.9f)
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = appConfig.gymName ?: "SPARTAN GYM",
+                text = "Iniciar sesión",
                 color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Black,
-                textAlign = TextAlign.Center,
-                style = TextStyle(
-                    shadow = Shadow(
-                        color = spartanRed,
-                        blurRadius = 12f
-                    )
-                ),
-                modifier = Modifier.fillMaxWidth()
+                fontSize = 25.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
             )
-
-            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = "Bienvenido a ${appConfig.nombreVisibleApp()}",
+                color = textPlaceholder,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp, bottom = 18.dp)
+            )
 
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(24.dp),
                 color = darkCardBg,
-                border = BorderStroke(1.dp, cardBorder)
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f))
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    loginViewModel.errorMessage?.let { message ->
+                        Text(message, color = Color(0xFFFFB4AB), style = MaterialTheme.typography.bodyMedium)
+                    }
                     CampoInicio(
-                        label = "Correo electronico",
+                        label = "Correo electrónico",
                         value = correo,
                         onValueChange = { correo = it },
                         placeholder = "Ingresa tu correo",
@@ -196,7 +365,7 @@ fun PantallaInicio(
                                     } else {
                                         Icons.Outlined.VisibilityOff
                                     },
-                                    contentDescription = null,
+                                    contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña",
                                     tint = textPlaceholder
                                 )
                             }
@@ -219,7 +388,7 @@ fun PantallaInicio(
                         )
                     }
 
-                    if (mostrarRecuperacion) {
+                    AnimatedVisibility(visible = mostrarRecuperacion, enter = fadeIn(tween(150)), exit = fadeOut(tween(100))) {
                         val usaCorreoLogin = correo.trim().isNotBlank()
 
                         Surface(
@@ -323,6 +492,7 @@ fun PantallaInicio(
 
                     Button(
                         onClick = {
+                            loginPorHuella = false
                             loginViewModel.iniciarSesion(
                                 email = correo,
                                 pass = contrasena
@@ -331,8 +501,10 @@ fun PantallaInicio(
                         enabled = !loginViewModel.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(54.dp),
-                        shape = RoundedCornerShape(10.dp),
+                            .height(54.dp)
+                            .applePressScale(loginInteractionSource),
+                        interactionSource = loginInteractionSource,
+                        shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = spartanRed)
                     ) {
                         if (loginViewModel.isLoading) {
@@ -343,55 +515,64 @@ fun PantallaInicio(
                             )
                         } else {
                             Text(
-                                text = "ENTRAR",
+                                text = "Iniciar sesión",
                                 color = Color.White,
                                 fontWeight = FontWeight.Black,
                                 fontSize = 16.sp
                             )
                         }
                     }
+
+                    if (huellaConfigurada && huellaDisponible) {
+                        OutlinedButton(
+                            onClick = {
+                                val cipher = runCatching { CredencialesBiometricasStore.prepararDescifrado(context) }.getOrElse {
+                                    CredencialesBiometricasStore.borrar(context)
+                                    huellaConfigurada = false
+                                    Toast.makeText(context, "Vuelve a iniciar sesión para activar la huella.", Toast.LENGTH_LONG).show()
+                                    return@OutlinedButton
+                                }
+                                accionHuella = AccionHuella.INICIAR_SESION
+                                mostrarPromptHuella(
+                                    cipher,
+                                    "Iniciar con huella",
+                                    "Confirma tu identidad para acceder a ${appConfig.nombreVisibleApp()}"
+                                ) { cipherAutenticado ->
+                                    runCatching {
+                                        val credenciales = CredencialesBiometricasStore.leer(context, cipherAutenticado)
+                                        correo = credenciales.correo
+                                        contrasena = credenciales.contrasena
+                                        loginPorHuella = true
+                                        accionHuella = AccionHuella.NINGUNA
+                                        loginViewModel.iniciarSesion(credenciales.correo, credenciales.contrasena)
+                                    }.onFailure {
+                                        CredencialesBiometricasStore.borrar(context)
+                                        huellaConfigurada = false
+                                        accionHuella = AccionHuella.NINGUNA
+                                        Toast.makeText(context, "Vuelve a iniciar sesión y activa la huella otra vez.", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                                .applePressScale(huellaInteractionSource),
+                            interactionSource = huellaInteractionSource,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                        ) {
+                            Icon(Icons.Outlined.Fingerprint, contentDescription = null, modifier = Modifier.size(19.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Continuar con huella", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(30.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+            }
         }
-    }
-}
-
-@Composable
-private fun ImagenConfiguracion(
-    source: String?,
-    fallbackResource: Int,
-    contentDescription: String?,
-    modifier: Modifier = Modifier,
-    contentScale: ContentScale = ContentScale.Fit,
-    alignment: Alignment = Alignment.Center
-) {
-    var imageBitmap by remember(source) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
-
-    LaunchedEffect(source) {
-        imageBitmap = withContext(Dispatchers.IO) {
-            cargarImagenConfiguracion(source)?.asImageBitmap()
-        }
-    }
-
-    val imagen = imageBitmap
-    if (imagen != null) {
-        Image(
-            bitmap = imagen,
-            contentDescription = contentDescription,
-            contentScale = contentScale,
-            alignment = alignment,
-            modifier = modifier
-        )
-    } else {
-        Image(
-            painter = painterResource(id = fallbackResource),
-            contentDescription = contentDescription,
-            contentScale = contentScale,
-            alignment = alignment,
-            modifier = modifier
-        )
     }
 }
 
@@ -435,7 +616,7 @@ private fun CampoInicio(
             keyboardOptions = keyboardOptions,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(62.dp),
+                .height(56.dp),
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = fieldBackground,

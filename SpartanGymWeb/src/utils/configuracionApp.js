@@ -31,8 +31,13 @@ export const CONFIGURACION_DEFECTO = {
   theme: 'system',
   themeSource: 'system',
   ...COLORES_APARIENCIA_DEFECTO,
+  appName: '',
+  appLogo: '',
+  appLogoNombre: '',
   logoPrincipal: '',
+  logoPrincipalNombre: '',
   logoAcceso: '',
+  logoAccesoNombre: '',
   fondoLogin: '',
   emailAlerts: true,
   smsAlerts: false,
@@ -101,6 +106,11 @@ export const leerConfiguracionApp = () => ({
   ...CONFIGURACION_DEFECTO,
   ...leerDatoLocal(CLAVE_CONFIGURACION, {}),
 });
+
+export const obtenerNombreGimnasio = (configuracion = {}) => {
+  const nombre = String(configuracion.gymName || '').trim();
+  return nombre || CONFIGURACION_DEFECTO.gymName;
+};
 
 export const guardarConfiguracionApp = (configuracion) => {
   const configuracionGuardada = guardarDatoLocal(CLAVE_CONFIGURACION, {

@@ -1,242 +1,453 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowDown, ArrowRight, CheckCircle2, Sparkles, Users } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUpRight,
+  CheckCircle2,
+  Dumbbell,
+  Flame,
+  Menu,
+  ShieldCheck,
+  Sparkles,
+  Users,
+  X,
+  Zap,
+} from 'lucide-react';
+import atleta from '../assets/gym-training-poster.webp';
+import videoTecnica from '../assets/gym-training-loop.mp4';
+import escenaAestheticEspacio from '../assets/gym-aesthetic-workout.webp';
+import escenaAestheticPhysique from '../assets/gym-youngla-physique.webp';
+import escenaAestheticFuerza from '../assets/gym-aesthetic-coach.webp';
+import VideoSpartan from './VideoSpartan';
+import BarraEnsamblada from './BarraEnsamblada';
+import GaleriaSpartan from './GaleriaSpartan';
 import { beneficiosInicio } from '../data/homeBenefits';
 import { useLogosApp } from '../utils/logosApp';
+import { obtenerNombreGimnasio, useConfiguracionApp } from '../utils/configuracionApp';
+import { useMouseParallax, usePrefersReducedMotion } from '../utils/useParallax';
+import './Home.css';
 
-const frases = [
-  'Entrena como guerrero. Vive como campeón.',
-  'Tu disciplina de hoy construye tu fuerza de mañana.',
-  'Cada repetición te acerca a tu mejor versión.',
-  'Spartan Gym: fuerza, constancia y actitud.',
-  'Hoy se entrena. Mañana se nota.',
+const secciones = [
+  ['instalaciones', 'El espacio'],
+  ['beneficios', 'La experiencia'],
+  ['fuerza', 'Ingeniería'],
+  ['membresias', 'Membresía'],
 ];
 
-const Home = () => {
-  const [indiceFrase, setIndiceFrase] = useState(0);
-  const logos = useLogosApp();
-  const claseAnimacionFrase = indiceFrase === 0 ? '' : 'animate-[phraseSwap_700ms_ease]';
+const escenas = [
+  {
+    src: escenaAestheticEspacio,
+    alt: 'Instalaciones de alto rendimiento con mancuernas y atmósfera oscura premium',
+    titulo: 'Espacio para superarte',
+  },
+  {
+    src: escenaAestheticPhysique,
+    alt: 'Atleta con físico estético entrenando con máxima intensidad y disciplina',
+    titulo: 'Cada repetición cuenta',
+  },
+  {
+    src: escenaAestheticFuerza,
+    alt: 'Entrenamiento de fuerza y bombeo muscular con estética Gymshark / YoungLA',
+    titulo: 'Fuerza en movimiento',
+  },
+];
 
-  useEffect(() => {
-    const temporizador = setInterval(() => {
-      setIndiceFrase((indiceActual) => (indiceActual + 1) % frases.length);
-    }, 3500);
-
-    return () => clearInterval(temporizador);
-  }, []);
+function Marca({ src, footer = false, nombreGimnasio, mostrarLogo }) {
+  const [logoFallido, setLogoFallido] = useState('');
+  const mostrarImagen = mostrarLogo && src && logoFallido !== src;
 
   return (
-    <div className="home-page min-h-screen overflow-x-hidden bg-black text-white">
-      <section className="relative isolate flex min-h-screen flex-col overflow-hidden">
-        <div
-          className="home-hero-bg absolute inset-0 -z-20 bg-cover bg-center opacity-25"
-          style={{ backgroundImage: `url(${logos.fondoLogin})` }}
+    <a
+      href="#inicio"
+      className="sp-brand"
+      aria-label={footer ? 'Volver al inicio' : `${nombreGimnasio}, inicio`}
+    >
+      {mostrarImagen ? (
+        <img
+          src={src}
+          alt={nombreGimnasio}
+          width="144"
+          height="72"
+          loading={footer ? 'lazy' : 'eager'}
+          onError={() => setLogoFallido(src)}
         />
-        <div className="home-hero-overlay absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.76),rgba(0,0,0,0.82)_55%,#050505_100%)]" />
-        <div className="home-hero-fade absolute inset-x-0 bottom-0 -z-10 h-44 bg-[linear-gradient(180deg,rgba(0,0,0,0),#050505)]" />
+      ) : <span className="max-w-[18rem] text-xl font-black uppercase tracking-wide text-white">{nombreGimnasio}</span>}
+    </a>
+  );
+}
 
-        <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
-          <img
-            src={logos.principal}
-            alt="Logo Spartan Gym Web"
-            width="320"
-            height="213"
-            decoding="async"
-            fetchPriority="high"
-            className="h-auto w-40 max-w-[44vw] object-contain drop-shadow-[0_0_18px_rgba(220,38,38,0.7)] transition duration-300 hover:scale-[1.02] sm:w-56 lg:w-64"
+export default function Home() {
+  const logos = useLogosApp();
+  const configuracion = useConfiguracionApp();
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
+  const mostrarLogo = Boolean(logos.principal);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const botonMenu = useRef(null);
+  const heroRef = useRef(null);
+  const reducedMotion = usePrefersReducedMotion();
+
+  // Paralaje 3D espacial con el cursor del ratón (Spatial Mouse Parallax)
+  const mouse = useMouseParallax({ sensitivity: 18, maxTilt: 6 });
+
+  return (
+    <div className="spartan-editorial" id="inicio">
+      {/* Film grain overlay — textura cinematográfica sutil */}
+      <div className="sp-grain" aria-hidden="true" />
+
+      <a className="sp-skip" href="#contenido-portada">
+        Saltar al contenido
+      </a>
+
+      {/* Floating Dynamic Island / Apple Navigation Header */}
+      <header
+        className="sp-header-wrapper"
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setMenuAbierto(false);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && menuAbierto) {
+            setMenuAbierto(false);
+            botonMenu.current?.focus();
+          }
+        }}
+      >
+        <div className="sp-header-capsule">
+          <Marca src={logos.principal} nombreGimnasio={nombreGimnasio} mostrarLogo={mostrarLogo} />
+
+          <nav
+            id="sp-navegacion"
+            className="sp-nav"
+            data-open={menuAbierto}
+            aria-label="Navegación principal"
+          >
+            {secciones.map(([id, nombre]) => (
+              <a
+                key={id}
+                href={'#' + id}
+                className="sp-nav-link"
+                onClick={() => setMenuAbierto(false)}
+              >
+                {nombre}
+              </a>
+            ))}
+          </nav>
+
+          <div className="sp-header-actions">
+            <Link className="sp-access-btn" to="/login">
+              <span>Iniciar sesión</span>
+              <ArrowUpRight size={15} aria-hidden="true" />
+            </Link>
+
+            <button
+              ref={botonMenu}
+              className="sp-menu"
+              type="button"
+              aria-controls="sp-navegacion"
+              aria-expanded={menuAbierto}
+              aria-label={menuAbierto ? 'Cerrar menú' : 'Abrir menú'}
+              onClick={() => setMenuAbierto(!menuAbierto)}
+            >
+              {menuAbierto ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main id="contenido-portada" tabIndex={-1}>
+        {/* ==================================================================
+            HERO: Experiencia Cinematográfica con Paralaje Multicapa
+            ================================================================== */}
+        <section ref={heroRef} className="sp-hero-section" aria-labelledby="sp-titulo">
+          {/* Capa 0: Atmósfera de luz y partículas ambientales */}
+          <div
+            className="sp-hero-ambient"
+            style={
+              !reducedMotion
+                ? {
+                    transform: `translate3d(${mouse.x * -0.5}px, ${mouse.y * -0.5}px, 0)`,
+                  }
+                : undefined
+            }
+            aria-hidden="true"
           />
 
-          <nav className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <a
-              href="#quienes-somos"
-              className="hidden text-sm font-bold text-gray-200 transition-colors duration-300 hover:text-white sm:inline-flex"
-            >
-              Quiénes Somos
-            </a>
-            <a
-              href="#beneficios"
-              className="hidden text-sm font-bold text-gray-200 transition-colors duration-300 hover:text-white sm:inline-flex"
-            >
-              Beneficios
-            </a>
-            <Link
-              to="/login"
-              className="whitespace-nowrap text-xs font-bold text-gray-200 transition-colors duration-300 hover:text-white sm:text-sm"
-            >
-              Iniciar sesión
-            </Link>
-            <Link
-              to="/registro"
-              className="whitespace-nowrap rounded-lg border border-red-600/70 bg-red-600 px-3 py-2 text-xs font-bold text-white shadow-lg shadow-red-900/30 transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-500 sm:px-4 sm:text-sm"
-            >
-              Regístrate
-            </Link>
-          </nav>
-        </header>
+          {/* Capa 1: Fondo de video e imagen con profundidad */}
+          <div className="sp-hero-media-layer">
+            <img
+              className="sp-hero-image"
+              src={atleta}
+                alt="Atleta entrenando con barra"
+              fetchPriority="high"
+              decoding="async"
+              width="720"
+              height="1280"
+            />
+            <VideoSpartan className="sp-hero-image" src={videoTecnica} poster={atleta} automatico />
+            <div className="sp-hero-vignette" aria-hidden="true" />
+          </div>
 
-        <main className="mx-auto flex w-full max-w-7xl flex-1 items-center justify-center px-4 pb-8 pt-2 text-center sm:px-6 lg:px-8">
-          <div className="w-full max-w-5xl">
-            <p className="mb-4 text-[0.7rem] font-extrabold uppercase tracking-[0.22em] text-red-400 sm:text-sm">
-              Bienvenido a Spartan Gym
-            </p>
-            <h1
-              key={indiceFrase}
-              className={`mx-auto min-h-[8.5rem] max-w-5xl text-balance text-[clamp(2.25rem,10vw,4.8rem)] font-black uppercase leading-[0.98] text-white drop-shadow-[0_0_25px_rgba(220,38,38,0.42)] sm:min-h-[9.5rem] lg:min-h-[10rem] ${claseAnimacionFrase}`}
+          {/* Capa 2: Contenido Hero (Titular, CTA, chips de estado) */}
+          <div className="sp-wrap sp-hero-inner">
+            <div className="sp-hero-copy sp-stagger-reveal">
+              <div className="sp-ios-pill-kicker mb-4 inline-flex items-center gap-2">
+                <span className="sp-ios-dot" />
+                <span>{nombreGimnasio.toUpperCase()} • EDICIÓN PRO</span>
+              </div>
+
+              <h1 id="sp-titulo" className="sp-hero-heading">
+                Hazte<br />
+                más fuerte<span>.</span>
+              </h1>
+
+              <p className="sp-description">
+                Entrena con intención y rigor. Espacio, tecnología y comunidad diseñados para elevar tu potencial físico a otro nivel.
+              </p>
+
+              <div className="sp-hero-cta-group">
+                <Link className="sp-ios-btn-primary" to="/registro">
+                  <span>Empieza a entrenar</span>
+                  <ArrowUpRight size={18} aria-hidden="true" />
+                </Link>
+
+                <a className="sp-ios-btn-secondary" href="#instalaciones">
+                  <ArrowDown size={16} aria-hidden="true" />
+                  <span>Descubre {nombreGimnasio}</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Capa 3: Badges Flotantes 3D estilo iOS con Paralaje Espacial */}
+            <div
+              className="sp-hero-floating-elements"
+              style={
+                !reducedMotion
+                  ? {
+                      transform: `translate3d(${mouse.x * 1.2}px, ${mouse.y * 1.2}px, 0)`,
+                    }
+                  : undefined
+              }
+              aria-hidden="true"
             >
-              {frases[indiceFrase]}
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-sm leading-6 text-zinc-300 sm:text-base">
-              Mejora tu fuerza, tu energía y tu disciplina con un espacio hecho para entrenar constante.
+              <div
+                className="sp-ios-floating-card sp-float-card-1"
+                style={
+                  !reducedMotion
+                    ? {
+                        transform: `translate3d(${mouse.x * 0.8}px, ${mouse.y * 0.8}px, 0) rotateX(${mouse.tiltX * 0.5}deg) rotateY(${mouse.tiltY * 0.5}deg)`,
+                      }
+                    : undefined
+                }
+              >
+                <div className="sp-float-icon-box">
+                  <Zap size={18} />
+                </div>
+                <div>
+                  <div className="sp-float-title">+100 Estaciones Pro</div>
+                  <div className="sp-float-sub">Equipamiento Olímpico y Biomecánico</div>
+                </div>
+              </div>
+
+              <div
+                className="sp-ios-floating-card sp-float-card-2"
+                style={
+                  !reducedMotion
+                    ? {
+                        transform: `translate3d(${mouse.x * -0.7}px, ${mouse.y * -0.7}px, 0) rotateX(${mouse.tiltX * 0.4}deg) rotateY(${mouse.tiltY * 0.4}deg)`,
+                      }
+                    : undefined
+                }
+              >
+                <div className="sp-float-icon-box">
+                  <Flame size={18} />
+                </div>
+                <div>
+                  <div className="sp-float-title">Técnica & Disciplina</div>
+                  <div className="sp-float-sub">Acompañamiento en cada sesión</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ==================================================================
+            EL ESPACIO: Galería Interactiva iOS con Paralaje
+            ================================================================== */}
+        <section
+          id="instalaciones"
+          className="sp-wrap sp-experience-section"
+          aria-labelledby="sp-experience-title"
+        >
+          <div id="quienes-somos" className="sp-section-heading sp-reveal">
+            <div className="sp-ios-kicker-pill inline-flex items-center gap-1.5 mb-2">
+              <Sparkles size={13} aria-hidden="true" />
+              <span>EL ESPACIO</span>
+            </div>
+            <h2 id="sp-experience-title">
+              Tu espacio.<br />
+              Tu mejor versión<span>.</span>
+            </h2>
+            <p className="sp-description">
+              Técnica, equipo de competición y una atmósfera que te impulsa a volver. Todo empieza con tu próximo levantamiento.
             </p>
-            <div className="mx-auto mt-7 flex w-full max-w-md flex-col items-center justify-center gap-3 sm:flex-row">
-              <a
-                href="#beneficios"
-                className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-red-600 px-5 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_35px_rgba(220,38,38,0.28)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-500 sm:w-auto"
-              >
-                Ver beneficios
-                <ArrowDown className="h-4 w-4 transition duration-300 group-hover:translate-y-0.5" />
-              </a>
-              <Link
-                to="/registro"
-                className="inline-flex h-12 w-full items-center justify-center rounded-lg border border-white/15 bg-white/[0.04] px-5 text-sm font-black uppercase tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-red-500/70 hover:bg-red-600/15 sm:w-auto"
-              >
-                Unirme ahora
+          </div>
+
+          {/* Galería Spartan con Controles Segmentados iOS y Paralaje */}
+          <div id="galeria" className="sp-reveal">
+            <GaleriaSpartan escenas={escenas} />
+          </div>
+
+          {/* ================================================================
+              LA EXPERIENCIA: Bento Grid estilo Apple con Reflejos y Vidrio
+              ================================================================ */}
+          <div id="beneficios" className="sp-bento-section">
+            <div className="sp-bento-header sp-reveal">
+              <div className="sp-ios-kicker-pill inline-flex items-center gap-1.5 mb-2">
+                <Dumbbell size={13} aria-hidden="true" />
+                <span>LA EXPERIENCIA</span>
+              </div>
+              <h3 className="sp-bento-title">Diseñado para el alto rendimiento.</h3>
+              <p className="sp-description">
+                Descubre los pilares que hacen de {nombreGimnasio} un centro de entrenamiento integral.
+              </p>
+            </div>
+
+            <div className="sp-bento-grid">
+              {beneficiosInicio.map((beneficio, idx) => {
+                const Icono = beneficio.icono;
+                const esPrincipal = idx === 0;
+
+                return (
+                  <Link
+                    key={beneficio.ruta}
+                    to={'/beneficios/' + beneficio.ruta}
+                    className={`sp-bento-card ${esPrincipal ? 'sp-bento-card-featured' : ''}`}
+                    aria-label={`Conoce más sobre ${beneficio.titulo}`}
+                  >
+                    {/* Imagen de fondo en la tarjeta destacada */}
+                    {esPrincipal && (
+                      <div className="sp-bento-bg-media">
+                        <img
+                          src={beneficio.imagen}
+                          alt={beneficio.imagenAlt || beneficio.titulo}
+                          loading="lazy"
+                          className="sp-bento-img"
+                        />
+                        <div className="sp-bento-overlay" />
+                      </div>
+                    )}
+
+                    <div className="sp-bento-content">
+                      <div className="sp-bento-top-row">
+                        <div className="sp-bento-icon-capsule">
+                          <Icono size={22} className="text-white" aria-hidden="true" />
+                        </div>
+                        <span className="sp-bento-badge">{beneficio.etiqueta}</span>
+                      </div>
+
+                      <div className="sp-bento-body">
+                        <h4 className="sp-bento-card-title">{beneficio.titulo}</h4>
+                        <p className="sp-bento-card-desc">{beneficio.resumen}</p>
+
+                        {/* Bullets estilo iOS */}
+                        {beneficio.puntos && (
+                          <ul className="sp-bento-bullets" role="list">
+                            {beneficio.puntos.slice(0, 2).map((punto, pIdx) => (
+                              <li key={pIdx} className="sp-bento-bullet-item">
+                                <CheckCircle2 size={15} className="shrink-0" aria-hidden="true" />
+                                <span>{punto}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+
+                      <div className="sp-bento-footer">
+                        <span className="sp-bento-link-text">Explorar beneficio</span>
+                        <div className="sp-bento-arrow-circle">
+                          <ArrowUpRight size={16} aria-hidden="true" />
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ==================================================================
+            INGENIERÍA: Barra Ensamblada con Scroll-Driven Animation
+            ================================================================== */}
+        <BarraEnsamblada />
+
+        {/* ==================================================================
+            MEMBRESÍA: Tarjeta Premium estilo iOS Glass
+            ================================================================== */}
+        <section
+          id="membresias"
+          className="sp-wrap sp-membership-section"
+          aria-labelledby="sp-membership-title"
+        >
+          <div className="sp-membership-glass-card sp-reveal">
+            <div className="sp-membership-glow" aria-hidden="true" />
+            <div className="sp-membership-content">
+              <div className="sp-ios-kicker-pill inline-flex items-center gap-1.5 mb-3">
+                <ShieldCheck size={14} aria-hidden="true" />
+                <span>MEMBRESÍAS {nombreGimnasio.toUpperCase()}</span>
+              </div>
+              <h2 id="sp-membership-title" className="sp-membership-heading">
+                El siguiente paso<br />
+                es tuyo<span>.</span>
+              </h2>
+              <p className="sp-description">
+                Únete a la comunidad de {nombreGimnasio}. Acceso completo a máquinas de fuerza, zonas de peso libre, entrenadores certificados y seguimiento continuo.
+              </p>
+
+              <div className="sp-membership-perks">
+                <div className="sp-perk-pill">
+                  <CheckCircle2 size={16} />
+                  <span>Sin matrícula oculta</span>
+                </div>
+                <div className="sp-perk-pill">
+                  <CheckCircle2 size={16} />
+                  <span>Acceso ilimitado</span>
+                </div>
+                <div className="sp-perk-pill">
+                  <Users size={16} />
+                  <span>Comunidad activa</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="sp-membership-action">
+              <Link className="sp-ios-btn-primary sp-btn-large" to="/registro">
+                <span>Crear mi cuenta</span>
+                <ArrowUpRight size={20} aria-hidden="true" />
               </Link>
+              <span className="sp-membership-note">
+                Consulta en recepción las opciones mensuales y anuales.
+              </span>
             </div>
           </div>
-        </main>
-      </section>
+        </section>
+      </main>
 
-      <section
-        id="quienes-somos"
-        className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] px-4 py-14 sm:px-6 sm:py-16 lg:px-8"
-      >
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-center gap-10 lg:flex-row lg:justify-between lg:gap-16">
-          <div className="w-full lg:w-1/2">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-600/10 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.18em] text-red-300">
-              <Users className="h-4 w-4" />
-              Nuestra Esencia
-            </div>
-            <h2 className="text-3xl font-black uppercase leading-tight text-white sm:text-4xl lg:text-5xl">
-              Quiénes Somos
-            </h2>
-            <p className="mt-6 text-base leading-relaxed text-zinc-400 sm:text-lg">
-              En Spartan Gym no solo somos un gimnasio, somos una comunidad forjada en hierro y disciplina. Nacimos con la visión de crear un espacio donde la excusa no tiene lugar y el esfuerzo diario es nuestra mejor recompensa.
-            </p>
-            <p className="mt-4 text-base leading-relaxed text-zinc-400 sm:text-lg">
-              Contamos con entrenadores capacitados, equipo de primera línea y un ambiente que te motivará a superar tus límites. Aquí cada gota de sudor cuenta y cada entrenamiento te acerca a tus objetivos. Únete a la familia Spartan y descubre de qué estás hecho.
-            </p>
-            <ul className="mt-8 space-y-4">
-              <li className="flex items-center gap-3 text-sm font-medium text-zinc-300 sm:text-base">
-                <CheckCircle2 className="h-5 w-5 text-red-500" />
-                Comunidad enfocada en el progreso
-              </li>
-              <li className="flex items-center gap-3 text-sm font-medium text-zinc-300 sm:text-base">
-                <CheckCircle2 className="h-5 w-5 text-red-500" />
-                Instalaciones de alto rendimiento
-              </li>
-              <li className="flex items-center gap-3 text-sm font-medium text-zinc-300 sm:text-base">
-                <CheckCircle2 className="h-5 w-5 text-red-500" />
-                Entrenadores comprometidos contigo
-              </li>
-            </ul>
-          </div>
-
-          <div className="relative w-full lg:w-1/2">
-            <div className="aspect-[4/3] w-full overflow-hidden rounded-xl border border-white/10 shadow-2xl shadow-black/50">
-              <img
-                src={logos.fondoLogin}
-                alt="Instalaciones Spartan Gym"
-                width="941"
-                height="1672"
-                loading="lazy"
-                decoding="async"
-                className="h-full w-full object-cover object-center opacity-80 transition-transform duration-700 hover:scale-105"
-              />
-            </div>
-            <div className="absolute -bottom-6 -left-6 hidden h-24 w-24 rounded-lg bg-red-600/20 backdrop-blur-md lg:block" />
-            <div className="absolute -right-6 -top-6 hidden h-32 w-32 rounded-full border border-red-500/30 bg-transparent lg:block" />
-          </div>
+      {/* ==================================================================
+          FOOTER: Estilo Minimalista Apple
+          ================================================================== */}
+      <footer className="sp-wrap sp-footer-modern">
+        <div className="sp-footer-inner">
+          <Marca src={logos.principal} footer nombreGimnasio={nombreGimnasio} mostrarLogo={mostrarLogo} />
+          <p className="sp-footer-tagline">Fuerza. Disciplina. Comunidad.</p>
+          <a className="sp-footer-back-top" href="#inicio">
+            <span>Volver arriba</span>
+            <ArrowUpRight size={15} aria-hidden="true" />
+          </a>
         </div>
-      </section>
-
-      <section
-        id="beneficios"
-        className="home-benefits-section relative isolate flex min-h-screen items-center overflow-hidden bg-[#050505] px-4 py-14 sm:px-6 sm:py-16 lg:px-8"
-      >
-        <div className="home-benefits-glow absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(220,38,38,0.08),transparent_28%,transparent_72%,rgba(220,38,38,0.08))]" />
-
-        <div className="mx-auto w-full max-w-7xl">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-600/10 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.18em] text-red-300">
-              <Sparkles className="h-4 w-4" />
-              Lo bueno del gym
-            </div>
-            <h2 className="text-3xl font-black uppercase leading-tight text-white sm:text-4xl lg:text-5xl">
-              Beneficios que se sienten desde el primer entrenamiento
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
-              Tres razones para empezar, mantener el ritmo y convertir el entrenamiento en parte de tu vida.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {beneficiosInicio.map((beneficio, indice) => {
-              const Icono = beneficio.icono;
-
-              return (
-                <article
-                  key={beneficio.ruta}
-                  className="benefit-card group flex min-h-[28rem] flex-col overflow-hidden rounded-lg border border-white/10 bg-[#0b0b0c]/95 shadow-2xl shadow-black/35 transition-all duration-500 hover:-translate-y-1.5 hover:border-red-500/60 hover:shadow-red-950/20"
-                  style={{ animationDelay: `${indice * 110}ms` }}
-                >
-                  <div className="relative h-40 overflow-hidden border-b border-white/10">
-                    <img
-                      src={beneficio.imagen}
-                      alt={beneficio.imagenAlt}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover object-center opacity-80 transition-transform duration-700 group-hover:scale-105 group-hover:opacity-95"
-                    />
-                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.1),rgba(0,0,0,0.7))]" />
-                    <div className="absolute bottom-4 left-4 flex h-12 w-12 items-center justify-center rounded-lg border border-red-500/50 bg-black/55 text-red-300 backdrop-blur-sm transition duration-300 group-hover:scale-105">
-                      <Icono className="h-6 w-6" />
-                    </div>
-                  </div>
-
-                  <div className="flex flex-1 flex-col p-5 sm:p-6">
-                    <div className="mb-4 flex items-start justify-between gap-4">
-                      <h3 className="text-xl font-black leading-tight text-white">{beneficio.titulo}</h3>
-                      <span className="max-w-28 text-right text-[0.65rem] font-extrabold uppercase tracking-[0.16em] text-zinc-500">
-                        {beneficio.etiqueta}
-                      </span>
-                    </div>
-
-                    <p className="flex-1 text-sm leading-6 text-zinc-400">
-                      {beneficio.resumen}
-                    </p>
-
-                    <div className="mt-5 flex items-center gap-2 text-sm font-bold text-zinc-300">
-                      <CheckCircle2 className="h-4 w-4 text-red-400" />
-                      {beneficio.estadistica}
-                    </div>
-
-                    <Link
-                      to={`/beneficios/${beneficio.ruta}`}
-                      className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 text-sm font-black uppercase tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-red-500/70 hover:bg-red-600/20"
-                    >
-                      Ver más
-                      <ArrowRight className="h-4 w-4 transition duration-300 group-hover:translate-x-0.5" />
-                    </Link>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+        <div className="sp-footer-bottom">
+          <p>© {new Date().getFullYear()} {nombreGimnasio}. Todos los derechos reservados.</p>
         </div>
-      </section>
+      </footer>
     </div>
   );
-};
-
-export default Home;
+}

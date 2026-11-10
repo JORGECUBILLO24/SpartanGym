@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  ArrowLeft,
   CheckCircle2,
   Download,
   FileText,
@@ -17,7 +18,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import { formatearMoneda, useConfiguracionApp } from '../utils/configuracionApp';
+import { formatearMoneda, obtenerNombreGimnasio, useConfiguracionApp } from '../utils/configuracionApp';
 import { obtenerLogosApp } from '../utils/logosApp';
 import { inventarioApi, sociosApi, sucursalesApi, ventasApi } from '../services/api';
 
@@ -56,6 +57,8 @@ const VentaProductosCompartida = ({
   const [descargandoFactura, setDescargandoFactura] = useState(false);
   const [mensaje, setMensaje] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [actualizando, setActualizando] = useState(false);
+  const [checkoutAbierto, setCheckoutAbierto] = useState(false);
 
   const cargarDatos = useCallback(async () => {
     const [productosApi, sociosApiData, sucursalesApiData, ventasApiData] = await Promise.all([
@@ -103,6 +106,18 @@ const VentaProductosCompartida = ({
   const montoRecibidoNumerico = Number(formulario.montoRecibido || 0);
   const montoConvertido = esEfectivo ? montoRecibidoNumerico * tipoCambioNumerico : totalEstimado;
   const cambioEstimado = esEfectivo ? montoConvertido - totalEstimado : 0;
+
+  const actualizarDatos = async () => {
+    setActualizando(true);
+    try {
+      await cargarDatos();
+      setMensaje(null);
+    } catch {
+      setMensaje({ tipo: 'error', texto: 'No se pudieron actualizar productos, socios o sucursales.' });
+    } finally {
+      setActualizando(false);
+    }
+  };
 
   const actualizarCampo = (evento) => {
     const { name, value, type, checked } = evento.target;
@@ -178,6 +193,7 @@ const VentaProductosCompartida = ({
         monedaPago: monedaVenta,
       }));
       setCarrito([]);
+      setCheckoutAbierto(false);
       setMensaje({ tipo: 'exito', texto: `Factura ${venta.numeroFactura} generada correctamente.` });
       await cargarDatos();
     } catch (error) {
@@ -196,334 +212,285 @@ const VentaProductosCompartida = ({
     (esEfectivo && (!formulario.montoRecibido || montoRecibidoNumerico <= 0)) ||
     (requiereTipoCambio && (!formulario.tipoCambio || tipoCambioNumerico <= 0)) ||
     (esEfectivo && cambioEstimado < 0);
+  const cantidadCarrito = carrito.reduce((total, item) => total + item.cantidad, 0);
 
   return (
-    <div className="pagina-stack flex flex-col gap-6 text-white">
-      <section className="tarjeta-sistema rounded-2xl border border-white/10 bg-[#111111] p-5 shadow-2xl sm:p-6 lg:p-8">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className={`workspace-page workspace-sales-page text-white ${checkoutAbierto ? 'is-checkout-open' : ''}`}>
+      <header className="sales-header">
+        <div className="min-w-0">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-400">{subtitulo}</p>
-            <h1 className="mt-1 text-2xl font-black text-white">{titulo}</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-400">{descripcion}</p>
+            <p className="sales-eyebrow">{subtitulo}</p>
+            <h1 className="sales-title">{titulo}</h1>
+            <p className="sales-description">{descripcion}</p>
           </div>
-          <button
-            type="button"
-            onClick={cargarDatos}
-            className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-black uppercase text-gray-300 transition-colors hover:bg-white/10"
-          >
-            <RefreshCw size={14} />
-            Actualizar
-          </button>
         </div>
+        <button type="button" onClick={actualizarDatos} disabled={actualizando} className="sales-refresh-button">
+            <RefreshCw size={14} className={actualizando ? 'animate-spin' : ''} />
+            Actualizar
+        </button>
+      </header>
 
-        {mensaje && <MensajeVenta tipo={mensaje.tipo} texto={mensaje.texto} />}
-
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_430px]">
-          <div className="space-y-5">
-            <div className="rounded-2xl border border-white/10 bg-[#090909] p-4">
-              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <ShoppingCart className="text-red-500" size={20} />
-                  <h2 className="font-black text-white">Productos disponibles</h2>
-                </div>
-                <div className="relative w-full sm:w-72">
-                  <Search className="absolute left-3 top-2.5 text-gray-500" size={15} />
-                  <input
-                    value={busqueda}
-                    onChange={(evento) => setBusqueda(evento.target.value)}
-                    placeholder="Buscar producto..."
-                    className="w-full rounded-xl border border-white/10 bg-[#050505] py-2 pl-9 pr-3 text-sm text-white outline-none focus:border-red-600"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
-                {productosFiltrados.map((producto) => (
-                  <article key={producto.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-[#111]">
-                          {producto.imagenUrl ? (
-                            <img src={producto.imagenUrl} alt={producto.nombre} className="h-full w-full object-cover" />
-                          ) : (
-                            <Package size={18} className="text-gray-600" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="break-words text-sm font-black text-white">{producto.nombre}</h3>
-                          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">{producto.categoria}</p>
-                        </div>
-                      </div>
-                      <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-black uppercase ${
-                        Number(producto.stock || 0) > 5
-                          ? 'bg-green-500/10 text-green-500'
-                          : 'bg-red-500/10 text-red-400'
-                      }`}>
-                        {producto.stock} unid.
-                      </span>
-                    </div>
-                    <p className="text-lg font-black text-white">{formatearMonto(producto.precio)}</p>
-                    <p className="mt-1 truncate text-xs text-gray-500">{producto.sucursal?.nombre || producto.sucursal || 'Sin sucursal'}</p>
-                    <button
-                      type="button"
-                      onClick={() => agregarProducto(producto)}
-                      disabled={Number(producto.stock || 0) <= 0}
-                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-black uppercase text-white transition-all hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-gray-500"
-                    >
-                      <Plus size={14} />
-                      Agregar
-                    </button>
-                  </article>
-                ))}
-                {!productosFiltrados.length && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-sm text-gray-500 md:col-span-2 2xl:col-span-3">
-                    No hay productos cargados desde la API.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {factura && (
-              <FacturaGeneradaResumen
-                factura={factura}
-                formatearMonto={formatearMonto}
-                onAbrir={() => setFacturaModalAbierta(true)}
-              />
-            )}
-          </div>
-
-          <form onSubmit={registrarVenta} className="h-fit rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl">
-            <div className="mb-5 flex items-center gap-3">
-              <Receipt className="text-red-500" size={22} />
-              <h2 className="font-black text-white">Factura</h2>
-            </div>
-
-            <div className="mb-5 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-black/30 p-2">
-              <button
-                type="button"
-                onClick={() => setFormulario((actual) => ({ ...actual, clienteEventual: false, clienteNombre: '', clienteDocumento: '' }))}
-                className={`inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-black uppercase ${
-                  !formulario.clienteEventual ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-white/5'
-                }`}
-              >
-                <User size={14} />
-                Socio
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormulario((actual) => ({ ...actual, clienteEventual: true, socioId: '' }))}
-                className={`inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-black uppercase ${
-                  formulario.clienteEventual ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-white/5'
-                }`}
-              >
-                <UserRound size={14} />
-                Eventual
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <CampoSelect
-                etiqueta="Sucursal"
-                name="sucursalId"
-                value={formulario.sucursalId}
-                onChange={actualizarCampo}
-                required
-              >
-                <option value="">Selecciona sucursal</option>
-                {sucursales.map((sucursal) => (
-                  <option key={sucursal.id} value={sucursal.id}>{sucursal.nombre}</option>
-                ))}
-              </CampoSelect>
-
-              {formulario.clienteEventual ? (
-                <>
-                  <CampoTexto
-                    etiqueta="Cliente eventual"
-                    name="clienteNombre"
-                    value={formulario.clienteNombre}
-                    onChange={actualizarCampo}
-                    placeholder="Nombre del cliente"
-                    required
-                  />
-                  <CampoTexto
-                    etiqueta="Documento / referencia"
-                    name="clienteDocumento"
-                    value={formulario.clienteDocumento}
-                    onChange={actualizarCampo}
-                    placeholder="Opcional"
-                  />
-                </>
-              ) : (
-                <CampoSelect
-                  etiqueta="Socio registrado"
-                  name="socioId"
-                  value={formulario.socioId}
-                  onChange={actualizarCampo}
-                  required
-                >
-                  <option value="">Selecciona socio</option>
-                  {socios.map((socio) => (
-                    <option key={socio.id} value={socio.id}>{socio.nombres} {socio.apellidos}</option>
-                  ))}
-                </CampoSelect>
-              )}
-
-              <CampoSelect etiqueta="Metodo de pago" name="metodoPago" value={formulario.metodoPago} onChange={actualizarCampo}>
-                {metodosPago.map((metodo) => <option key={metodo} value={metodo}>{metodo}</option>)}
-              </CampoSelect>
-
-              {esEfectivo && (
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-                  <div className="mb-3">
-                    <p className="text-xs font-black uppercase tracking-widest text-gray-500">Pago en efectivo</p>
-                    <p className="mt-1 text-[11px] text-gray-500">La factura se vende en {monedaVenta}; usa tipo de cambio solo si el cliente paga en otra moneda.</p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <CampoSelect etiqueta="Moneda recibida" name="monedaPago" value={formulario.monedaPago || monedaVenta} onChange={actualizarCampo}>
-                      {monedasPago.map((moneda) => <option key={moneda} value={moneda}>{moneda}</option>)}
-                    </CampoSelect>
-                    {requiereTipoCambio && (
-                      <CampoTexto
-                        etiqueta={`Tipo de cambio (${monedaVenta} por 1 ${monedaPagoActual})`}
-                        name="tipoCambio"
-                        type="number"
-                        step="0.0001"
-                        min="0"
-                        value={formulario.tipoCambio}
-                        onChange={actualizarCampo}
-                        placeholder="Ej. 36.50"
-                        required
-                      />
-                    )}
-                    <CampoTexto
-                      etiqueta={`Monto recibido (${monedaPagoActual})`}
-                      name="montoRecibido"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formulario.montoRecibido}
-                      onChange={actualizarCampo}
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                </div>
-              )}
-
-              <CampoTexto
-                etiqueta="Observaciones"
-                name="observaciones"
-                value={formulario.observaciones}
-                onChange={actualizarCampo}
-                placeholder="Opcional"
-              />
-            </div>
-
-            <div className="my-5 border-t border-white/10 pt-5">
-              <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-gray-500">Carrito</h3>
-              <div className="space-y-3">
-                {carrito.map((item) => (
-                  <div key={item.producto.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="break-words text-sm font-black text-white">{item.producto.nombre}</p>
-                        <p className="mt-1 text-xs text-gray-500">{formatearMonto(item.producto.precio)} c/u</p>
-                      </div>
-                      <button type="button" onClick={() => cambiarCantidad(item.producto.id, -item.cantidad)} className="text-gray-500 hover:text-red-500">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between">
-                      <div className="inline-flex items-center rounded-xl border border-white/10 bg-black/30">
-                        <button type="button" onClick={() => cambiarCantidad(item.producto.id, -1)} className="p-2 text-gray-400 hover:text-white">
-                          <Minus size={13} />
-                        </button>
-                        <span className="px-3 text-sm font-black text-white">{item.cantidad}</span>
-                        <button type="button" onClick={() => cambiarCantidad(item.producto.id, 1)} className="p-2 text-gray-400 hover:text-white">
-                          <Plus size={13} />
-                        </button>
-                      </div>
-                      <span className="text-sm font-black text-white">
-                        {formatearMonto(Number(item.producto.precio || 0) * item.cantidad)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-                {!carrito.length && (
-                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 text-center text-sm text-gray-500">
-                    Agrega productos para generar la factura.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-2 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm">
-              <LineaTotal etiqueta="Cliente" valor={formulario.clienteEventual ? (formulario.clienteNombre || 'Eventual') : (socioSeleccionado ? `${socioSeleccionado.nombres} ${socioSeleccionado.apellidos}` : 'Socio')} />
-              <LineaTotal etiqueta="Subtotal" valor={formatearMonto(totalCarrito)} />
-              <LineaTotal etiqueta={`Impuesto ${configuracion.taxRate || 0}%`} valor={formatearMonto(impuestoEstimado)} />
-              {esEfectivo && (
-                <>
-                  <LineaTotal etiqueta={`Recibido (${monedaPagoActual})`} valor={formatearMontoConMoneda(montoRecibidoNumerico, monedaPagoActual)} />
-                  {requiereTipoCambio && <LineaTotal etiqueta={`Equivalente (${monedaVenta})`} valor={formatearMonto(montoConvertido)} />}
-                  <LineaTotal etiqueta="Cambio estimado" valor={formatearMonto(Math.max(cambioEstimado, 0))} />
-                </>
-              )}
-              <LineaTotal etiqueta="Total" valor={formatearMonto(totalEstimado)} fuerte />
-            </div>
-
-            <button
-              type="submit"
-              disabled={ventaDeshabilitada}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-black uppercase text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-gray-500"
-            >
-              <FileText size={17} />
-              {guardando ? 'Facturando...' : 'Generar factura'}
-            </button>
-          </form>
+      <section className="sales-summary" aria-label="Resumen de ventas">
+        <div className="sales-summary-item">
+          <span>Productos</span>
+          <strong>{productos.length}</strong>
+          <small>{productosFiltrados.length} en catálogo</small>
+        </div>
+        <div className="sales-summary-item">
+          <span>Artículos</span>
+          <strong>{cantidadCarrito}</strong>
+          <small>En el carrito</small>
+        </div>
+        <div className="sales-summary-item">
+          <span>Subtotal</span>
+          <strong>{formatearMonto(totalCarrito)}</strong>
+          <small>Antes de impuestos</small>
+        </div>
+        <div className="sales-summary-item sales-summary-total">
+          <span>Total estimado</span>
+          <strong>{formatearMonto(totalEstimado)}</strong>
+          <small>{ventas.length} facturas registradas</small>
         </div>
       </section>
 
-      <section className="tarjeta-sistema rounded-2xl border border-white/10 bg-[#111111] p-5 shadow-2xl sm:p-6">
-        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">API</p>
-            <h2 className="text-lg font-black text-white">Facturas recientes</h2>
-          </div>
-          <span className="rounded-full bg-white/5 px-3 py-1 text-[10px] font-black text-gray-400">{ventas.length} facturas</span>
-        </div>
+      {mensaje && <MensajeVenta tipo={mensaje.tipo} texto={mensaje.texto} />}
 
-        <div className="overflow-x-auto">
-          <table className="w-full whitespace-nowrap text-left text-sm">
-            <thead>
-              <tr className="border-b border-white/10 text-[10px] uppercase tracking-wider text-gray-500">
-                <th className="pb-3 pr-4">Factura</th>
-                <th className="pb-3 pr-4">Cliente</th>
-                <th className="pb-3 pr-4">Sucursal</th>
-                <th className="pb-3 pr-4">Metodo</th>
-                <th className="pb-3 text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {ventas.map((venta) => (
-                <tr key={venta.id} className="hover:bg-white/[0.03]">
-                  <td className="py-3 pr-4 font-mono text-xs font-black text-white">{venta.numeroFactura}</td>
-                  <td className="py-3 pr-4 text-gray-400">
-                    {venta.clienteNombre}
-                    {venta.clienteEventual && <span className="ml-2 rounded-full bg-orange-500/10 px-2 py-0.5 text-[9px] font-black uppercase text-orange-400">Eventual</span>}
-                  </td>
-                  <td className="py-3 pr-4 text-gray-400">{venta.sucursal}</td>
-                  <td className="py-3 pr-4 text-gray-400">{venta.metodoPago}{venta.monedaPago ? ` (${venta.monedaPago})` : ''}</td>
-                  <td className="py-3 text-right font-black text-white">{formatearMonto(venta.total)}</td>
-                </tr>
+      <div className="workspace-grid workspace-sales-layout">
+        <section className="workspace-sales-catalog sales-catalog" aria-labelledby="sales-products-title">
+          <div className="sales-catalog-panel">
+            <div className="sales-panel-heading">
+              <div className="sales-section-title">
+                <ShoppingCart size={17} className="text-red-400" />
+                <div>
+                  <h2 id="sales-products-title">Productos disponibles</h2>
+                  <p>{productosFiltrados.length} resultados</p>
+                </div>
+              </div>
+              <label className="sales-search-field">
+                <Search size={15} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={busqueda}
+                  onChange={(evento) => setBusqueda(evento.target.value)}
+                  placeholder="Buscar producto o categoría"
+                  aria-label="Buscar producto o categoría"
+                />
+              </label>
+            </div>
+
+            <div className="sales-product-grid">
+              {productosFiltrados.map((producto) => (
+                <article key={producto.id} className="sales-product-card">
+                  <div className="sales-product-main">
+                    <div className="sales-product-image">
+                      {producto.imagenUrl ? (
+                        <img src={producto.imagenUrl} alt="" loading="lazy" />
+                      ) : <Package size={18} aria-hidden="true" />}
+                    </div>
+                    <div className="sales-product-copy">
+                      <h3 title={producto.nombre}>{producto.nombre}</h3>
+                      <p>{producto.categoria || 'Sin categoría'}</p>
+                    </div>
+                  </div>
+                  <div className="sales-product-details">
+                    <strong>{formatearMonto(producto.precio)}</strong>
+                    <span className={`sales-stock ${Number(producto.stock || 0) > 5 ? 'is-available' : 'is-low'}`}>
+                      {producto.stock} disp.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => agregarProducto(producto)}
+                    disabled={Number(producto.stock || 0) <= 0}
+                    className="sales-add-button"
+                  >
+                    <Plus size={15} /> Añadir
+                  </button>
+                </article>
               ))}
-              {!ventas.length && (
-                <tr>
-                  <td colSpan="5" className="py-8 text-center text-sm text-gray-500">No hay facturas de productos registradas.</td>
-                </tr>
+              {!productosFiltrados.length && (
+                <div className="sales-empty-state">
+                  <Package size={18} />
+                  <p>{productos.length ? 'No hay productos que coincidan con la búsqueda.' : 'No hay productos cargados desde la API.'}</p>
+                </div>
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setCheckoutAbierto(true)}
+            className="workspace-sales-cart-trigger"
+            aria-label={`Abrir carrito, ${cantidadCarrito} artículos, total ${formatearMonto(totalEstimado)}`}
+          >
+            <span className="sales-cart-trigger-copy">
+              <span className="sales-cart-trigger-icon"><ShoppingCart size={17} /></span>
+              <span><strong>Ver carrito</strong><small>{cantidadCarrito} {cantidadCarrito === 1 ? 'artículo' : 'artículos'} · Continuar al cobro</small></span>
+            </span>
+            <strong>{formatearMonto(totalEstimado)}</strong>
+          </button>
+
+          {factura && (
+            <FacturaGeneradaResumen
+              factura={factura}
+              formatearMonto={formatearMonto}
+              onAbrir={() => setFacturaModalAbierta(true)}
+            />
+          )}
+        </section>
+
+        <form onSubmit={registrarVenta} className="workspace-sales-checkout sales-checkout">
+          <div className="sales-checkout-heading">
+            <button type="button" onClick={() => setCheckoutAbierto(false)} className="sales-back-button">
+              <ArrowLeft size={16} /> Productos
+            </button>
+            <div className="sales-section-title">
+              <Receipt size={17} className="text-red-400" />
+              <div>
+                <h2>Carrito y cobro</h2>
+                <p>{cantidadCarrito} {cantidadCarrito === 1 ? 'artículo' : 'artículos'}</p>
+              </div>
+            </div>
+            <span className="sales-checkout-count">{carrito.length} {carrito.length === 1 ? 'producto' : 'productos'}</span>
+          </div>
+
+          <div className="sales-choice-tabs" role="group" aria-label="Tipo de cliente">
+            <button
+              type="button"
+              onClick={() => setFormulario((actual) => ({ ...actual, clienteEventual: false, clienteNombre: '', clienteDocumento: '' }))}
+              aria-pressed={!formulario.clienteEventual}
+            >
+              <User size={15} /> Socio
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormulario((actual) => ({ ...actual, clienteEventual: true, socioId: '' }))}
+              aria-pressed={formulario.clienteEventual}
+            >
+              <UserRound size={15} /> Eventual
+            </button>
+          </div>
+
+          <div className="sales-checkout-fields">
+            <div className="sales-field-pair">
+              <CampoSelect etiqueta="Sucursal" name="sucursalId" value={formulario.sucursalId} onChange={actualizarCampo} required>
+                <option value="">Selecciona sucursal</option>
+                {sucursales.map((sucursal) => <option key={sucursal.id} value={sucursal.id}>{sucursal.nombre}</option>)}
+              </CampoSelect>
+              <CampoSelect etiqueta="Método de pago" name="metodoPago" value={formulario.metodoPago} onChange={actualizarCampo}>
+                {metodosPago.map((metodo) => <option key={metodo} value={metodo}>{metodo}</option>)}
+              </CampoSelect>
+            </div>
+
+            {formulario.clienteEventual ? (
+              <div className="sales-field-pair">
+                <CampoTexto etiqueta="Cliente eventual" name="clienteNombre" value={formulario.clienteNombre} onChange={actualizarCampo} placeholder="Nombre del cliente" required />
+                <CampoTexto etiqueta="Documento / referencia" name="clienteDocumento" value={formulario.clienteDocumento} onChange={actualizarCampo} placeholder="Opcional" />
+              </div>
+            ) : (
+              <CampoSelect etiqueta="Socio registrado" name="socioId" value={formulario.socioId} onChange={actualizarCampo} required>
+                <option value="">Selecciona socio</option>
+                {socios.map((socio) => <option key={socio.id} value={socio.id}>{socio.nombres} {socio.apellidos}</option>)}
+              </CampoSelect>
+            )}
+
+            {esEfectivo && (
+              <fieldset className="sales-cash-fields">
+                <legend>Pago en efectivo</legend>
+                <p>La venta se registra en {monedaVenta}. Indica el cambio solo si recibes otra moneda.</p>
+                <div className="sales-cash-grid">
+                  <CampoSelect etiqueta="Moneda recibida" name="monedaPago" value={formulario.monedaPago || monedaVenta} onChange={actualizarCampo}>
+                    {monedasPago.map((moneda) => <option key={moneda} value={moneda}>{moneda}</option>)}
+                  </CampoSelect>
+                  {requiereTipoCambio && (
+                    <CampoTexto etiqueta={`Cambio · ${monedaVenta} por ${monedaPagoActual}`} name="tipoCambio" type="number" step="0.0001" min="0" value={formulario.tipoCambio} onChange={actualizarCampo} placeholder="36.50" required />
+                  )}
+                  <CampoTexto etiqueta={`Recibido · ${monedaPagoActual}`} name="montoRecibido" type="number" step="0.01" min="0" value={formulario.montoRecibido} onChange={actualizarCampo} placeholder="0.00" required />
+                </div>
+              </fieldset>
+            )}
+
+            <CampoTexto etiqueta="Observaciones · opcional" name="observaciones" value={formulario.observaciones} onChange={actualizarCampo} placeholder="Nota para la factura" />
+          </div>
+
+          <section className="sales-cart-section" aria-labelledby="sales-cart-title">
+            <div className="sales-subsection-heading">
+              <h3 id="sales-cart-title">Artículos del carrito</h3>
+              <span>{cantidadCarrito}</span>
+            </div>
+            <ul className="sales-cart-list">
+              {carrito.map((item) => (
+                <li key={item.producto.id} className="sales-cart-item">
+                  <div className="sales-cart-copy">
+                    <strong title={item.producto.nombre}>{item.producto.nombre}</strong>
+                    <small>{formatearMonto(item.producto.precio)} c/u</small>
+                  </div>
+                  <div className="sales-quantity-control" aria-label={`Cantidad de ${item.producto.nombre}`}>
+                    <button type="button" onClick={() => cambiarCantidad(item.producto.id, -1)} aria-label={`Quitar una unidad de ${item.producto.nombre}`}><Minus size={14} /></button>
+                    <span>{item.cantidad}</span>
+                    <button type="button" onClick={() => cambiarCantidad(item.producto.id, 1)} aria-label={`Agregar una unidad de ${item.producto.nombre}`} disabled={item.cantidad >= Number(item.producto.stock || 0)}><Plus size={14} /></button>
+                  </div>
+                  <strong className="sales-cart-line-total">{formatearMonto(Number(item.producto.precio || 0) * item.cantidad)}</strong>
+                  <button type="button" onClick={() => cambiarCantidad(item.producto.id, -item.cantidad)} aria-label={`Eliminar ${item.producto.nombre} del carrito`} className="sales-remove-button"><Trash2 size={15} /></button>
+                </li>
+              ))}
+              {!carrito.length && (
+                <li className="sales-cart-empty">
+                  <ShoppingCart size={16} />
+                  <span>Agrega productos para iniciar el cobro.</span>
+                </li>
+              )}
+            </ul>
+          </section>
+
+          <section className="sales-order-summary" aria-label="Resumen del cobro">
+            <LineaTotal etiqueta="Cliente" valor={formulario.clienteEventual ? (formulario.clienteNombre || 'Eventual') : (socioSeleccionado ? `${socioSeleccionado.nombres} ${socioSeleccionado.apellidos}` : 'Socio')} />
+            <LineaTotal etiqueta="Subtotal" valor={formatearMonto(totalCarrito)} />
+            <LineaTotal etiqueta={`Impuesto · ${configuracion.taxRate || 0}%`} valor={formatearMonto(impuestoEstimado)} />
+            {esEfectivo && (
+              <>
+                <LineaTotal etiqueta={`Recibido · ${monedaPagoActual}`} valor={formatearMontoConMoneda(montoRecibidoNumerico, monedaPagoActual)} />
+                {requiereTipoCambio && <LineaTotal etiqueta={`Equivalente · ${monedaVenta}`} valor={formatearMonto(montoConvertido)} />}
+                <LineaTotal etiqueta="Cambio estimado" valor={formatearMonto(Math.max(cambioEstimado, 0))} />
+              </>
+            )}
+            <LineaTotal etiqueta="Total" valor={formatearMonto(totalEstimado)} fuerte />
+          </section>
+
+          <button type="submit" disabled={ventaDeshabilitada} className="sales-submit-button">
+            {guardando ? <RefreshCw size={16} className="animate-spin" /> : <FileText size={16} />}
+            {guardando ? 'Generando factura…' : 'Generar factura'}
+          </button>
+        </form>
+      </div>
+
+      <section className="sales-invoices" aria-labelledby="sales-invoices-title">
+        <div className="sales-panel-heading">
+          <div className="sales-section-title">
+            <Receipt size={17} className="text-red-400" />
+            <div>
+              <h2 id="sales-invoices-title">Facturas recientes</h2>
+              <p>Historial de ventas de productos</p>
+            </div>
+          </div>
+          <span className="sales-invoice-count">{ventas.length}</span>
         </div>
+        <ul className="sales-invoice-list">
+          {ventas.map((venta) => (
+            <li key={venta.id} className="sales-invoice-row">
+              <div className="sales-invoice-main">
+                <strong>{venta.numeroFactura || 'Factura'}</strong>
+                <span>{venta.clienteNombre || 'Cliente'}{venta.clienteEventual ? ' · Eventual' : ''}</span>
+              </div>
+              <div className="sales-invoice-meta">
+                <span>{venta.sucursal || 'Sin sucursal'}</span>
+                <span>{venta.metodoPago || 'Sin método'}{venta.monedaPago ? ` · ${venta.monedaPago}` : ''}</span>
+              </div>
+              <strong className="sales-invoice-total">{formatearMonto(venta.total)}</strong>
+            </li>
+          ))}
+          {!ventas.length && <li className="sales-empty-state">No hay facturas de productos registradas.</li>}
+        </ul>
       </section>
 
       {factura && facturaModalAbierta && (
@@ -550,21 +517,21 @@ const VentaProductosCompartida = ({
 };
 
 const CampoTexto = ({ etiqueta, ...props }) => (
-  <label className="block">
-    <span className="mb-2 block text-xs font-black uppercase tracking-widest text-gray-500">{etiqueta}</span>
+  <label className="sales-field-wrap">
+    <span className="sales-field-label">{etiqueta}</span>
     <input
       {...props}
-      className="w-full rounded-xl border border-white/10 bg-[#050505] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-red-600"
+      className="sales-field"
     />
   </label>
 );
 
 const CampoSelect = ({ etiqueta, children, ...props }) => (
-  <label className="block">
-    <span className="mb-2 block text-xs font-black uppercase tracking-widest text-gray-500">{etiqueta}</span>
+  <label className="sales-field-wrap">
+    <span className="sales-field-label">{etiqueta}</span>
     <select
       {...props}
-      className="w-full rounded-xl border border-white/10 bg-[#050505] px-4 py-3 text-sm text-white outline-none transition-colors focus:border-red-600"
+      className="sales-field"
     >
       {children}
     </select>
@@ -572,18 +539,14 @@ const CampoSelect = ({ etiqueta, children, ...props }) => (
 );
 
 const MensajeVenta = ({ tipo, texto }) => (
-  <div className={`mb-5 flex items-center gap-2 rounded-xl border p-3 text-xs font-bold ${
-    tipo === 'exito'
-      ? 'border-green-500/20 bg-green-500/10 text-green-400'
-      : 'border-red-500/20 bg-red-500/10 text-red-400'
-  }`}>
+  <div role={tipo === 'error' ? 'alert' : 'status'} className={`sales-notice ${tipo === 'exito' ? 'is-success' : 'is-error'}`}>
     {tipo === 'exito' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
     {texto}
   </div>
 );
 
 const LineaTotal = ({ etiqueta, valor, fuerte = false }) => (
-  <div className={`flex items-center justify-between gap-3 ${fuerte ? 'border-t border-white/10 pt-2 text-base font-black text-white' : 'text-gray-400'}`}>
+  <div className={`sales-total-row ${fuerte ? 'is-strong' : ''}`}>
     <span>{etiqueta}</span>
     <span className={fuerte ? 'text-white' : 'font-bold text-gray-200'}>{valor}</span>
   </div>
@@ -754,7 +717,9 @@ const descargarFacturaPdf = async (factura, configuracion, formatearMonto, forma
   const detalles = factura.detalles || [];
   const detallesPago = crearDetallesPago(factura, configuracion, formatearMonto, formatearMontoConMoneda);
   const logos = obtenerLogosApp(configuracion);
-  const logo = await cargarImagenComoPng(logos.principal);
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
+  const logoSource = logos.principal;
+  const logo = logoSource ? await cargarImagenComoPng(logoSource) : null;
   let y = 40;
 
   pdf.setDrawColor(20, 20, 20);
@@ -768,7 +733,7 @@ const descargarFacturaPdf = async (factura, configuracion, formatearMonto, forma
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(18);
     pdf.setTextColor(18, 18, 18);
-    pdf.text(configuracion.gymName || 'Spartan Gym', margen, y + 30);
+    pdf.text(nombreGimnasio, margen, y + 30);
   }
 
   pdf.setFont('helvetica', 'bold');
@@ -788,7 +753,7 @@ const descargarFacturaPdf = async (factura, configuracion, formatearMonto, forma
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(11);
   pdf.setTextColor(18, 18, 18);
-  pdf.text(configuracion.gymName || 'Spartan Gym', margen, y);
+  pdf.text(nombreGimnasio, margen, y);
   pdf.text('Facturar a', margen + 285, y);
 
   pdf.setFont('helvetica', 'normal');
@@ -868,7 +833,7 @@ const descargarFacturaPdf = async (factura, configuracion, formatearMonto, forma
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(9);
   pdf.setTextColor(110, 110, 110);
-  pdf.text('Gracias por su compra. Documento generado desde Spartan Gym App.', margen, y, {
+  pdf.text(`Gracias por su compra. Documento generado desde ${nombreGimnasio}.`, margen, y, {
     maxWidth: anchoTabla,
   });
 
@@ -879,6 +844,8 @@ const descargarFacturaPdf = async (factura, configuracion, formatearMonto, forma
 const crearHtmlFactura = (factura, configuracion, formatearMonto, formatearMontoConMoneda) => {
   const detallesPago = crearDetallesPago(factura, configuracion, formatearMonto, formatearMontoConMoneda);
   const logos = obtenerLogosApp(configuracion);
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
+  const logoFactura = logos.principal;
   const filasProductos = (factura.detalles || [])
     .map(
       (detalle) => `
@@ -910,7 +877,7 @@ const crearHtmlFactura = (factura, configuracion, formatearMonto, formatearMonto
         <title>${escaparHtml(factura.numeroFactura || 'Factura')}</title>
         <style>
           * { box-sizing: border-box; }
-          body { margin: 0; background: #f2f2f2; color: #151515; font-family: Arial, Helvetica, sans-serif; }
+          body { margin: 0; background: #f2f2f2; color: #151515; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
           .sheet { width: 816px; min-height: 1056px; margin: 24px auto; background: #fff; padding: 42px; box-shadow: 0 18px 45px rgba(0,0,0,.12); }
           .top-line { height: 4px; background: #151515; margin-bottom: 22px; }
           header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 1px solid #ddd; padding-bottom: 22px; }
@@ -944,9 +911,9 @@ const crearHtmlFactura = (factura, configuracion, formatearMonto, formatearMonto
           <div class="top-line"></div>
           <header>
             <div class="brand">
-              <img class="logo" src="${escaparHtml(logos.principal)}" alt="${escaparHtml(configuracion.gymName || 'Spartan Gym')}" />
+              ${logoFactura ? `<img class="logo" src="${escaparHtml(logoFactura)}" alt="${escaparHtml(nombreGimnasio)}" />` : ''}
               <div>
-                <h2>${escaparHtml(configuracion.gymName || 'Spartan Gym')}</h2>
+                <h2>${escaparHtml(nombreGimnasio)}</h2>
                 <p class="muted">${escaparHtml(configuracion.email || 'admin@spartangym.com')}</p>
                 <p class="muted">${escaparHtml(configuracion.phone || '+505 0000 0000')}</p>
                 <p class="muted">${escaparHtml(factura.sucursal || 'Sin sucursal')}</p>
@@ -998,7 +965,7 @@ const crearHtmlFactura = (factura, configuracion, formatearMonto, formatearMonto
             </div>
           </section>
 
-          <footer>Gracias por su compra. Documento generado desde Spartan Gym App.</footer>
+          <footer>Gracias por su compra. Documento generado desde ${escaparHtml(nombreGimnasio)}.</footer>
         </main>
       </body>
     </html>
@@ -1073,7 +1040,7 @@ const FacturaComercialModal = ({
             type="button"
             onClick={onDownload}
             disabled={descargando}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-black uppercase text-white transition-colors hover:bg-red-700 disabled:cursor-wait disabled:bg-white/10 disabled:text-gray-500"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-black uppercase text-white transition-colors hover:bg-red-700 disabled:cursor-wait disabled:bg-white/10 disabled:text-white/70"
           >
             <Download size={15} />
             {descargando ? 'Generando...' : 'Descargar PDF'}
@@ -1103,6 +1070,8 @@ const FacturaComercialModal = ({
 
 const FacturaComercialVista = ({ factura, configuracion, formatearMonto, formatearMontoConMoneda }) => {
   const logos = obtenerLogosApp(configuracion);
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
+  const logoFactura = logos.principal;
   const detallesPago = crearDetallesPago(factura, configuracion, formatearMonto, formatearMontoConMoneda);
 
   return (
@@ -1111,10 +1080,10 @@ const FacturaComercialVista = ({ factura, configuracion, formatearMonto, formate
       <header className="flex flex-col gap-6 border-b border-neutral-200 pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="flex h-20 w-36 items-center justify-center border border-neutral-200 p-2">
-            <img src={logos.principal} alt={configuracion.gymName || 'Spartan Gym'} className="max-h-full max-w-full object-contain" />
+            {logoFactura && <img src={logoFactura} alt={nombreGimnasio} className="max-h-full max-w-full object-contain" />}
           </div>
           <div>
-            <h2 className="text-xl font-black text-neutral-950">{configuracion.gymName || 'Spartan Gym'}</h2>
+            <h2 className="text-xl font-black text-neutral-950">{nombreGimnasio}</h2>
             <p className="mt-1 text-sm text-neutral-600">{configuracion.email || 'admin@spartangym.com'}</p>
             <p className="text-sm text-neutral-600">{configuracion.phone || '+505 0000 0000'}</p>
             <p className="text-sm text-neutral-600">{factura.sucursal || 'Sin sucursal'}</p>
@@ -1200,7 +1169,7 @@ const FacturaComercialVista = ({ factura, configuracion, formatearMonto, formate
       </section>
 
       <footer className="mt-10 border-t border-neutral-200 pt-4 text-sm text-neutral-500">
-        Gracias por su compra. Documento generado desde Spartan Gym App.
+        Gracias por su compra. Documento generado desde {nombreGimnasio}.
       </footer>
     </article>
   );

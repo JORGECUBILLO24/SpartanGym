@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.*;
 import ni.edu.uam.SpartanGymAPI.services.AuthService;
+import ni.edu.uam.SpartanGymAPI.services.GoogleLoginService;
 import ni.edu.uam.SpartanGymAPI.services.PasswordResetService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,10 +16,18 @@ public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final GoogleLoginService googleLoginService;
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    public record GoogleCredential(String credential) {}
+
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> google(@RequestBody GoogleCredential request) {
+        return ResponseEntity.ok(googleLoginService.login(request.credential()));
     }
 
     @PostMapping("/register")

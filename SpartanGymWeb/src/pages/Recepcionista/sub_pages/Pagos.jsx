@@ -83,7 +83,7 @@ const Pagos = () => {
   );
 
   return (
-    <div className="flex flex-col gap-6 animate-fade-in">
+    <div className="workspace-page">
       <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-white/5 bg-[#111111] p-4 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-xl font-bold text-white">Flujo de Caja</h2>
@@ -99,7 +99,7 @@ const Pagos = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="workspace-grid--cards">
         <Resumen icon={DollarSign} title="Total recaudado" value={formatearMonto(totalRecaudado)} detail={`${historialPagos.length} pagos`} />
         <Resumen icon={CreditCard} title="Planes activos" value={tiposMembresia.length} detail="Catalogo BD" />
         <Resumen icon={User} title="Socios" value={socios.length} detail="Registrados" />
@@ -116,7 +116,7 @@ const Pagos = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="workspace-grid workspace-grid--split-wide">
         <section className="rounded-2xl border border-white/5 bg-[#111111] p-5 shadow-lg">
           <div className="mb-6 flex flex-col items-stretch justify-between gap-4 md:flex-row md:items-center">
             <div className="flex items-center gap-3 text-white">
@@ -149,11 +149,13 @@ const Pagos = () => {
               <tbody>
                 {pagosFiltrados.map((pago) => (
                   <tr key={pago.id} className="border-b border-white/5 transition-colors last:border-0 hover:bg-white/5">
-                    <td className="flex items-center gap-3 py-3.5 pr-4">
+                    <td className="py-3.5 pr-4">
+                      <span className="workspace-table-cell-content">
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2a0808] text-red-500">
                         <User size={14} />
                       </span>
                       <span className="font-medium text-white">{pago.socio}</span>
+                      </span>
                     </td>
                     <td className="py-3.5 pr-4 font-bold text-white">{formatearMonto(pago.monto)}</td>
                     <td className="py-3.5 pr-4 text-gray-400">

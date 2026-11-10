@@ -18,6 +18,7 @@ const formatearTiempo = (fecha) => {
 const Notificaciones = () => {
   const [notificaciones, setNotificaciones] = useState([]);
   const [errorApi, setErrorApi] = useState('');
+  const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
     operacionApi.notificaciones()
@@ -28,21 +29,24 @@ const Notificaciones = () => {
         categoria: notif.tipo || 'Sistema',
         canales: ['app'],
       }))))
-      .catch(() => setErrorApi('No se pudieron cargar las notificaciones desde la API.'));
+      .catch(() => setErrorApi('No se pudieron cargar las notificaciones desde la API.'))
+      .finally(() => setCargando(false));
   }, []);
 
   return (
-    <div className="max-w-4xl p-6 pt-0 animate-in fade-in duration-500">
-      <div className="bg-[#0d0d0d] rounded-3xl border border-white/5 overflow-hidden">
+    <div className="workspace-page mx-auto w-full max-w-5xl pb-4">
+      <div className="workspace-notification-list overflow-hidden rounded-2xl border border-white/5 bg-[#0d0d0d]">
         {errorApi && (
           <div className="flex items-center gap-2 border-b border-red-500/10 bg-red-500/10 p-4 text-xs font-bold text-red-400">
             <AlertCircle size={15} />
             {errorApi}
           </div>
         )}
-        {notificaciones.length > 0 ? (
+        {cargando ? (
+          <div role="status" className="p-8 text-center text-sm text-gray-400">Cargando notificaciones…</div>
+        ) : notificaciones.length > 0 ? (
           notificaciones.map((notif) => (
-            <div key={notif.id} className={`flex items-start gap-4 p-6 border-b border-white/5 hover:bg-[#171717] transition-all ${notif.leida ? 'opacity-60' : ''}`}>
+            <article key={notif.id} className={`flex min-w-0 flex-wrap items-start gap-3 border-b border-white/5 p-4 transition-colors hover:bg-[#171717] sm:gap-4 sm:p-5 ${notif.leida ? 'opacity-60' : ''}`}>
               <div className={`p-3 rounded-full ${notif.tipo === 'info' ? 'bg-blue-500/10 text-blue-500' : notif.tipo === 'alerta' ? 'bg-red-500/10 text-red-500' : notif.tipo === 'global' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
                 {notif.tipo === 'info' && <Info size={20} />}
                 {notif.tipo === 'alerta' && <AlertCircle size={20} />}
@@ -50,7 +54,7 @@ const Notificaciones = () => {
                 {notif.tipo === 'exito' && <CheckCircle2 size={20} />}
               </div>
 
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h4 className="text-sm font-bold text-white">{notif.titulo}</h4>
                   {notif.tipo === 'global' && (
@@ -72,15 +76,15 @@ const Notificaciones = () => {
                 )}
               </div>
 
-              <div className="flex items-center gap-1 text-[10px] text-gray-600 font-bold uppercase">
+              <div className="flex shrink-0 items-center gap-1 text-[10px] font-bold uppercase text-gray-500">
                 <Clock size={12} />
                 {notif.tiempo}
               </div>
-            </div>
+            </article>
           ))
         ) : (
-          <div className="p-12 text-center text-gray-500 text-sm">
-            No tienes notificaciones nuevas.
+          <div className="p-8 text-center text-sm text-gray-400">
+            {errorApi ? 'No se pudieron cargar las notificaciones. Actualiza la página para volver a intentarlo.' : 'No tienes notificaciones nuevas.'}
           </div>
         )}
       </div>

@@ -11,10 +11,8 @@ import {
   FileSpreadsheet,
   FileText,
   Package,
-  TrendingUp,
   Users,
 } from 'lucide-react';
-import TarjetaMetrica from '../../../components/TarjetaMetrica';
 import {
   exportarReporteExcel,
   exportarReportePdf,
@@ -29,38 +27,30 @@ const tiposReportes = [
   {
     id: 'fin',
     tipo: 'Finanzas',
-    titulo: 'Reporte Financiero Consolidado',
-    desc: 'Ingresos, egresos, desglose de metodos de pago y balance neto del gimnasio.',
+    titulo: 'Reporte financiero consolidado',
+    desc: 'Ingresos, egresos, métodos de pago y balance neto del gimnasio.',
     icon: DollarSign,
-    color: 'text-green-500',
-    bg: 'bg-green-500/10',
   },
   {
     id: 'soc',
     tipo: 'Socios',
-    titulo: 'Analisis de Socios y Retencion',
-    desc: 'Altas de nuevos socios, membresias renovadas, abandonos y tasas de asistencia.',
+    titulo: 'Análisis de socios y retención',
+    desc: 'Altas, renovaciones, membresías vencidas y actividad de asistencia.',
     icon: Users,
-    color: 'text-red-500',
-    bg: 'bg-red-500/10',
   },
   {
     id: 'inv',
     tipo: 'Inventario',
-    titulo: 'Auditoria de Inventario y Stock',
-    desc: 'Rotacion de suplementos, alertas de stock bajo y ganancias por ventas en recepcion.',
+    titulo: 'Auditoría de inventario y stock',
+    desc: 'Existencias, alertas de stock y ventas recientes de productos.',
     icon: Package,
-    color: 'text-orange-500',
-    bg: 'bg-orange-500/10',
   },
   {
     id: 'asi',
     tipo: 'Asistencia',
-    titulo: 'Control de Asistencia y Horarios',
-    desc: 'Horas pico de flujo, asistencia del personal tecnico y control de accesos.',
+    titulo: 'Control de asistencia y horarios',
+    desc: 'Check-ins, membresías activas y hora de mayor asistencia.',
     icon: Clock,
-    color: 'text-blue-500',
-    bg: 'bg-blue-500/10',
   },
 ];
 
@@ -111,16 +101,18 @@ const Reportes = () => {
   const [errorDescarga, setErrorDescarga] = useState('');
   const [resumen, setResumen] = useState(resumenInicial);
   const [historialReportes, setHistorialReportes] = useState([]);
+  const [cargandoResumen, setCargandoResumen] = useState(true);
   const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
   const logos = obtenerLogosApp(configuracion);
 
   useEffect(() => {
     reportesApi.resumen()
       .then((datos) => setResumen({ ...resumenInicial, ...datos }))
-      .catch(() => setErrorDescarga('No se pudo cargar el resumen de reportes desde la API.'));
+      .catch(() => setErrorDescarga('No se pudo cargar el resumen desde la API. Inténtalo de nuevo.'))
+      .finally(() => setCargandoResumen(false));
   }, []);
 
-  const simularGeneracionReporte = async (reporteBase) => {
+  const generarReporte = async (reporteBase) => {
     setGenerandoId(reporteBase.id);
     setErrorDescarga('');
 
@@ -150,7 +142,7 @@ const Reportes = () => {
         setReportesDescargados((prev) => prev.filter((item) => item !== reporteBase.id));
       }, 2000);
     } catch (error) {
-      setErrorDescarga(error.message || 'No se pudo generar el reporte desde la API.');
+      setErrorDescarga(error.message || 'No se pudo generar el reporte desde la API. Inténtalo de nuevo.');
     } finally {
       setGenerandoId(null);
     }
@@ -164,146 +156,167 @@ const Reportes = () => {
 
     try {
       if (formato === 'pdf') {
-        await exportarReportePdf(reporte, logos.principal);
+        const logoReporte = logos.principal;
+        await exportarReportePdf(reporte, logoReporte);
       } else {
         exportarReporteExcel(reporte);
       }
     } catch (error) {
       console.error(error);
-      setErrorDescarga('No se pudo generar el archivo. Intentalo de nuevo.');
+      setErrorDescarga('No se pudo generar el archivo. Inténtalo de nuevo.');
     } finally {
       setDescargandoId(null);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col gap-6 pb-10 text-white">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <TarjetaMetrica titulo="Ingresos" valor={formatearMonto(resumen.ingresosTotales)} detalle="Pagos registrados" icono={DollarSign} color="text-green-500" />
-        <TarjetaMetrica titulo="Socios" valor={resumen.totalSocios} detalle="Registrados en base" icono={Users} color="text-red-500" />
-        <TarjetaMetrica titulo="Asistencias" valor={resumen.asistenciasRegistradas} detalle="Check-ins guardados" icono={TrendingUp} color="text-orange-500" />
-        <TarjetaMetrica titulo="Retencion" valor={`${resumen.tasaRetencion}%`} detalle={`${resumen.membresiasActivas} membresias activas`} icono={BarChart3} color="text-blue-500" />
-      </div>
-
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-2">
-          {tiposReportes.map((rep) => {
-            const IconComponent = rep.icon;
-            const estaGenerando = generandoId === rep.id;
-            const fueGenerado = reportesDescargados.includes(rep.id);
-
-            return (
-              <div key={rep.id} className="report-card group relative flex h-[208px] flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-xl transition-all hover:-translate-y-1 hover:border-red-600/30">
-                <ArrowUpRight size={14} className="absolute right-4 top-4 text-white/10 transition-colors group-hover:text-red-500/70" />
-
-                <div>
-                  <div className="mb-2 flex items-center gap-3">
-                    <div className={`rounded-xl p-2 ${rep.bg} ${rep.color}`}>
-                      <IconComponent size={20} />
-                    </div>
-                    <h4 className="max-w-[80%] break-words text-sm font-bold tracking-tight text-white">{rep.titulo}</h4>
-                  </div>
-                  <p className="line-clamp-3 pr-2 text-[11px] leading-4 text-gray-400">{rep.desc}</p>
-                </div>
-
-                <button
-                  disabled={generandoId !== null}
-                  onClick={() => simularGeneracionReporte(rep)}
-                  className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl py-2.5 text-[10px] font-bold uppercase tracking-wider shadow-md transition-all
-                    ${fueGenerado
-                      ? 'bg-green-600 text-white shadow-green-900/20'
-                      : estaGenerando
-                        ? 'cursor-wait border border-white/10 bg-[#111] text-gray-500'
-                        : 'border border-white/10 bg-white/[0.03] text-white hover:bg-red-600 hover:border-red-600'
-                    }
-                  `}
-                >
-                  {estaGenerando ? (
-                    'Procesando datos...'
-                  ) : fueGenerado ? (
-                    <><CheckCircle2 size={14} /> Reporte compilado</>
-                  ) : (
-                    <><FileText size={14} /> Compilar reporte</>
-                  )}
-                </button>
-              </div>
-            );
-          })}
+    <div className="workspace-page report-page pb-4 text-white">
+      <section className="report-page-heading" aria-labelledby="report-page-title">
+        <div>
+          <h2 id="report-page-title">Centro de reportes</h2>
+          <p>Consulta la actividad del gimnasio y genera archivos listos para compartir.</p>
         </div>
+        <span className="report-page-count"><BarChart3 size={15} /> {tiposReportes.length} análisis</span>
+      </section>
 
-        <div className="relative flex h-auto flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-6 shadow-2xl">
-          <div className="mb-1 flex items-center gap-2">
-            <Clock size={16} className="text-gray-500" />
-            <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400">Descargas Recientes</h4>
+      <section className="report-overview" aria-labelledby="report-overview-title" aria-busy={cargandoResumen}>
+        <div className="report-section-heading">
+          <div>
+            <h3 id="report-overview-title">Panorama actual</h3>
+            <p>Indicadores consolidados del sistema</p>
           </div>
-          <p className="mb-4 text-[10px] text-gray-600">Archivos generados listos para descargar en PDF o Excel.</p>
+        </div>
+        <dl className="report-metric-strip">
+          <div className="report-metric">
+            <dt>Ingresos</dt>
+            <dd>{cargandoResumen ? '—' : formatearMonto(resumen.ingresosTotales)}</dd>
+            <span>Pagos registrados</span>
+          </div>
+          <div className="report-metric">
+            <dt>Socios</dt>
+            <dd>{cargandoResumen ? '—' : resumen.totalSocios}</dd>
+            <span>En la base actual</span>
+          </div>
+          <div className="report-metric">
+            <dt>Asistencias</dt>
+            <dd>{cargandoResumen ? '—' : resumen.asistenciasRegistradas}</dd>
+            <span>Check-ins guardados</span>
+          </div>
+          <div className="report-metric">
+            <dt>Retención</dt>
+            <dd>{cargandoResumen ? '—' : `${resumen.tasaRetencion}%`}</dd>
+            <span>{cargandoResumen ? 'Cargando membresías…' : `${resumen.membresiasActivas} membresías activas`}</span>
+          </div>
+        </dl>
+      </section>
+
+      <div className="report-content-grid">
+        <section className="report-catalog" aria-labelledby="report-catalog-title">
+          <div className="report-section-heading">
+            <div>
+              <h3 id="report-catalog-title">Reportes disponibles</h3>
+              <p>Elige un análisis para preparar sus archivos.</p>
+            </div>
+            <span className="report-section-count">{String(tiposReportes.length).padStart(2, '0')}</span>
+          </div>
+
+          <div className="report-option-list">
+            {tiposReportes.map((rep) => {
+              const IconComponent = rep.icon;
+              const estaGenerando = generandoId === rep.id;
+              const fueGenerado = reportesDescargados.includes(rep.id);
+
+              return (
+                <article key={rep.id} className={`report-option report-option--${rep.id}`} aria-busy={estaGenerando}>
+                  <span className="report-option-icon"><IconComponent size={18} aria-hidden="true" /></span>
+                  <div className="report-option-copy">
+                    <span className="report-option-category">{rep.tipo}</span>
+                    <h4>{rep.titulo}</h4>
+                    <p>{rep.desc}</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={generandoId !== null}
+                    onClick={() => generarReporte(rep)}
+                    className={`report-generate-button${fueGenerado ? ' is-generated' : ''}`}
+                    aria-label={`${estaGenerando ? 'Generando' : fueGenerado ? 'Reporte generado' : 'Generar'} ${rep.titulo}`}
+                  >
+                    {estaGenerando ? <Clock size={14} aria-hidden="true" /> : fueGenerado ? <CheckCircle2 size={14} aria-hidden="true" /> : <ArrowUpRight size={14} aria-hidden="true" />}
+                    <span>{estaGenerando ? 'Generando…' : fueGenerado ? 'Listo' : 'Generar'}</span>
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="report-history" aria-labelledby="report-history-title">
+          <div className="report-section-heading">
+            <div>
+              <h3 id="report-history-title">Descargas recientes</h3>
+              <p>Archivos preparados durante esta sesión</p>
+            </div>
+            <span className="report-section-count">{historialReportes.length}</span>
+          </div>
 
           {errorDescarga && (
-            <div className="mb-3 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-[11px] font-semibold text-red-400">
-              <AlertCircle size={14} />
-              {errorDescarga}
+            <div className="report-error" role="alert" aria-live="polite">
+              <AlertCircle size={15} aria-hidden="true" />
+              <span>{errorDescarga}</span>
             </div>
           )}
 
-          <div className="custom-scrollbar max-h-[460px] w-full space-y-3 overflow-y-auto pr-1">
-            {historialReportes.map((doc) => (
-              <div key={doc.id} className="group flex w-full flex-col gap-3 rounded-xl border border-white/5 bg-[#111]/60 p-3 transition-colors hover:border-white/10 xl:flex-row xl:items-center xl:justify-between">
-                <div className="w-full flex-1 overflow-hidden pr-1">
-                  <p className="w-full truncate break-words text-xs font-bold text-white" title={doc.titulo}>
-                    {doc.titulo}
-                  </p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[9px] font-medium text-gray-500">
-                    <span className="rounded bg-white/5 px-1 py-0.5 font-mono text-gray-400">{doc.id}</span>
-                    <span>-</span>
-                    <span>{doc.tamano}</span>
-                    <span>-</span>
-                    <span className="text-[8px] font-bold uppercase tracking-wider text-red-500">{doc.formato}</span>
-                    <span className="inline-flex items-center gap-1 text-gray-600">
-                      <Calendar size={10} />
-                      {doc.fecha}
-                    </span>
+          {historialReportes.length > 0 ? (
+            <div className="report-history-list">
+              {historialReportes.map((doc) => (
+                <article key={doc.id} className="report-history-row">
+                  <div className="report-history-copy">
+                    <p className="report-history-title" title={doc.titulo}>{doc.titulo}</p>
+                    <div className="report-history-meta">
+                      <span>{doc.tipo}</span>
+                      <span className="report-history-separator" aria-hidden="true">·</span>
+                      <span className="report-history-date"><Calendar size={11} aria-hidden="true" /> {doc.fecha}</span>
+                    </div>
+                    <p className="report-history-id" title={`${doc.id} · ${doc.createdBy}`}>{doc.id} · {doc.createdBy}</p>
                   </div>
-                  <p className="mt-1 truncate text-[9px] text-gray-600" title={doc.createdBy}>
-                    Cuenta: {doc.createdBy}
-                  </p>
-                </div>
+                  <div className="report-history-actions">
+                    <button
+                      type="button"
+                      disabled={descargandoId === `${doc.id}-pdf`}
+                      onClick={() => descargarReporte(doc, 'pdf')}
+                      className="report-download-button"
+                      aria-label={`Descargar ${doc.titulo} en PDF`}
+                    >
+                      <Download size={13} aria-hidden="true" />
+                      <span>{descargandoId === `${doc.id}-pdf` ? 'Preparando…' : 'PDF'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={descargandoId === `${doc.id}-excel`}
+                      onClick={() => descargarReporte(doc, 'excel')}
+                      className="report-download-button"
+                      aria-label={`Descargar ${doc.titulo} en Excel`}
+                    >
+                      <FileSpreadsheet size={13} aria-hidden="true" />
+                      <span>{descargandoId === `${doc.id}-excel` ? 'Preparando…' : 'Excel'}</span>
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="report-empty-state">
+              <span><FileText size={20} aria-hidden="true" /></span>
+              <p>Aún no hay archivos preparados.</p>
+              <small>Genera uno de los reportes para habilitar sus descargas en PDF y Excel.</small>
+            </div>
+          )}
 
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={descargandoId === `${doc.id}-pdf`}
-                    onClick={() => descargarReporte(doc, 'pdf')}
-                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-white/5 px-2.5 py-2 text-[10px] font-bold text-gray-300 transition-all hover:bg-red-600 hover:text-white disabled:cursor-wait disabled:opacity-60"
-                    title="Descargar PDF"
-                  >
-                    <Download size={13} />
-                    PDF
-                  </button>
-                  <button
-                    type="button"
-                    disabled={descargandoId === `${doc.id}-excel`}
-                    onClick={() => descargarReporte(doc, 'excel')}
-                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-white/5 px-2.5 py-2 text-[10px] font-bold text-gray-300 transition-all hover:bg-green-600 hover:text-white disabled:cursor-wait disabled:opacity-60"
-                    title="Descargar Excel"
-                  >
-                    <FileSpreadsheet size={13} />
-                    Excel
-                  </button>
-                </div>
-              </div>
-            ))}
-            {historialReportes.length === 0 && (
-              <div className="rounded-xl border border-white/5 bg-[#111]/60 p-8 text-center text-xs font-medium text-gray-500">
-                Aun no hay reportes generados en esta sesion.
-              </div>
-            )}
+          <div className="report-history-note">
+            <FileText size={13} aria-hidden="true" />
+            <span>Los PDF incluyen la marca, fecha y cuenta que generó el archivo.</span>
           </div>
-
-          <div className="mt-4 flex items-center gap-2 border-t border-white/5 pt-3 text-[9px] font-medium text-gray-600">
-            <AlertCircle size={12} />
-            <span className="break-all">Los PDF incluyen logo, nombre del reporte, fecha y cuenta creadora.</span>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   );

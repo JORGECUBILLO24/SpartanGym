@@ -3,6 +3,7 @@ package ni.edu.uam.SpartanGymAPI.controllers;
 import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.SucursalRequest;
+import ni.edu.uam.SpartanGymAPI.dto.SucursalDisponibleResponse;
 import ni.edu.uam.SpartanGymAPI.models.Sucursal;
 import ni.edu.uam.SpartanGymAPI.repositories.SucursalRepository;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SucursalController {
     private final SucursalRepository repository;
+
+    @GetMapping("/disponibles")
+    public ResponseEntity<List<SucursalDisponibleResponse>> listarDisponibles() {
+        List<SucursalDisponibleResponse> sucursales = repository.findByEstadoIgnoreCase("Operativa").stream()
+                .map(sucursal -> new SucursalDisponibleResponse(sucursal.getId(), sucursal.getNombre()))
+                .toList();
+        return ResponseEntity.ok(sucursales);
+    }
 
     @GetMapping
     public ResponseEntity<List<Sucursal>> listar() {

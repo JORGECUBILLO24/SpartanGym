@@ -44,6 +44,13 @@ public class RutinaController {
         return ResponseEntity.ok(rutinaService.crearRutinaGlobal(request));
     }
 
+    @PatchMapping("/{rutinaId}/imagen")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPERADMIN', 'ROLE_ADMIN')")
+    public ResponseEntity<Void> actualizarImagen(@PathVariable UUID rutinaId, @RequestBody Map<String, String> request) {
+        rutinaService.actualizarImagen(rutinaId, request.get("imagenUrl"));
+        return ResponseEntity.noContent().build();
+    }
+
     // El socio marca/desmarca su propio ejercicio de la rutina (socio sale del token, no del body).
     @PostMapping("/{rutinaId}/ejercicios/{ejercicioId}/completar")
     @PreAuthorize("hasAuthority('ROLE_SOCIO')")

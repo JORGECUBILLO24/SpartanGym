@@ -28,9 +28,9 @@ import {
   MONEDAS_DISPONIBLES,
   sincronizarConfiguracionRemota,
 } from '../../../utils/configuracionApp';
-import { LOGOS_APP_DEFECTO } from '../../../utils/logosApp';
+import { LOGOS_APP_DEFECTO, obtenerLogosApp } from '../../../utils/logosApp';
 import { aplicarPreferenciaTema, obtenerPreferenciaTemaGuardada } from '../../../utils/tema';
-import { configuracionApi } from '../../../services/api';
+import { authStorage, configuracionApi } from '../../../services/api';
 
 const cargarConfigInicial = () => {
   const configuracionGuardada = leerConfiguracionApp();
@@ -73,7 +73,7 @@ const prepararLogo = async (archivo, { maxWidth, maxHeight }) => {
 
   const dataUrl = await leerArchivoComoDataUrl(archivo);
 
-  if (archivo.type === 'image/svg+xml' || typeof document === 'undefined') {
+  if (typeof document === 'undefined') {
     return dataUrl;
   }
 
@@ -97,7 +97,16 @@ const Configuracion = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [logoError, setLogoError] = useState('');
   const [config, setConfig] = useState(cargarConfigInicial);
+  const logosVigentes = obtenerLogosApp(config);
+  const nombreGimnasio = String(config.gymName || '').trim() || CONFIGURACION_DEFECTO.gymName;
   const monedaSeleccionada = MONEDAS_DISPONIBLES.find((moneda) => moneda.codigo === config.currency) || MONEDAS_DISPONIBLES[1];
+  const rolActual = String(authStorage.getUser()?.rol || '').toUpperCase();
+  const esSuperAdmin = rolActual === 'ROLE_SUPERADMIN' || rolActual === 'SUPERADMIN';
+  const nombreApp = String(config.appName || '').trim() || nombreGimnasio;
+  const logoAppNombre = String(config.appLogoNombre || '').trim();
+  const logoAppVigente = (logoAppNombre
+    ? logoAppNombre.toLowerCase() === nombreApp.toLowerCase()
+    : nombreApp.toLowerCase() === 'spartan gym') ? config.appLogo : '';
   const {
     theme,
     accentColor,
@@ -169,7 +178,13 @@ const Configuracion = () => {
 
     try {
       const dataUrl = await prepararLogo(archivo, dimensiones);
-      setConfig((configActual) => ({ ...configActual, [clave]: dataUrl }));
+      setConfig((configActual) => ({
+        ...configActual,
+        [clave]: dataUrl,
+        ...(clave === 'logoPrincipal' ? { logoPrincipalNombre: String(configActual.gymName || '').trim() } : {}),
+        ...(clave === 'logoAcceso' ? { logoAccesoNombre: String(configActual.gymName || '').trim() } : {}),
+        ...(clave === 'appLogo' ? { appLogoNombre: String(configActual.appName || configActual.gymName || '').trim() } : {}),
+      }));
     } catch (error) {
       setLogoError(error.message || 'No se pudo cargar el logo.');
     }
@@ -177,7 +192,13 @@ const Configuracion = () => {
 
   const restaurarLogo = (clave) => {
     setLogoError('');
-    setConfig((configActual) => ({ ...configActual, [clave]: CONFIGURACION_DEFECTO[clave] }));
+    setConfig((configActual) => ({
+      ...configActual,
+      [clave]: CONFIGURACION_DEFECTO[clave],
+      ...(clave === 'logoPrincipal' ? { logoPrincipalNombre: '' } : {}),
+      ...(clave === 'logoAcceso' ? { logoAccesoNombre: '' } : {}),
+      ...(clave === 'appLogo' ? { appLogoNombre: '' } : {}),
+    }));
   };
 
   const handleSave = async (e) => {
@@ -185,12 +206,14 @@ const Configuracion = () => {
     setIsSubmitting(true);
 
     try {
-      const configuracionGuardada = guardarConfiguracionApp({
+      const configuracionParaGuardar = {
         ...config,
+        gymName: String(config.gymName || '').trim(),
         themeSource: config.theme === 'system' ? 'system' : 'user',
-      });
-
-      await configuracionApi.guardar(configuracionGuardada);
+      };
+      const respuesta = await configuracionApi.guardar(configuracionParaGuardar);
+      const configuracionGuardada = guardarConfiguracionApp(respuesta || configuracionParaGuardar);
+      setConfig((actual) => ({ ...actual, ...configuracionGuardada }));
       setIsSubmitting(false);
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 3000);
@@ -201,34 +224,34 @@ const Configuracion = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col gap-6 pb-10 text-white">
+    <div className="workspace-page pb-4 text-white">
       <div>
         <h1 className="mb-1 text-2xl font-bold text-white">Ajustes del Sistema</h1>
         <p className="text-sm text-gray-400">Configura parametros globales, apariencia, notificaciones y seguridad.</p>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-4">
-        <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-[#090909] p-4 shadow-2xl">
+      <div className="workspace-grid workspace-settings-layout">
+        <div className="workspace-settings-tabs">
           <TabButton active={activeTab === 'general'} onClick={() => setActiveTab('general')} icon={Store} label="General" />
           <TabButton active={activeTab === 'apariencia'} onClick={() => setActiveTab('apariencia')} icon={Palette} label="Apariencia" />
           <TabButton active={activeTab === 'notificaciones'} onClick={() => setActiveTab('notificaciones')} icon={Bell} label="Notificaciones" />
           <TabButton active={activeTab === 'seguridad'} onClick={() => setActiveTab('seguridad')} icon={ShieldAlert} label="Seguridad y Datos" />
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-6 shadow-2xl md:col-span-3 lg:p-8">
-          <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-50" />
+        <div className="relative min-w-0 overflow-hidden rounded-xl border border-white/[0.08] bg-[#090909] p-4 sm:p-6">
+          <div className="absolute left-0 top-0 h-px w-full bg-red-600/50" />
 
           <form onSubmit={handleSave} className="relative z-10 space-y-8">
             {activeTab === 'general' && (
               <div className="animate-in fade-in space-y-6 duration-300">
                 <TituloSeccion icon={Settings} titulo="Configuracion General" />
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <CampoTexto etiqueta="Nombre del Gimnasio" name="gymName" value={config.gymName} onChange={handleChange} />
+                <div className="workspace-grid--cards">
+                  {esSuperAdmin && <CampoTexto etiqueta="Nombre del Gimnasio" name="gymName" value={config.gymName} onChange={handleChange} required maxLength={80} />}
                   <CampoTexto etiqueta="Correo Principal" type="email" name="email" value={config.email} onChange={handleChange} />
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div className="workspace-grid--cards">
                   <div>
                     <label className="mb-1.5 block text-[10px] font-bold uppercase text-gray-500">Moneda base</label>
                     <div className="relative">
@@ -268,15 +291,29 @@ const Configuracion = () => {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-white/5 bg-[#111] p-4">
+                {esSuperAdmin ? <div className="rounded-xl border border-white/5 bg-[#111] p-4">
                   <div className="mb-4 flex items-center gap-3">
                     <span className="rounded-xl bg-red-600/10 p-2 text-red-500">
                       <ImageIcon size={20} />
                     </span>
                     <div>
-                      <h3 className="text-sm font-black text-white">Imagenes de la app</h3>
-                      <p className="mt-0.5 text-[11px] text-gray-500">Actualiza logos y fondo de acceso compartidos por web y movil.</p>
+                      <h3 className="text-sm font-black text-white">Marca de la aplicación móvil</h3>
+                      <p className="mt-0.5 text-[11px] text-gray-500">El nombre, logo, color y fondo se sincronizan con la app móvil desde la API.</p>
                     </div>
+                  </div>
+
+                  <div className="mb-4 rounded-xl border border-white/5 bg-black/25 p-3">
+                    <CampoTexto
+                      etiqueta="Nombre visible en la app móvil"
+                      name="appName"
+                      value={config.appName || ''}
+                      onChange={handleChange}
+                      placeholder={nombreGimnasio}
+                      maxLength={80}
+                    />
+                    <p className="mt-2 text-[11px] leading-5 text-gray-500">
+                      Se actualiza dentro de la app al sincronizar. Si el logo incluye el nombre, vuelve a subirlo al cambiarlo. El nombre e icono del launcher de Android requieren generar y distribuir una APK nueva.
+                    </p>
                   </div>
 
                   {logoError && (
@@ -285,33 +322,53 @@ const Configuracion = () => {
                     </p>
                   )}
 
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                  <div className="workspace-grid--cards">
+                    <SelectorLogo
+                      titulo="Logo de la app móvil"
+                      descripcion="Identidad principal al iniciar sesión y en los paneles móviles."
+                      valor={logoAppVigente}
+                      hayValor={Boolean(config.appLogo)}
+                      respaldo={logosVigentes.principal}
+                      marcaTexto={config.appName || nombreGimnasio}
+                      onChange={(archivo) => actualizarLogo('appLogo', archivo, { maxWidth: 640, maxHeight: 640 })}
+                      onReset={() => restaurarLogo('appLogo')}
+                    />
                     <SelectorLogo
                       titulo="Logo principal"
-                      descripcion="Se usa en inicio, menus laterales y reportes PDF."
-                      valor={config.logoPrincipal}
-                      respaldo={LOGOS_APP_DEFECTO.principal}
+                      descripcion="Se usa en la web, menús y documentos."
+                      valor={logosVigentes.principal}
+                      hayValor={Boolean(config.logoPrincipal)}
+                      respaldo={nombreGimnasio.toLowerCase() === 'spartan gym' ? LOGOS_APP_DEFECTO.principal : ''}
+                      marcaTexto={nombreGimnasio}
                       onChange={(archivo) => actualizarLogo('logoPrincipal', archivo, { maxWidth: 900, maxHeight: 520 })}
                       onReset={() => restaurarLogo('logoPrincipal')}
                     />
                     <SelectorLogo
                       titulo="Logo de acceso"
-                      descripcion="Se usa en login y registro."
-                      valor={config.logoAcceso}
-                      respaldo={LOGOS_APP_DEFECTO.acceso}
+                      descripcion="Se usa en login y registro web."
+                      valor={logosVigentes.acceso}
+                      hayValor={Boolean(config.logoAcceso)}
+                      respaldo={nombreGimnasio.toLowerCase() === 'spartan gym' ? LOGOS_APP_DEFECTO.acceso : ''}
+                      marcaTexto={nombreGimnasio}
                       onChange={(archivo) => actualizarLogo('logoAcceso', archivo, { maxWidth: 640, maxHeight: 640 })}
                       onReset={() => restaurarLogo('logoAcceso')}
                     />
                     <SelectorLogo
                       titulo="Fondo de acceso"
-                      descripcion="Se usa como fondo de login, registro y bienvenida movil."
+                      descripcion="Se usa como fondo de login y bienvenida móvil."
                       valor={config.fondoLogin}
+                      hayValor={Boolean(config.fondoLogin)}
                       respaldo={LOGOS_APP_DEFECTO.fondoLogin}
                       onChange={(archivo) => actualizarLogo('fondoLogin', archivo, { maxWidth: 1440, maxHeight: 1800 })}
                       onReset={() => restaurarLogo('fondoLogin')}
                     />
                   </div>
-                </div>
+                </div> : (
+                  <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-gray-400">
+                    <div className="flex items-center gap-2 font-semibold text-gray-200"><Lock size={16} /> Marca reservada al superadmin</div>
+                    <p className="mt-2 text-xs leading-5">El nombre, los logos, los colores de marca y el fondo de la app móvil solo pueden ser modificados por un superadmin.</p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -319,14 +376,14 @@ const Configuracion = () => {
               <div className="animate-in fade-in space-y-6 duration-300">
                 <TituloSeccion icon={Palette} titulo="Apariencia" />
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <OpcionTema
+                <div className="workspace-grid--cards">
+                  {esSuperAdmin && <OpcionTema
                     active={usaAparienciaPredeterminada}
                     icon={RotateCcw}
                     title="Predeterminado"
                     desc="Quita el tema fijo y vuelve al navegador con los colores originales."
                     onClick={restaurarAparienciaPredeterminada}
-                  />
+                  />}
                   <OpcionTema
                     active={config.theme === 'system' && !usaAparienciaPredeterminada}
                     icon={MonitorSmartphone}
@@ -353,11 +410,13 @@ const Configuracion = () => {
                 <div className="rounded-xl border border-white/5 bg-[#111] p-4">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Vista previa y colores</p>
 
-                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <SelectorColor label="Principal" name="accentColor" value={config.accentColor} onChange={actualizarColor} />
-                    <SelectorColor label="Hover" name="accentHoverColor" value={config.accentHoverColor} onChange={actualizarColor} />
-                    <SelectorColor label="Suave" name="accentSoftColor" value={config.accentSoftColor} onChange={actualizarColor} />
-                  </div>
+                  {esSuperAdmin ? (
+                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <SelectorColor label="Principal" name="accentColor" value={config.accentColor} onChange={actualizarColor} />
+                      <SelectorColor label="Hover" name="accentHoverColor" value={config.accentHoverColor} onChange={actualizarColor} />
+                      <SelectorColor label="Suave" name="accentSoftColor" value={config.accentSoftColor} onChange={actualizarColor} />
+                    </div>
+                  ) : <p className="mt-2 text-xs text-gray-500">Los colores se administran desde una cuenta superadmin.</p>}
 
                   <div className="mt-4 grid grid-cols-3 gap-2">
                     <div className="h-16 rounded-lg border border-white/10 bg-[#090909]" />
@@ -469,7 +528,7 @@ const TituloSeccion = ({ icon: Icon, titulo }) => (
   </div>
 );
 
-const CampoTexto = ({ etiqueta, type = 'text', name, value, onChange }) => (
+const CampoTexto = ({ etiqueta, type = 'text', name, value, onChange, ...inputProps }) => (
   <div>
     <label className="mb-1.5 block text-[10px] font-bold uppercase text-gray-500">{etiqueta}</label>
     <input
@@ -477,6 +536,7 @@ const CampoTexto = ({ etiqueta, type = 'text', name, value, onChange }) => (
       name={name}
       value={value}
       onChange={onChange}
+      {...inputProps}
       className="w-full rounded-xl border border-white/5 bg-[#111] px-4 py-2.5 text-sm outline-none transition-all focus:border-red-600"
     />
   </div>
@@ -547,14 +607,18 @@ const SelectorColor = ({ label, name, value, onChange }) => (
   </label>
 );
 
-const SelectorLogo = ({ titulo, descripcion, valor, respaldo, onChange, onReset }) => (
+const SelectorLogo = ({ titulo, descripcion, valor, hayValor = Boolean(valor), respaldo, marcaTexto, onChange, onReset }) => (
   <article className="rounded-xl border border-white/10 bg-[#090909] p-4">
     <div className="flex h-36 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20 p-4">
-      <img
-        src={valor || respaldo}
-        alt={titulo}
-        className="max-h-full max-w-full object-contain drop-shadow-[0_0_14px_rgba(0,0,0,0.45)]"
-      />
+      {valor || respaldo ? (
+        <img
+          src={valor || respaldo}
+          alt={valor ? titulo : titulo + ' predeterminado'}
+          className="max-h-full max-w-full object-contain drop-shadow-[0_0_14px_rgba(0,0,0,0.45)]"
+        />
+      ) : marcaTexto ? (
+        <span className="max-w-full break-words text-center text-lg font-black uppercase tracking-wide text-white">{marcaTexto}</span>
+      ) : <span className="text-sm text-gray-500">Fondo predeterminado</span>}
     </div>
 
     <div className="mt-4">
@@ -579,7 +643,7 @@ const SelectorLogo = ({ titulo, descripcion, valor, respaldo, onChange, onReset 
       <button
         type="button"
         onClick={onReset}
-        disabled={!valor}
+        disabled={!hayValor}
         className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-gray-300 transition-all hover:border-red-500/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
       >
         <RotateCcw size={14} />

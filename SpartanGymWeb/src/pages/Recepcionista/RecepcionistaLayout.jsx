@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, CreditCard, DollarSign, Search, Bell,
+  LayoutDashboard, CreditCard, DollarSign, Bell,
   UserPlus, Menu, X, QrCode, ClipboardList, User, LogOut, ShoppingCart
 } from 'lucide-react';
 
 import ControlSesion from '../../components/ControlSesion';
 import { cerrarSesionActual } from '../../utils/cuentaActual';
 import { useLogosApp } from '../../utils/logosApp';
+import { obtenerNombreGimnasio, useConfiguracionApp } from '../../utils/configuracionApp';
 
 const RecepcionistaLayout = () => {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const ubicacionActual = useLocation();
   const navigate = useNavigate();
   const logos = useLogosApp();
+  const configuracion = useConfiguracionApp();
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
+  const mostrarLogoPrincipal = Boolean(logos.principal);
 
   const cerrarSesion = () => {
     cerrarSesionActual('manual');
@@ -38,6 +42,7 @@ const RecepcionistaLayout = () => {
 
   return (
     <div className="reception-theme flex min-h-dvh overflow-hidden bg-[#050505] font-sans text-white transition-colors duration-300">
+      <a href="#contenido-recepcion" className="skip-navigation">Saltar al contenido</a>
       {menuAbierto && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
@@ -45,17 +50,12 @@ const RecepcionistaLayout = () => {
         />
       )}
 
-      <aside className={`reception-sidebar fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-1.25rem))] flex-col border-r border-white/5 bg-[#0a0a0a] shadow-2xl shadow-black/50 transition-transform duration-300 lg:static lg:w-72 lg:translate-x-0 ${menuAbierto ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside id="menu-recepcion" className={`reception-sidebar fixed inset-y-0 left-0 z-50 flex w-[min(18rem,calc(100vw-1.25rem))] flex-col border-r border-white/5 bg-[#0a0a0a] shadow-2xl shadow-black/50 transition-transform duration-300 lg:static lg:w-72 lg:translate-x-0 ${menuAbierto ? 'visible translate-x-0' : 'invisible -translate-x-full lg:visible'}`}>
         <div className="flex shrink-0 items-center justify-between px-5 py-4 sm:py-5">
           <NavLink to="/recepcion" aria-label="Ir al inicio de recepcion" className="inline-flex max-w-full">
-            <img
-              src={logos.principal}
-              alt="Logo Spartan Gym"
-              width="320"
-              height="213"
-              decoding="async"
-              className="h-auto w-44 max-w-full object-contain drop-shadow-[0_0_14px_rgba(220,38,38,0.45)] transition duration-300 hover:scale-[1.02]"
-            />
+            {mostrarLogoPrincipal ? (
+              <img src={logos.principal} alt={nombreGimnasio} width="320" height="213" decoding="async" className="h-auto w-44 max-w-full object-contain drop-shadow-[0_0_14px_rgba(220,38,38,0.45)] transition duration-300 hover:scale-[1.02]" />
+            ) : <span className="max-w-44 text-center text-base font-black uppercase tracking-wide text-white">{nombreGimnasio}</span>}
           </NavLink>
           <button
             onClick={() => setMenuAbierto(false)}
@@ -95,6 +95,8 @@ const RecepcionistaLayout = () => {
               onClick={() => setMenuAbierto(true)}
               className="shrink-0 rounded-lg p-2 transition-colors hover:bg-white/10 lg:hidden"
               aria-label="Abrir menú"
+              aria-expanded={menuAbierto}
+              aria-controls="menu-recepcion"
             >
               <Menu size={24} />
             </button>
@@ -102,18 +104,12 @@ const RecepcionistaLayout = () => {
           </div>
 
           <div className="flex shrink-0 items-center gap-3 sm:gap-5">
-            <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-2.5 text-gray-500" size={16} />
-              <input
-                type="text"
-                placeholder="Buscar..."
-                className="w-48 rounded-full border border-white/10 bg-[#111111] py-2 pl-9 pr-4 text-sm outline-none transition-colors focus:border-red-500/50 lg:w-64"
-              />
-            </div>
-
-            <div className="relative cursor-pointer">
-              <Bell size={20} className="text-gray-400 transition-colors hover:text-white" />
-            </div>
+            <NavLink to="/recepcion/check-in" className="hidden items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm text-gray-200 transition-colors hover:bg-white/5 md:inline-flex">
+              <QrCode size={16} /> Registrar asistencia
+            </NavLink>
+            <NavLink to="/recepcion/notificaciones" aria-label="Ver notificaciones" className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-white/5 hover:text-white">
+              <Bell size={20} />
+            </NavLink>
 
             <NavLink to="/recepcion/perfil" className="flex cursor-pointer items-center gap-3 transition-opacity hover:opacity-90 lg:border-l lg:border-white/10 lg:pl-5">
               <div className="rounded-full bg-[#2a0808] p-2 text-red-500 transition duration-300 hover:scale-105">
@@ -126,8 +122,8 @@ const RecepcionistaLayout = () => {
           </div>
         </header>
 
-        <div className="min-w-0 flex-1 overflow-y-auto">
-          <div key={ubicacionActual.pathname} className="page-transition-shell mx-auto w-full max-w-screen-2xl px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
+        <div id="contenido-recepcion" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto">
+          <div key={ubicacionActual.pathname} className="page-transition-shell sp-workspace-content">
             <Outlet />
           </div>
         </div>
@@ -142,9 +138,9 @@ const ElementoNavegacion = ({ icono, etiqueta, to, exact }) => (
     to={to}
     end={exact}
     className={({ isActive }) =>
-      `flex w-full items-center gap-3 rounded-lg p-2.5 text-sm transition-all duration-300 ${
+      `flex w-full items-center gap-3 rounded-lg p-2.5 text-sm transition-colors duration-150 ${
         isActive
-          ? 'border-l-4 border-red-600 bg-red-900/20 text-red-500 shadow-lg shadow-red-950/20'
+          ? 'bg-red-600 font-medium text-white'
           : 'text-gray-400 hover:bg-white/5 hover:text-white'
       }`
     }
@@ -157,7 +153,7 @@ const BotonCerrarSesion = ({ onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className="group flex w-full items-center gap-3 rounded-lg p-2.5 text-sm font-bold text-red-500 transition-all duration-300 hover:bg-red-500/10"
+    className="group flex w-full items-center gap-3 rounded-lg p-2.5 text-sm font-bold text-red-500 transition-colors duration-150 hover:bg-red-500/10"
   >
     <span className="rounded-lg p-1.5 transition-colors group-hover:bg-red-500/10">
       <LogOut size={18} />

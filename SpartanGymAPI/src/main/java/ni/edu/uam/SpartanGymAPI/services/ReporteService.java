@@ -24,8 +24,8 @@ public class ReporteService {
 
     private static final Map<String, String> TITULOS = Map.of(
             "fin", "Reporte Financiero Consolidado",
-            "soc", "Analisis de Socios y Retencion",
-            "inv", "Auditoria de Inventario y Stock",
+            "soc", "Análisis de socios y retención",
+            "inv", "Auditoría de inventario y stock",
             "asi", "Control de Asistencia y Horarios"
     );
 
@@ -37,6 +37,7 @@ public class ReporteService {
     private final ProductoInventarioRepository productoRepository;
     private final SucursalRepository sucursalRepository;
     private final VentaProductoRepository ventaRepository;
+    private final ConfiguracionAppService configuracionAppService;
 
     public ReporteResumenResponse obtenerResumen(String sucursalId) {
         long totalSocios = socioRepository.findAll().stream()
@@ -78,7 +79,11 @@ public class ReporteService {
 
     public ReporteGeneradoResponse generar(String tipo, String sucursalId) {
         String tipoNormalizado = tipo == null || tipo.isBlank() ? "fin" : tipo.toLowerCase(Locale.ROOT);
-        String titulo = TITULOS.getOrDefault(tipoNormalizado, "Reporte Operativo Spartan Gym");
+        Object nombreConfigurado = configuracionAppService.obtener().get("gymName");
+        String nombreGimnasio = nombreConfigurado instanceof String nombre && !nombre.isBlank()
+                ? nombre.trim()
+                : "Spartan Gym";
+        String titulo = TITULOS.getOrDefault(tipoNormalizado, "Reporte Operativo " + nombreGimnasio);
         ReporteContenido contenido = contenido(tipoNormalizado, sucursalId);
 
         return ReporteGeneradoResponse.builder()
@@ -123,9 +128,9 @@ public class ReporteService {
                 .toList();
 
         return new ReporteContenido(
-                List.of("Categoria", "Cantidad", "Total", "Detalle"),
+                List.of("Categoría", "Cantidad", "Total", "Detalle"),
                 List.of(
-                        List.of("Pagos de membresia", String.valueOf(pagos.size()), money(pagosMembresia), "Pagos registrados en caja"),
+                        List.of("Pagos de membresía", String.valueOf(pagos.size()), money(pagosMembresia), "Pagos registrados en caja"),
                         List.of("Ingresos operativos", String.valueOf(contarMovimientos("ingreso", sucursalId)), money(ingresosMovimientos), "Incluye venta de productos"),
                         List.of("Gastos operativos", String.valueOf(contarMovimientos("gasto", sucursalId)), money(gastos), "Movimientos administrativos"),
                         List.of("Balance neto", "Corte actual", money(neto), "Ingresos menos gastos")
@@ -172,23 +177,23 @@ public class ReporteService {
         String tasaAsistencia = totalSocios == 0 ? "0%" : redondear((double) asistencias / totalSocios * 100) + "%";
 
         return new ReporteContenido(
-                List.of("Metrica", "Resultado", "Detalle"),
+                List.of("Métrica", "Resultado", "Detalle"),
                 List.of(
                         List.of("Socios registrados", String.valueOf(totalSocios), "Cuentas tipo socio"),
-                        List.of("Membresias activas", String.valueOf(membresiasActivas), "Acceso activo"),
-                        List.of("Sin membresia activa", String.valueOf(sinMembresia), "Requieren seguimiento")
+                        List.of("Membresías activas", String.valueOf(membresiasActivas), "Acceso activo"),
+                        List.of("Sin membresía activa", String.valueOf(sinMembresia), "Requieren seguimiento")
                 ),
                 List.of(
                         List.of("Total socios", String.valueOf(totalSocios)),
                         List.of("Activos", String.valueOf(membresiasActivas)),
-                        List.of("Retencion", redondear(totalSocios == 0 ? 0 : membresiasActivas * 100.0 / totalSocios) + "%")
+                        List.of("Retención", redondear(totalSocios == 0 ? 0 : membresiasActivas * 100.0 / totalSocios) + "%")
                 ),
                 List.of(ReporteTablaResponse.builder()
-                        .titulo("Detalles de Socios y Retencion")
-                        .headers(List.of("Metrica", "Cantidad / Valor", "Descripcion"))
+                        .titulo("Detalles de socios y retención")
+                        .headers(List.of("Métrica", "Cantidad / valor", "Descripción"))
                         .rows(List.of(
                                 List.of("Altas de nuevos socios", String.valueOf(totalSocios), "Socios inscritos historicamente"),
-                                List.of("Membresias renovadas", String.valueOf(renovadas), "Membresias procesadas como renovacion"),
+                                List.of("Membresías renovadas", String.valueOf(renovadas), "Membresías procesadas como renovación"),
                                 List.of("Abandonos", String.valueOf(abandonos), "Suma de membresias vencidas o canceladas"),
                                 List.of("Tasas de asistencia", tasaAsistencia, "Promedio de check-ins vs Total de socios")
                         ))
@@ -211,7 +216,7 @@ public class ReporteService {
                 .toList();
 
         return new ReporteContenido(
-                List.of("Producto", "Categoria", "Stock", "Precio", "Sucursal"),
+                List.of("Producto", "Categoría", "Stock", "Precio", "Sucursal"),
                 productos.stream()
                         .map(p -> List.of(
                                 valor(p.getNombre()),
@@ -275,11 +280,11 @@ public class ReporteService {
                 .count();
 
         return new ReporteContenido(
-                List.of("Metrica", "Resultado", "Detalle"),
+                List.of("Métrica", "Resultado", "Detalle"),
                 List.of(
                         List.of("Asistencias registradas", String.valueOf(asistenciasCount), "Check-ins guardados"),
                         List.of("Socios registrados", String.valueOf(totalSocios), "Base actual"),
-                        List.of("Membresias activas", String.valueOf(membresiasActivas), "Acceso habilitado"),
+                        List.of("Membresías activas", String.valueOf(membresiasActivas), "Acceso habilitado"),
                         List.of("Hora pico de ingresos", horaPicoStr, "Hora con más check-ins registrados")
                 ),
                 List.of(

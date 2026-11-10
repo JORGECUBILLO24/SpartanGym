@@ -318,19 +318,19 @@ const PerfilAdmin = () => {
 
   return (
     <div className="perfil-admin flex min-h-screen flex-col gap-6 pb-10 text-white">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {resumenPerfil.map((item) => (
-          <TarjetaResumenPerfil key={item.titulo} {...item} />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
-        <aside className="tarjeta-perfil relative overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-6 text-center shadow-2xl">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-70" />
-          <div className="mx-auto mt-3 flex flex-col items-center gap-3">
-            <Avatar fotoUrl={fotoUrl} nombre={perfil.nombre} email={perfil.correo} tamano={112} respaldo="AD" />
-            <div className="flex items-center gap-2">
-              <label className={`rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-200 transition hover:bg-white/10 ${
+      <section
+        aria-label="Resumen del perfil y la cuenta"
+        className="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(17rem,0.84fr)_minmax(0,2.16fr)]"
+      >
+        <aside className="tarjeta-perfil rounded-2xl border border-white/10 bg-[#090909] p-4 sm:p-5">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 text-center sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:text-left 2xl:grid-cols-1 2xl:text-center">
+            <Avatar fotoUrl={fotoUrl} nombre={perfil.nombre} email={perfil.correo} tamano={88} respaldo="AD" />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-black text-white">{perfil.nombre || 'Administrador'}</h2>
+              <p className="mt-1 text-xs font-bold uppercase tracking-widest text-red-500">{perfil.cargo}</p>
+            </div>
+            <div className="col-span-2 flex shrink-0 items-center justify-center gap-2 sm:col-span-1 sm:justify-start 2xl:col-span-1 2xl:justify-center">
+              <label className={`rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-gray-200 transition-colors hover:bg-white/10 ${
                 subiendoFoto ? 'pointer-events-none cursor-wait opacity-50' : 'cursor-pointer'
               }`}>
                 {subiendoFoto ? 'Guardando...' : 'Cambiar foto'}
@@ -341,19 +341,16 @@ const PerfilAdmin = () => {
                   type="button"
                   onClick={quitarFoto}
                   disabled={subiendoFoto}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-400 transition hover:text-white disabled:cursor-wait disabled:opacity-50 disabled:hover:text-gray-400"
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-gray-400 transition-colors hover:text-white disabled:cursor-wait disabled:opacity-50 disabled:hover:text-gray-400"
                 >
                   Quitar foto
                 </button>
               )}
             </div>
-            {errorFoto && <p className="text-xs text-red-400">{errorFoto}</p>}
           </div>
+          {errorFoto && <p role="alert" className="mt-3 text-sm text-red-400">{errorFoto}</p>}
 
-          <h2 className="mt-5 text-xl font-black text-white">{perfil.nombre || 'Administrador'}</h2>
-          <p className="mt-1 text-xs font-bold uppercase tracking-widest text-red-500">{perfil.cargo}</p>
-
-          <div className="mt-6 space-y-3 text-left">
+          <div role="group" aria-label="Datos de contacto y acceso" className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 2xl:grid-cols-1">
             <DatoPerfil icono={Mail} etiqueta="Correo" valor={perfil.correo} />
             <DatoPerfil icono={Phone} etiqueta="Telefono" valor={perfil.telefono} />
             <DatoPerfil icono={Building2} etiqueta="Sucursal" valor={perfil.sucursal} />
@@ -361,66 +358,77 @@ const PerfilAdmin = () => {
           </div>
         </aside>
 
-        <form
-          onSubmit={guardarPerfil}
-          className="tarjeta-perfil relative overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6 lg:p-8"
-        >
-          <div className="mb-6 flex flex-col gap-3 border-b border-white/5 pb-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-400">Cuenta local</p>
-              <h1 className="mt-1 text-2xl font-black text-white">Datos del administrador</h1>
-              <p className="mt-1 text-sm text-gray-400">Actualiza la informacion visible de la cuenta logueada.</p>
-            </div>
-            {guardado && (
-              <span className="inline-flex w-fit items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1.5 text-[10px] font-bold uppercase text-green-500">
-                <CheckCircle2 size={13} />
-                Guardado
-              </span>
-            )}
-          </div>
+        <div role="group" aria-label="Métricas de la cuenta" className="grid grid-cols-2 gap-3 sm:grid-cols-12 sm:gap-4 2xl:grid-cols-5">
+          {resumenPerfil.map((item, index) => (
+            <TarjetaResumenPerfil
+              key={item.titulo}
+              {...item}
+              className={index < 3
+                ? 'sm:col-span-4 2xl:col-span-1'
+                : index === 3
+                  ? 'sm:col-span-4 sm:col-start-3 2xl:col-span-1 2xl:col-start-auto'
+                  : 'col-span-2 sm:col-span-4 sm:col-start-7 2xl:col-span-1 2xl:col-start-auto'}
+              style={{ '--perfil-resumen-delay': `${index * 24}ms` }}
+            />
+          ))}
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <CampoPerfil icono={User} etiqueta="Nombre completo" nombre="nombre" valor={perfil.nombre} onChange={actualizarCampo} />
-            <CampoPerfil icono={Mail} etiqueta="Correo administrativo" nombre="correo" type="email" valor={perfil.correo} onChange={actualizarCampo} />
-            <CampoPerfil icono={Phone} etiqueta="Telefono / WhatsApp" nombre="telefono" valor={perfil.telefono} onChange={actualizarCampo} />
-            <CampoPerfil icono={KeyRound} etiqueta="Cargo" nombre="cargo" valor={perfil.cargo} onChange={actualizarCampo} />
-            <CampoPerfil icono={Building2} etiqueta="Sucursal principal" nombre="sucursal" valor={perfil.sucursal} onChange={actualizarCampo} />
-            <CampoPerfil icono={MapPin} etiqueta="Ubicacion" nombre="ubicacion" valor={perfil.ubicacion} onChange={actualizarCampo} />
+      <form
+        onSubmit={guardarPerfil}
+        className="tarjeta-perfil rounded-2xl border border-white/10 bg-[#090909] p-5 sm:p-6 lg:p-8"
+      >
+        <div className="mb-6 flex flex-col gap-3 border-b border-white/5 pb-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-white">Datos del administrador</h2>
+            <p className="mt-1 text-sm text-gray-400">Actualiza la informacion visible de la cuenta logueada.</p>
           </div>
+          {guardado && (
+            <span role="status" className="inline-flex w-fit items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1.5 text-xs font-bold text-green-400">
+              <CheckCircle2 size={14} />
+              Guardado
+            </span>
+          )}
+        </div>
 
-          <div className="mt-8 flex justify-end border-t border-white/5 pt-5">
-            <button
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <CampoPerfil icono={User} etiqueta="Nombre completo" nombre="nombre" valor={perfil.nombre} onChange={actualizarCampo} />
+          <CampoPerfil icono={Mail} etiqueta="Correo administrativo" nombre="correo" type="email" valor={perfil.correo} onChange={actualizarCampo} />
+          <CampoPerfil icono={Phone} etiqueta="Telefono / WhatsApp" nombre="telefono" valor={perfil.telefono} onChange={actualizarCampo} />
+          <CampoPerfil icono={KeyRound} etiqueta="Cargo" nombre="cargo" valor={perfil.cargo} onChange={actualizarCampo} />
+          <CampoPerfil icono={Building2} etiqueta="Sucursal principal" nombre="sucursal" valor={perfil.sucursal} onChange={actualizarCampo} />
+          <CampoPerfil icono={MapPin} etiqueta="Ubicacion" nombre="ubicacion" valor={perfil.ubicacion} onChange={actualizarCampo} />
+        </div>
+
+        <div className="mt-6 flex flex-col-reverse gap-3 border-t border-white/5 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <button
             type="button"
             onClick={() => setModalValidacionQr(true)}
-            className="flex items-center gap-2 px-6 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-all duration-300 font-medium mr-4"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-800 px-5 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-700 sm:w-auto"
           >
-            <Activity size={20} className="text-red-500" />
+            <Activity size={18} className="text-red-500" />
             Validar por QR
           </button>
-            <button
-              type="submit"
-              disabled={guardando}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-7 py-3 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-red-900/20 transition-all hover:-translate-y-0.5 hover:bg-red-700 disabled:cursor-wait disabled:opacity-60"
-            >
-              {guardando ? 'Guardando...' : <><Save size={17} /> Guardar datos</>}
-            </button>
-          </div>
-        </form>
-      </div>
+          <button
+            type="submit"
+            disabled={guardando}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-7 py-3 text-sm font-black uppercase tracking-wide text-white transition-colors hover:bg-red-700 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+          >
+            {guardando ? 'Guardando...' : <><Save size={17} /> Guardar datos</>}
+          </button>
+        </div>
+      </form>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <section className="tarjeta-perfil rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(16rem,0.85fr)]">
+        <section className="tarjeta-perfil rounded-2xl border border-white/10 bg-[#090909] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">Operaciones</p>
-              <h2 className="mt-1 text-lg font-black text-white">Gimnasios administrados</h2>
-            </div>
+            <h2 className="text-xl font-black text-white">Gimnasios administrados</h2>
             <Activity className="text-red-500" size={22} />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
             {cargandoGimnasios ? (
-              <div className="col-span-2 text-center text-sm text-gray-500 py-4">Cargando sucursales...</div>
+              <div className="py-4 text-center text-sm text-gray-400 xl:col-span-2">Cargando sucursales...</div>
             ) : gimnasiosAdministrados.length > 0 ? (
               gimnasiosAdministrados.map((gimnasio) => (
                 <TarjetaGimnasio
@@ -433,7 +441,7 @@ const PerfilAdmin = () => {
                 />
               ))
             ) : (
-              <div className="col-span-2 text-center text-sm text-gray-500 py-4">No hay sucursales registradas</div>
+              <div className="py-4 text-center text-sm text-gray-400 xl:col-span-2">No hay sucursales registradas</div>
             )}
           </div>
 
@@ -446,19 +454,20 @@ const PerfilAdmin = () => {
           )}
         </section>
 
-        <section className="tarjeta-perfil rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6">
+        <section className="tarjeta-perfil rounded-2xl border border-white/10 bg-[#090909] p-5 sm:p-6">
           <div className="mb-5 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">Conteo limpio</p>
-              <h2 className="mt-1 text-lg font-black text-white">Usuarios por sucursal</h2>
-            </div>
+            <h2 className="text-xl font-black text-white">Usuarios por sucursal</h2>
             <BarChart3 className="text-red-500" size={22} />
           </div>
 
           <div className="space-y-4">
-            {conteoUsuariosPorSucursal.map((sucursal) => (
+            {conteoUsuariosPorSucursal.length > 0 ? conteoUsuariosPorSucursal.map((sucursal) => (
               <BarraUsuariosSucursal key={sucursal.sucursal} sucursal={sucursal} maximo={usuariosMaximos} />
-            ))}
+            )) : (
+              <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-gray-400">
+                No hay datos de usuarios por sucursal todavía.
+              </p>
+            )}
           </div>
         </section>
       </div>
@@ -474,7 +483,7 @@ const PerfilAdmin = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
         <ListadoPersonas
           titulo="Administradores creados"
           subtitulo="Cuentas administrativas creadas desde tu perfil"
@@ -497,6 +506,7 @@ const PerfilAdmin = () => {
           icono={User}
           personas={recepcionistasAsignados}
           tipo="recepcion"
+          className="sm:col-span-2 2xl:col-span-1"
           onEliminar={eliminarPersona}
         />
       </div>
@@ -548,8 +558,8 @@ const ModalValidacionQr = ({ onClose }) => {
     try {
       const response = await asistenciasApi.qrValidacion();
       const qrDataUrl = await QRCode.toDataURL(response.token, {
-        width: 300,
-        margin: 2,
+        width: 640,
+        margin: 4,
         color: { dark: '#FFFFFF', light: '#00000000' }
       });
       setQrBase64(qrDataUrl);
@@ -645,15 +655,15 @@ const DatoPerfil = ({ icono: Icono, etiqueta, valor }) => (
       <Icono size={16} />
     </span>
     <span className="min-w-0">
-      <span className="block text-[9px] font-black uppercase tracking-widest text-gray-500">{etiqueta}</span>
-      <span className="block truncate text-xs font-bold text-white">{valor}</span>
+      <span className="block text-[10px] font-bold uppercase tracking-wide text-gray-400">{etiqueta}</span>
+      <span className="block truncate text-sm font-bold text-white">{valor}</span>
     </span>
   </div>
 );
 
 const CampoPerfil = ({ icono: Icono, etiqueta, nombre, valor, onChange, type = 'text' }) => (
   <label className="block">
-    <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-500">{etiqueta}</span>
+    <span className="mb-2 block text-xs font-bold text-gray-400">{etiqueta}</span>
     <span className="relative block">
       <Icono className="absolute left-3 top-3.5 text-gray-600" size={16} />
       <input
@@ -662,75 +672,83 @@ const CampoPerfil = ({ icono: Icono, etiqueta, nombre, valor, onChange, type = '
         name={nombre}
         value={valor}
         onChange={onChange}
-        className="w-full rounded-xl border border-white/10 bg-[#111] py-3 pl-10 pr-4 text-sm text-white outline-none transition-all focus:border-red-600"
+        className="w-full rounded-xl border border-white/10 bg-[#111] py-3 pl-10 pr-4 text-sm text-white outline-none transition-colors focus:border-red-600"
       />
     </span>
   </label>
 );
 
-const TarjetaResumenPerfil = ({ titulo, valor, detalle, icono: Icono, color }) => (
-  <article className="tarjeta-resumen-perfil flex items-center justify-between rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-xl">
+const TarjetaResumenPerfil = ({ titulo, valor, detalle, icono: Icono, color, className = '', style }) => (
+  <article
+    style={style}
+    className={`tarjeta-resumen-perfil perfil-resumen-animado flex min-h-[112px] items-center justify-between rounded-2xl border border-white/10 bg-[#090909] p-4 ${className}`}
+  >
     <div className="min-w-0">
-      <p className="truncate text-[10px] font-black uppercase tracking-widest text-gray-500">{titulo}</p>
+      <p className="text-[10px] font-bold uppercase leading-tight tracking-wide text-gray-400">{titulo}</p>
       <h3 className="mt-1 text-2xl font-black text-white">{valor}</h3>
-      <p className="mt-1 truncate text-[10px] font-bold text-gray-500">{detalle}</p>
+      <p className="mt-1 truncate text-xs font-medium text-gray-400">{detalle}</p>
     </div>
-    <span className={`ml-3 rounded-xl bg-white/5 p-3 ${color}`}>
-      <Icono size={22} />
+    <span className={`ml-3 shrink-0 rounded-xl bg-white/5 p-3 ${color}`}>
+      <Icono size={21} />
     </span>
   </article>
 );
 
 const TarjetaGimnasio = ({ gimnasio, activo, esGlobal, onClick, onSeleccionarGlobal }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`rounded-2xl border p-4 text-left transition-all duration-300 hover:-translate-y-0.5 ${
+  <article
+    className={`rounded-2xl border transition-colors ${
       activo
-        ? 'border-red-500/50 bg-red-500/10 shadow-lg shadow-red-950/20'
-        : 'border-white/5 bg-[#111]/60 hover:border-red-500/25'
+        ? 'border-red-500/50 bg-red-500/10'
+        : 'border-white/10 bg-[#111]/60'
     }`}
   >
-    <div className="flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <h3 className="truncate text-sm font-black text-white">{gimnasio.nombre}</h3>
-        <p className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-          <MapPin size={11} />
-          {gimnasio.ciudad}
-        </p>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={activo}
+      className="w-full rounded-t-[15px] p-4 text-left outline-none transition-colors hover:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-red-500"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-black text-white">{gimnasio.nombre}</h3>
+          <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-gray-400">
+            <MapPin size={13} />
+            {gimnasio.ciudad}
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[10px] font-bold uppercase text-red-400">
+          {gimnasio.estado}
+        </span>
       </div>
-      <span className="shrink-0 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[9px] font-black uppercase text-red-500">
-        {gimnasio.estado}
-      </span>
-    </div>
-    <div className="mt-4 grid grid-cols-2 gap-3">
-      <div className="rounded-xl bg-white/5 p-3">
-        <p className="text-[9px] font-black uppercase text-gray-500">Usuarios</p>
-        <p className="mt-1 text-lg font-black text-white">{gimnasio.usuarios}</p>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="rounded-xl bg-white/5 p-3">
+          <p className="text-[10px] font-bold uppercase text-gray-400">Usuarios</p>
+          <p className="mt-1 text-lg font-black text-white">{gimnasio.usuarios}</p>
+        </div>
+        <div className="rounded-xl bg-white/5 p-3">
+          <p className="text-[10px] font-bold uppercase text-gray-400">Personal</p>
+          <p className="mt-1 text-lg font-black text-white">{gimnasio.personal}</p>
+        </div>
       </div>
-      <div className="rounded-xl bg-white/5 p-3">
-        <p className="text-[9px] font-black uppercase text-gray-500">Personal</p>
-        <p className="mt-1 text-lg font-black text-white">{gimnasio.personal}</p>
-      </div>
-    </div>
-    <div className="mt-4 border-t border-white/5 pt-4">
+    </button>
+    <div className="border-t border-white/5 px-4 py-3">
       {esGlobal ? (
-        <div className="w-full rounded-xl bg-red-500/10 border border-red-500/20 py-2 text-center text-[10px] font-black uppercase tracking-widest text-red-500">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 py-2 text-center text-[10px] font-bold uppercase tracking-wide text-red-400">
           Activa Globalmente
         </div>
       ) : (
         <button
-          onClick={(e) => {
-            e.stopPropagation();
+          type="button"
+          onClick={() => {
             onSeleccionarGlobal();
           }}
-          className="w-full rounded-xl bg-white/5 py-2 text-xs font-bold text-white transition-all hover:bg-red-600"
+          className="w-full rounded-xl bg-white/5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
         >
           Ver en Dashboard
         </button>
       )}
     </div>
-  </button>
+  </article>
 );
 
 const PanelGimnasioGlobal = ({ gimnasio }) => {
@@ -741,11 +759,10 @@ const PanelGimnasioGlobal = ({ gimnasio }) => {
     <div className="panel-gimnasio-global mt-5 rounded-2xl border border-white/5 bg-[#111]/60 p-4">
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-400">Vista global</p>
-          <h3 className="mt-1 text-lg font-black text-white">{gimnasio.nombre}</h3>
-          <p className="mt-1 text-xs font-bold text-gray-500">{gimnasio.ciudad} - {gimnasio.estado}</p>
+          <h3 className="text-lg font-black text-white">{gimnasio.nombre}</h3>
+          <p className="mt-1 text-sm font-medium text-gray-400">{gimnasio.ciudad} · {gimnasio.estado}</p>
         </div>
-        <span className="w-fit rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-[10px] font-black uppercase text-green-500">
+        <span className="w-fit rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1.5 text-xs font-bold text-green-400">
           Datos sincronizados
         </span>
       </div>
@@ -759,15 +776,15 @@ const PanelGimnasioGlobal = ({ gimnasio }) => {
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="dato-gimnasio-global rounded-xl bg-white/5 p-3">
-          <p className="text-[9px] font-black uppercase text-gray-500">Personal</p>
+          <p className="text-[10px] font-bold uppercase text-gray-400">Personal</p>
           <p className="mt-1 text-lg font-black text-white">{gimnasio.personal}</p>
         </div>
         <div className="dato-gimnasio-global rounded-xl bg-white/5 p-3">
-          <p className="text-[9px] font-black uppercase text-gray-500">Pagos pendientes</p>
+          <p className="text-[10px] font-bold uppercase text-gray-400">Pagos pendientes</p>
           <p className="mt-1 text-lg font-black text-orange-400">{gimnasio.pagosPendientes}</p>
         </div>
         <div className="dato-gimnasio-global rounded-xl bg-white/5 p-3">
-          <p className="text-[9px] font-black uppercase text-gray-500">Estado global</p>
+          <p className="text-[10px] font-bold uppercase text-gray-400">Estado global</p>
           <p className="mt-1 text-lg font-black text-green-500">{gimnasio.estado}</p>
         </div>
       </div>
@@ -777,25 +794,30 @@ const PanelGimnasioGlobal = ({ gimnasio }) => {
 
 const DatoGimnasio = ({ titulo, valor, detalle }) => (
   <div className="dato-gimnasio-global rounded-xl border border-white/5 bg-[#090909]/70 p-3">
-    <p className="text-[9px] font-black uppercase text-gray-500">{titulo}</p>
+    <p className="text-[10px] font-bold uppercase text-gray-400">{titulo}</p>
     <p className="mt-1 truncate text-base font-black text-white sm:text-lg">{valor}</p>
-    <p className="mt-1 text-[10px] font-bold text-gray-500">{detalle}</p>
+    <p className="mt-1 text-xs font-medium text-gray-400">{detalle}</p>
   </div>
 );
 
 const BarraUsuariosSucursal = ({ sucursal, maximo }) => {
-  const porcentaje = Math.round((sucursal.usuarios / maximo) * 100);
+  const porcentaje = maximo > 0 ? Math.round((sucursal.usuarios / maximo) * 100) : 0;
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="truncate text-xs font-bold text-white">{sucursal.sucursal}</span>
-        <span className="shrink-0 rounded-full bg-white/5 px-2 py-1 text-[10px] font-black text-gray-400">
+        <span className="shrink-0 rounded-full bg-white/5 px-2 py-1 text-xs font-bold text-gray-300">
           {sucursal.usuarios} usuarios
         </span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-white/5">
         <div
+          role="progressbar"
+          aria-label={`Usuarios en ${sucursal.sucursal}`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={porcentaje}
           className="barra-sucursal h-full rounded-full bg-gradient-to-r from-red-700 via-red-500 to-orange-400"
           style={{ '--ancho-barra': `${porcentaje}%` }}
         />
@@ -804,44 +826,47 @@ const BarraUsuariosSucursal = ({ sucursal, maximo }) => {
   );
 };
 
-const ListadoPersonas = ({ titulo, subtitulo, icono: Icono, personas, tipo, onEliminar }) => (
-  <section className="tarjeta-perfil rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6">
+const ListadoPersonas = ({ titulo, subtitulo, icono: Icono, personas, tipo, onEliminar, className = '' }) => (
+  <section className={`tarjeta-perfil rounded-2xl border border-white/10 bg-[#090909] p-5 sm:p-6 ${className}`}>
     <div className="mb-5 flex items-center justify-between gap-3">
       <div>
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">{tipo}</p>
-        <h2 className="mt-1 text-lg font-black text-white">{titulo}</h2>
-        <p className="mt-1 text-xs text-gray-500">{subtitulo}</p>
+        <h2 className="text-lg font-black text-white">{titulo}</h2>
+        <p className="mt-1 text-sm text-gray-400">{subtitulo}</p>
       </div>
       <Icono className="text-red-500" size={22} />
     </div>
 
     <div className="space-y-3">
-      {personas.map((persona) => (
+      {personas.length > 0 ? personas.map((persona) => (
         <FilaPersona key={persona.id || `${persona.nombre}-${persona.sucursal}`} persona={persona} tipo={tipo} onEliminar={onEliminar} />
-      ))}
+      )) : (
+        <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-gray-400">
+          Aún no hay personas para mostrar en esta lista.
+        </p>
+      )}
     </div>
   </section>
 );
 
 const FilaPersona = ({ persona, tipo, onEliminar }) => (
-  <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-[#111]/60 p-3 transition-all hover:border-white/10">
+  <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-[#111]/60 p-3 transition-colors hover:border-white/10">
     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-600/10 text-xs font-black text-red-500">
       {obtenerInicialesCuenta({ name: persona.nombre }, tipo === 'admin' ? 'AD' : tipo === 'recepcion' ? 'RC' : 'EN')}
     </span>
     <div className="min-w-0 flex-1">
       <p className="truncate text-sm font-black text-white">{persona.nombre}</p>
-      <p className="mt-0.5 truncate text-[10px] font-medium text-gray-500">
+      <p className="mt-0.5 truncate text-xs font-medium text-gray-400">
         {persona.rol || persona.especialidad} - {persona.sucursal}
       </p>
     </div>
-    <span className="hidden rounded-full bg-white/5 px-2 py-1 text-[9px] font-bold uppercase text-gray-500 sm:inline-flex">
+    <span className="hidden rounded-full bg-white/5 px-2 py-1 text-[10px] font-bold uppercase text-gray-300 sm:inline-flex">
       {persona.estado || persona.correo}
     </span>
     <button
       type="button"
       disabled={!persona.puedeEliminar}
       onClick={() => onEliminar(persona)}
-      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all ${
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors ${
         persona.puedeEliminar
           ? 'border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-600 hover:text-white'
           : 'cursor-not-allowed border-white/5 bg-white/5 text-gray-600'

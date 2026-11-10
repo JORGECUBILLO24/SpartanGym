@@ -138,7 +138,7 @@ const Perfil = () => {
   }, [perfilActual, recepcionistas]);
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 pb-8 text-white sm:gap-6 lg:gap-8">
+    <div className="workspace-page mx-auto w-full max-w-7xl pb-4 text-white">
       <section className="tarjeta-sistema overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d0d] p-5 shadow-2xl sm:p-6 lg:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
@@ -156,7 +156,7 @@ const Perfil = () => {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(280px,360px)_minmax(0,1fr)]">
+      <section className="workspace-grid workspace-grid--split-wide">
         <article className="tarjeta-sistema flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#0d0d0d] p-6 text-center shadow-2xl sm:p-8">
           <Avatar fotoUrl={fotoUrl} nombre={perfilActual.nombre} email={perfilActual.correo} tamano={112} respaldo="RC" />
           <div className="mt-3 flex items-center gap-2">
@@ -226,7 +226,7 @@ const Perfil = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="workspace-grid--cards">
           {recepcionistasVisibles.map((recepcionista) => (
             <TarjetaRecepcionista
               key={recepcionista.id || recepcionista.correo}

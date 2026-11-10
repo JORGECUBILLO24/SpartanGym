@@ -54,6 +54,9 @@ dependencies {
 
     // 2. Dependencias de UI y Material 3 originales
     implementation(libs.androidx.activity.compose)
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.9")
+    implementation("com.caverock:androidsvg-aar:1.4")
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

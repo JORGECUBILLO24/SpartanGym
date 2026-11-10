@@ -93,6 +93,10 @@ export async function apiRequest(path, options = {}) {
 }
 
 export const authApi = {
+  loginGoogle: (credential) => apiRequest('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
+  }),
   login: (email, password) => apiRequest('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
@@ -157,6 +161,9 @@ export const catalogoApi = {
 };
 
 export const rutinasApi = {
+  actualizarImagen: (id, imagenUrl) => apiRequest(`/rutinas/${id}/imagen`, {
+    method: 'PATCH', body: JSON.stringify({ imagenUrl }),
+  }),
   listar: () => apiRequest('/rutinas'),
   crear: (rutina) => apiRequest('/rutinas', {
     method: 'POST',
@@ -170,9 +177,17 @@ export const rutinasApi = {
 
 export const membresiasApi = {
   tipos: () => apiRequest('/membresias/tipos'),
-  crearTipo: ({ nombre, duracionDias, precio }) => apiRequest('/membresias/tipos', {
+  actualizarImagen: (id, imagenUrl) => apiRequest(`/membresias/tipos/${id}/imagen`, {
+    method: 'PATCH',
+    body: JSON.stringify({ imagenUrl }),
+  }),
+  crearTipo: ({ nombre, duracionDias, precio, beneficios }) => apiRequest('/membresias/tipos', {
     method: 'POST',
-    body: JSON.stringify({ nombre, duracionDias, precio }),
+    body: JSON.stringify({ nombre, duracionDias, precio, beneficios }),
+  }),
+  actualizarTipo: (id, { nombre, duracionDias, precio, beneficios }) => apiRequest(`/membresias/tipos/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ nombre, duracionDias, precio, beneficios }),
   }),
   eliminarTipo: (id) => apiRequest(`/membresias/tipos/${id}`, { method: 'DELETE' }),
   comprar: ({ tipoMembresiaId, metodoPago }) => apiRequest('/membresias/comprar', {
@@ -234,6 +249,7 @@ export const ventasApi = {
 
 export const sucursalesApi = {
   listar: () => apiRequest('/sucursales'),
+  listarDisponibles: () => apiRequest('/sucursales/disponibles', { skipAuth: true }),
   crear: (sucursal) => apiRequest('/sucursales', {
     method: 'POST',
     body: JSON.stringify(sucursal),

@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Spartan Gym Web: gestion de socios, membresias, recepcion, reportes e inventario para gimnasios."
+      content="Plataforma para gestionar socios, membresías, recepción, reportes e inventario de gimnasios."
     />
     <meta name="theme-color" content="#050505" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#f4f6fa" media="(prefers-color-scheme: light)" />
-    <title>Spartan Gym Web</title>
+    <title>Spartan Gym</title>
     <script>
       (() => {
         const clave = 'spartanGym.settings';
@@ -24,6 +24,25 @@
 
         try {
           const configuracion = JSON.parse(window.localStorage.getItem(clave) || '{}');
+          const nombreGimnasio = typeof configuracion.gymName === 'string' && configuracion.gymName.trim()
+            ? configuracion.gymName.trim()
+            : 'Spartan Gym';
+          document.title = nombreGimnasio;
+          const favicon = document.querySelector('link[rel="icon"]');
+          const iniciales = nombreGimnasio
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((palabra) => palabra[0])
+            .join('')
+            .replace(/[^a-z0-9]/gi, '')
+            .toUpperCase() || 'GY';
+          if (favicon) {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="18" fill="#090909"/><path d="M8 32h8m32 0h8M16 25v14m32-14v14M21 32h22" stroke="#e50914" stroke-width="5" stroke-linecap="round"/><text x="32" y="57" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="800" fill="#fff">${iniciales}</text></svg>`;
+            favicon.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+          }
           const temaGuardado = temasValidos.includes(configuracion.theme) ? configuracion.theme : 'system';
           preferencia = temaGuardado === 'system' || configuracion.themeSource === 'user'
             ? temaGuardado

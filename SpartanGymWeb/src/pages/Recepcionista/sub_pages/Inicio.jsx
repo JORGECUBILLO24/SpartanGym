@@ -62,7 +62,7 @@ const Inicio = () => {
   ];
 
   return (
-    <div className="pagina-stack flex flex-col gap-5 lg:gap-6">
+    <div className="workspace-page">
       {errorApi && (
         <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">
           <AlertCircle size={15} />
@@ -72,7 +72,7 @@ const Inicio = () => {
 
       <section className="tarjeta-sistema relative overflow-hidden rounded-2xl border border-white/10 bg-[#111111] p-5 shadow-2xl sm:p-6 lg:p-7">
         <div className="brillo-panel" />
-        <div className="relative z-10 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
+        <div className="workspace-grid workspace-grid--split-wide relative z-10 items-center">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-red-400">
               <Sparkles size={13} />
@@ -86,7 +86,7 @@ const Inicio = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="workspace-grid--cards">
             <MiniPulso icono={ShieldCheck} etiqueta="Accesos" valor="OK" />
             <MiniPulso icono={Zap} etiqueta="Caja" valor="Activa" />
             <MiniPulso icono={CheckCircle2} etiqueta="Turno" valor="100%" />
@@ -94,7 +94,7 @@ const Inicio = () => {
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-3 lg:gap-4 xl:grid-cols-4">
+      <div className="workspace-grid--metrics">
         {indicadoresRecepcion.map((indicador) => (
           <TarjetaResumen
             key={indicador.titulo}
@@ -105,7 +105,7 @@ const Inicio = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:gap-6 xl:grid-cols-2">
+      <div className="workspace-grid workspace-grid--split">
         <TarjetaAccion
           icono={QrCode}
           titulo="Control de acceso"
@@ -129,7 +129,7 @@ const Inicio = () => {
         </TarjetaAccion>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:gap-6 xl:grid-cols-2">
+      <div className="workspace-grid workspace-grid--split">
         <TablaInicio
           titulo="Pagos recientes"
           icono={DollarSign}
@@ -139,9 +139,11 @@ const Inicio = () => {
         >
           {pagosRecientes.map((pago) => (
             <tr key={pago.id} className="border-b border-white/5 last:border-0 hover:bg-white/5">
-              <td className="flex items-center gap-2 py-3 pr-4">
+              <td className="py-3 pr-4">
+                <span className="workspace-table-cell-content">
                 <AvatarSocio />
                 {pago.socio}
+                </span>
               </td>
               <td className="py-3 pr-4 text-gray-400">{pago.membresia || pago.tipoMembresia || 'Pago registrado'}</td>
               <td className="py-3 pr-4 font-bold text-white">{formatearMonto(pago.monto)}</td>
@@ -171,9 +173,11 @@ const Inicio = () => {
         >
           {proximosVencimientos.map((vencimiento) => (
             <tr key={vencimiento.id} className="border-b border-white/5 last:border-0 hover:bg-white/5">
-              <td className="flex items-center gap-2 py-3 pr-4">
+              <td className="py-3 pr-4">
+                <span className="workspace-table-cell-content">
                 <AvatarSocio />
                 {vencimiento.socio}
+                </span>
               </td>
               <td className="py-3 pr-4 text-gray-400">{vencimiento.tipoMembresia}</td>
               <td className="py-3 pr-4 text-gray-400">{formatearFecha(vencimiento.fechaVencimiento)}</td>

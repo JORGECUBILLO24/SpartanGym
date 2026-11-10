@@ -1,0 +1,1 @@
+ALTER TABLE rutinas ADD COLUMN IF NOT EXISTS imagen_url TEXT;

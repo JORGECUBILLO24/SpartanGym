@@ -30,6 +30,9 @@ public class Rutina {
     @Column(length = 140)
     private String nombre;
 
+    @Column(name = "imagen_url", columnDefinition = "TEXT")
+    private String imagenUrl;
+
     @Column(name = "tipo_rutina", length = 40)
     private String tipoRutina = "General";
 
