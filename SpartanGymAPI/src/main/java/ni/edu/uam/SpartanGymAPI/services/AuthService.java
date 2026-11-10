@@ -86,6 +86,10 @@ public class AuthService {
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalStateException("Usuario no encontrado tras autenticación."));
 
+        return iniciarSesion(usuario);
+    }
+
+    AuthResponse iniciarSesion(Usuario usuario) {
         UserDetailsImpl userDetails = new UserDetailsImpl(usuario);
         String token = jwtService.generateToken(userDetails);
 

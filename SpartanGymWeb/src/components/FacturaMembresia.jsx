@@ -1,5 +1,6 @@
 import { Download, Printer, Receipt, X } from 'lucide-react';
 import { obtenerLogosApp } from '../utils/logosApp';
+import { obtenerNombreGimnasio } from '../utils/configuracionApp';
 
 const formatearFechaHora = (valor) => {
   if (!valor) return '—';
@@ -37,6 +38,8 @@ const escaparHtml = (valor) =>
 
 const crearHtmlFacturaMembresia = (factura, configuracion, formatearMonto) => {
   const logos = obtenerLogosApp(configuracion);
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
+  const logoFactura = logos.principal;
   const concepto = `Membresia ${factura.tipoMembresia || ''}`.trim();
 
   return `
@@ -81,9 +84,9 @@ const crearHtmlFacturaMembresia = (factura, configuracion, formatearMonto) => {
           <div class="top-line"></div>
           <header>
             <div class="brand">
-              <img class="logo" src="${escaparHtml(logos.principal)}" alt="${escaparHtml(configuracion.gymName || 'Spartan Gym')}" />
+              ${logoFactura ? `<img class="logo" src="${escaparHtml(logoFactura)}" alt="${escaparHtml(nombreGimnasio)}" />` : ''}
               <div>
-                <h2>${escaparHtml(configuracion.gymName || 'Spartan Gym')}</h2>
+                <h2>${escaparHtml(nombreGimnasio)}</h2>
                 <p class="muted">${escaparHtml(configuracion.email || 'admin@spartangym.com')}</p>
                 <p class="muted">${escaparHtml(configuracion.phone || '+505 0000 0000')}</p>
               </div>
@@ -142,7 +145,7 @@ const crearHtmlFacturaMembresia = (factura, configuracion, formatearMonto) => {
             </div>
           </section>
 
-          <footer>Gracias por renovar tu membresia. Documento generado desde Spartan Gym.</footer>
+          <footer>Gracias por renovar tu membresia. Documento generado desde ${escaparHtml(nombreGimnasio)}.</footer>
         </main>
       </body>
     </html>
@@ -192,7 +195,8 @@ export const descargarFacturaMembresiaPdf = async (factura, configuracion, forma
   const margen = 42;
   const anchoTabla = anchoPagina - margen * 2;
   const logos = obtenerLogosApp(configuracion);
-  const logo = await cargarImagenComoPng(logos.principal);
+  const logoSource = logos.principal;
+  const logo = logoSource ? await cargarImagenComoPng(logoSource) : null;
   let y = 40;
 
   pdf.setDrawColor(20, 20, 20);
@@ -213,7 +217,7 @@ export const descargarFacturaMembresiaPdf = async (factura, configuracion, forma
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(18);
     pdf.setTextColor(18, 18, 18);
-    pdf.text(configuracion.gymName || 'Spartan Gym', margen, y + 30);
+    pdf.text(obtenerNombreGimnasio(configuracion), margen, y + 30);
   }
 
   pdf.setFont('helvetica', 'bold');
@@ -233,7 +237,7 @@ export const descargarFacturaMembresiaPdf = async (factura, configuracion, forma
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(11);
   pdf.setTextColor(18, 18, 18);
-  pdf.text(configuracion.gymName || 'Spartan Gym', margen, y);
+  pdf.text(obtenerNombreGimnasio(configuracion), margen, y);
   pdf.text('Socio', margen + 285, y);
 
   pdf.setFont('helvetica', 'normal');
@@ -311,7 +315,7 @@ export const descargarFacturaMembresiaPdf = async (factura, configuracion, forma
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(9);
   pdf.setTextColor(110, 110, 110);
-  pdf.text('Gracias por renovar tu membresia. Documento generado desde Spartan Gym.', margen, y, { maxWidth: anchoTabla });
+  pdf.text(`Gracias por renovar tu membresia. Documento generado desde ${obtenerNombreGimnasio(configuracion)}.`, margen, y, { maxWidth: anchoTabla });
 
   pdf.save(`${crearSlugFactura(factura.numeroFactura)}.pdf`);
 };
@@ -326,6 +330,8 @@ export const FacturaMembresiaModal = ({
   onDownload,
 }) => {
   const logos = obtenerLogosApp(configuracion);
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
+  const logoFactura = logos.principal;
 
   return (
     <div
@@ -375,10 +381,10 @@ export const FacturaMembresiaModal = ({
             <header className="flex flex-col gap-6 border-b border-neutral-200 pb-6 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                 <div className="flex h-20 w-36 items-center justify-center border border-neutral-200 p-2">
-                  <img src={logos.principal} alt={configuracion.gymName || 'Spartan Gym'} className="max-h-full max-w-full object-contain" />
+                  {logoFactura && <img src={logoFactura} alt={nombreGimnasio} className="max-h-full max-w-full object-contain" />}
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-neutral-950">{configuracion.gymName || 'Spartan Gym'}</h2>
+                  <h2 className="text-xl font-black text-neutral-950">{nombreGimnasio}</h2>
                   <p className="mt-1 text-sm text-neutral-600">{configuracion.email || 'admin@spartangym.com'}</p>
                   <p className="text-sm text-neutral-600">{configuracion.phone || '+505 0000 0000'}</p>
                 </div>
@@ -464,7 +470,7 @@ export const FacturaMembresiaModal = ({
             </section>
 
             <footer className="mt-10 border-t border-neutral-200 pt-4 text-sm text-neutral-500">
-              Gracias por renovar tu membresia. Documento generado desde Spartan Gym.
+              Gracias por renovar tu membresia. Documento generado desde {nombreGimnasio}.
             </footer>
           </article>
         </div>

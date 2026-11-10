@@ -37,6 +37,12 @@ class LoginViewModel : ViewModel() {
 
                 if (response.isSuccessful && response.body() != null) {
                     val authResponse = response.body()!!
+                    val role = authResponse.rol.orEmpty().uppercase().removePrefix("ROLE_")
+                    if (role !in setOf("SOCIO", "ENTRENADOR")) {
+                        RetrofitClient.setAuthToken(null)
+                        errorMessage = "Esta cuenta debe ingresar desde el panel web. La app móvil es para socios y entrenadores."
+                        return@launch
+                    }
 
                     userEmail = authResponse.email ?: email.trim()
                     userRole = authResponse.rol.orEmpty()

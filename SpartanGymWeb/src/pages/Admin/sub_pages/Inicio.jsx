@@ -26,7 +26,7 @@ import imgLaptop from '../../../assets/ComputadoraSpartan.webp';
 import imgEstadisticas from '../../../assets/EstadisticasSpartan.webp';
 import imgMembresia from '../../../assets/MembresiaSpartan.webp';
 import imgSuplementos from '../../../assets/SuplementosSpartan.webp';
-import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
+import { formatearMoneda, obtenerNombreGimnasio, useConfiguracionApp } from '../../../utils/configuracionApp';
 import { finanzasApi, inventarioApi, membresiasApi, operacionApi, personalApi, reportesApi, sucursalesApi } from '../../../services/api';
 
 const modulosAdministracion = [
@@ -136,6 +136,7 @@ const estadoInicialAdmin = {
 
 const Inicio = () => {
   const configuracion = useConfiguracionApp();
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
   const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
   const [resumenAdmin, setResumenAdmin] = useState(estadoInicialAdmin);
 
@@ -196,24 +197,24 @@ const Inicio = () => {
   });
 
   return (
-    <div className="inicio-admin flex min-h-full w-full flex-col gap-5 text-white sm:gap-6">
+    <div className="inicio-admin workspace-page min-h-full w-full text-white">
       <section className="panel-operativo relative overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6 lg:p-7">
         <div className="brillo-acento-operativo pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 lg:block" />
-        <div className="relative z-10 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
+        <div className="workspace-grid workspace-grid--split-wide relative z-10 items-center">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-red-400">
               <Sparkles size={13} />
               Centro de mando
             </div>
             <h1 className="mt-4 text-2xl font-black leading-tight text-white sm:text-3xl lg:text-4xl">
-              Operacion Spartan en tiempo real
+              Operación {nombreGimnasio} en tiempo real
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-400">
               Supervisa usuarios, dinero, inventario, personal y mensajes desde un inicio mas claro, visual y rapido.
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="workspace-grid--cards">
             {pulsoDinamico.map((pulso) => (
               <PulsoOperativo key={pulso.etiqueta} {...pulso} />
             ))}
@@ -226,23 +227,23 @@ const Inicio = () => {
           <TarjetaIndicador
             key={indicador.titulo}
             {...indicador}
-            valor={indicador.valorMonto ? formatearMonto(indicador.valorMonto) : indicador.valor}
+            valor={indicador.valorMonto != null ? formatearMonto(indicador.valorMonto) : indicador.valor}
           />
         ))}
       </div>
 
-      <div className="grid flex-grow grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-2">
+      <div className="workspace-report-grid flex-grow">
         {modulosDinamicos.map((modulo) => (
           <TarjetaModulo
             key={modulo.titulo}
             {...modulo}
-            metrica={modulo.metricaMonto ? `${formatearMonto(modulo.metricaMonto)} mes` : modulo.metrica}
+            metrica={modulo.metricaMonto != null ? `${formatearMonto(modulo.metricaMonto)} mes` : modulo.metrica}
           />
         ))}
       </div>
 
       <footer className="mt-2 flex flex-col gap-2 border-t border-white/5 pt-4 text-[10px] text-gray-600 sm:flex-row sm:items-center sm:justify-between sm:text-xs">
-        <p>© 2026 Spartan Gym. Todos los derechos reservados.</p>
+        <p>© {new Date().getFullYear()} {nombreGimnasio}. Todos los derechos reservados.</p>
         <p>Version 1.0.0</p>
       </footer>
     </div>

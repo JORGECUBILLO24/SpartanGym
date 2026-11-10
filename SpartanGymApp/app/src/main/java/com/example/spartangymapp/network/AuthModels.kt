@@ -51,6 +51,9 @@ data class PerfilActualResponse(
 
 data class AppConfigResponse(
     val gymName: String? = null,
+    val appName: String? = null,
+    val appLogo: String? = null,
+    val appLogoNombre: String? = null,
     val email: String? = null,
     val phone: String? = null,
     val currency: String? = null,
@@ -61,14 +64,46 @@ data class AppConfigResponse(
     val accentHoverColor: String? = null,
     val accentSoftColor: String? = null,
     val logoPrincipal: String? = null,
+    val logoPrincipalNombre: String? = null,
     val logoAcceso: String? = null,
+    val logoAccesoNombre: String? = null,
     val fondoLogin: String? = null,
     val emailAlerts: Boolean? = null,
     val smsAlerts: Boolean? = null,
     val dailyReports: Boolean? = null,
     val twoFactor: Boolean? = null,
     val sessionTimeout: String? = null
-)
+) {
+    private fun logoValidoParaNombre(logo: String?, nombreAsociado: String?): String? {
+        val nombreActual = gymName?.trim()?.takeIf { it.isNotEmpty() } ?: "Spartan Gym"
+        val logoNombre = nombreAsociado?.trim().orEmpty()
+        val coincide = if (logoNombre.isEmpty()) {
+            nombreActual.equals("Spartan Gym", ignoreCase = true)
+        } else {
+            logoNombre.equals(nombreActual, ignoreCase = true)
+        }
+        return logo?.trim()?.takeIf { it.isNotEmpty() && coincide }
+    }
+
+    fun logoPrincipalActual(): String? = logoValidoParaNombre(logoPrincipal, logoPrincipalNombre)
+
+    fun logoAccesoActual(): String? = logoValidoParaNombre(logoAcceso, logoAccesoNombre)
+
+    fun nombreVisibleApp(): String = appName?.trim()?.takeIf { it.isNotEmpty() }
+        ?: gymName?.trim()?.takeIf { it.isNotEmpty() }
+        ?: "Spartan Gym"
+
+    fun logoAppActual(): String? {
+        val nombreActual = nombreVisibleApp()
+        val nombreLogo = appLogoNombre?.trim().orEmpty()
+        val coincide = if (nombreLogo.isEmpty()) {
+            nombreActual.equals("Spartan Gym", ignoreCase = true)
+        } else {
+            nombreLogo.equals(nombreActual, ignoreCase = true)
+        }
+        return appLogo?.trim()?.takeIf { it.isNotEmpty() && coincide }
+    }
+}
 
 data class AsistenciaQrTokenResponse(
     val token: String? = null,
@@ -102,7 +137,9 @@ data class TipoMembresiaResponse(
     val id: Int? = null,
     val nombre: String? = null,
     val duracionDias: Int? = null,
-    val precio: Double? = null
+    val precio: Double? = null,
+    val imagenUrl: String? = null,
+    val beneficios: String? = null
 )
 
 data class ProductoCatalogoResponse(
@@ -189,6 +226,7 @@ data class EjercicioRutinaResponse(
 )
 
 data class RutinaResumenResponse(
+    val imagenUrl: String? = null,
     val id: String? = null,
     val socioId: String? = null,
     val socio: String? = null,

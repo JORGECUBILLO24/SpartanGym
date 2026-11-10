@@ -31,6 +31,22 @@ public class MembresiaController {
         return ResponseEntity.ok(membresiaService.crearTipo(request));
     }
 
+    @PutMapping("/tipos/{id}")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
+    public ResponseEntity<TipoMembresia> actualizarTipo(@PathVariable Integer id,
+                                                         @RequestBody TipoMembresiaRequest request) {
+        return ResponseEntity.ok(membresiaService.actualizarTipo(id, request));
+    }
+
+    @PatchMapping("/tipos/{id}/imagen")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
+    public ResponseEntity<TipoMembresia> actualizarImagen(@PathVariable Integer id,
+                                                           @RequestBody ImagenMembresiaRequest request) {
+        return ResponseEntity.ok(membresiaService.actualizarImagen(id, request.imagenUrl()));
+    }
+
+    public record ImagenMembresiaRequest(String imagenUrl) {}
+
     @DeleteMapping("/tipos/{id}")
     @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN')")
     public ResponseEntity<Void> eliminarTipo(@PathVariable Integer id) {

@@ -2,12 +2,16 @@ package com.example.spartangymapp.ui.screen
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,12 +40,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.example.spartangymapp.R
 import com.example.spartangymapp.network.*
+import com.example.spartangymapp.ui.components.applePressScale
 import java.util.Calendar
 
 // ─── Paleta ─────────────────────────────────────────────────────────────────
@@ -49,7 +55,7 @@ private val ENT_BG    = Color(0xFF050505)
 private val ENT_CARD  = Color(0xFF111111)
 private val ENT_CARD2 = Color(0xFF181818)
 private val ENT_BORDE = Color(0xFF1E1E1E)
-private val ENT_GRIS  = Color(0xFF6A6A6A)
+private val ENT_GRIS  = Color(0xFFA0A0A0)
 private val ENT_GRIS2 = Color(0xFF9A9A9A)
 
 // ─── Helpers color API ───────────────────────────────────────────────────────
@@ -153,16 +159,26 @@ fun PantallaEntrenador(
             Modifier
                 .fillMaxSize()
                 .padding(scaffoldPad)
-                .background(ENT_BG)
+                .background(ENT_BG),
+            contentAlignment = Alignment.TopCenter
         ) {
-            when {
-                cargando    -> EntCargando(ap.accent)
-                error != null -> EntError(error!!, ap)
-                else -> when (seccion) {
-                    0 -> TabInicio(dash, ap)
-                    1 -> TabClientes(clientes, ap)
-                    2 -> TabRutinas(dash?.rutinasRecientes.orEmpty(), ap) { subPantalla = "crear_rutina" }
-                    3 -> TabPerfil(perfil, appConfig, ap, onCerrarSesion)
+            Box(Modifier.fillMaxWidth().widthIn(max = 640.dp).fillMaxHeight()) {
+                when {
+                    cargando    -> EntCargando(ap.accent, appConfig.nombreVisibleApp())
+                    error != null -> EntError(error!!, ap)
+                    else -> when (seccion) {
+                        0 -> TabInicio(
+                            dash = dash,
+                            perfil = perfil,
+                            usuario = usuario,
+                            appConfig = appConfig,
+                            ap = ap,
+                            onCrearRutina = { subPantalla = "crear_rutina" }
+                        )
+                        1 -> TabClientes(clientes, ap, appConfig)
+                        2 -> TabRutinas(dash?.rutinasRecientes.orEmpty(), ap) { subPantalla = "crear_rutina" }
+                        3 -> TabPerfil(perfil, appConfig, ap, onCerrarSesion)
+                    }
                 }
             }
         }
@@ -183,10 +199,10 @@ private fun EntBarraNav(sel: Int, accent: Color, onSelect: (Int) -> Unit) {
             NavigationBarItem(
                 selected = sel == i, onClick = { onSelect(i) },
                 icon  = { Icon(t.icon, t.label) },
-                label = { Text(t.label, fontSize = 10.sp, fontWeight = if (sel == i) FontWeight.Black else FontWeight.Normal) },
+                label = { Text(t.label, fontSize = 12.sp, fontWeight = if (sel == i) FontWeight.SemiBold else FontWeight.Medium) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = accent, selectedTextColor = accent,
-                    indicatorColor = Color.Transparent,
+                    indicatorColor = accent.copy(alpha = 0.18f),
                     unselectedIconColor = ENT_GRIS, unselectedTextColor = ENT_GRIS
                 )
             )
@@ -196,12 +212,12 @@ private fun EntBarraNav(sel: Int, accent: Color, onSelect: (Int) -> Unit) {
 
 // ─── Cargando / Error ────────────────────────────────────────────────────────
 @Composable
-private fun EntCargando(accent: Color) {
+private fun EntCargando(accent: Color, nombreGimnasio: String) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(color = accent, strokeWidth = 2.dp)
             Spacer(Modifier.height(12.dp))
-            Text("Cargando…", color = ENT_GRIS, fontSize = 13.sp)
+            Text("Cargando $nombreGimnasio…", color = ENT_GRIS, fontSize = 13.sp, textAlign = TextAlign.Center)
         }
     }
 }
@@ -222,45 +238,77 @@ private fun EntError(msg: String, ap: EntAp) {
 //  TAB INICIO
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
-private fun TabInicio(dash: EntrenadorDashboardResponse?, ap: EntAp) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Box(Modifier.fillMaxWidth().height(200.dp)) {
-            Image(painterResource(R.drawable.image_03453d), null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
-            Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Black.copy(.5f), Color.Black.copy(.9f)))))
-            Column(Modifier.align(Alignment.BottomStart).padding(18.dp)) {
-                Surface(shape = RoundedCornerShape(6.dp), color = ap.accent.copy(.18f), border = BorderStroke(1.dp, ap.accent.copy(.4f))) {
-                    Text("PANEL ENTRENADOR", color = ap.accent, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
+private fun TabInicio(
+    dash: EntrenadorDashboardResponse?,
+    perfil: EntrenadorPerfilResponse?,
+    usuario: String,
+    appConfig: AppConfigResponse,
+    ap: EntAp,
+    onCrearRutina: () -> Unit
+) {
+    val nombreCompleto = listOfNotNull(perfil?.nombres?.trim(), perfil?.apellidos?.trim())
+        .filter { it.isNotBlank() }
+        .joinToString(" ")
+        .ifBlank { usuario.substringBefore('@').ifBlank { "Entrenador" } }
+    val nombreCorto = nombreCompleto.trim().split(Regex("\\s+")).firstOrNull().orEmpty().ifBlank { "Entrenador" }
+    val recientes = dash?.rutinasRecientes.orEmpty()
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Column(Modifier.fillMaxWidth().widthIn(max = 480.dp).padding(bottom = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            MarcaAplicacion(
+                appConfig = appConfig,
+                modifier = Modifier.fillMaxWidth().heightIn(max = 54.dp)
+            )
+            Spacer(Modifier.height(7.dp))
+            Text("Hola, $nombreCorto", color = ENT_GRIS, fontSize = 14.sp, textAlign = TextAlign.Center)
+            Text(
+                "Panel de entrenador",
+                color = Color.White,
+                fontSize = 23.sp,
+                lineHeight = 28.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(16.dp))
+            Text("RESUMEN", modifier = Modifier.fillMaxWidth(), color = ENT_GRIS, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(6.dp))
+            EntStatSummary(dash)
+
+            Spacer(Modifier.height(12.dp))
+            val rutinaInteractionSource = remember { MutableInteractionSource() }
+            Button(
+                onClick = onCrearRutina,
+                interactionSource = rutinaInteractionSource,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp).applePressScale(rutinaInteractionSource),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ap.accent)
+            ) {
+                Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(7.dp))
+                Text("Crear rutina", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(18.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Rutinas recientes", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Planes de tus socios", color = ENT_GRIS, fontSize = 12.sp)
                 }
-                Spacer(Modifier.height(6.dp))
-                Text("Panel Principal", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                Text("Resumen de tu actividad", color = Color.White.copy(.5f), fontSize = 12.sp)
+                Text("${recientes.size}", color = ap.accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
-        }
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                EntStatCard("Clientes",   dash?.clientesAsignados?.toString() ?: "—", Icons.Rounded.People, ap, Modifier.weight(1f))
-                EntStatCard("Rutinas",    dash?.rutinasCreadas?.toString() ?: "—",    Icons.Rounded.FitnessCenter, ap, Modifier.weight(1f))
-                EntStatCard("Eval.",      dash?.evaluacionesPendientes?.toString() ?: "—", Icons.AutoMirrored.Rounded.Assignment, ap, Modifier.weight(1f))
-            }
-            val recientes = dash?.rutinasRecientes.orEmpty()
+            Spacer(Modifier.height(7.dp))
             if (recientes.isNotEmpty()) {
-                Spacer(Modifier.height(22.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.width(3.dp).height(16.dp).background(ap.accent, RoundedCornerShape(2.dp)))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Rutinas recientes", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Black)
+                recientes.take(5).forEach { rutina ->
+                    EntRutinaItem(rutina, ap)
                 }
-                Spacer(Modifier.height(10.dp))
-                recientes.take(5).forEach { r -> EntRutinaItem(r, ap); Spacer(Modifier.height(8.dp)) }
             } else {
-                Spacer(Modifier.height(24.dp))
-                Box(Modifier.fillMaxWidth().background(ENT_CARD, RoundedCornerShape(16.dp)).padding(28.dp), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Rounded.FitnessCenter, null, tint = ENT_GRIS, modifier = Modifier.size(36.dp))
-                        Spacer(Modifier.height(8.dp))
-                        Text("Sin rutinas recientes", color = ENT_GRIS, fontSize = 13.sp)
-                    }
-                }
+                Spacer(Modifier.height(12.dp))
+                Icon(Icons.Rounded.FitnessCenter, null, tint = ap.accent, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.height(5.dp))
+                Text("Aún no hay rutinas", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                Text("Crea un plan para acompañar a tus socios.", color = ENT_GRIS, fontSize = 12.sp, textAlign = TextAlign.Center)
             }
         }
     }
@@ -270,10 +318,16 @@ private fun TabInicio(dash: EntrenadorDashboardResponse?, ap: EntAp) {
 //  TAB CLIENTES
 // ═══════════════════════════════════════════════════════════════════════════
 @Composable
-private fun TabClientes(clientes: List<EntrenadorClienteResponse>, ap: EntAp) {
+private fun TabClientes(clientes: List<EntrenadorClienteResponse>, ap: EntAp, appConfig: AppConfigResponse) {
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxWidth().height(120.dp)) {
-            Image(painterResource(R.drawable.fondo_login), null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+            ImagenMarca(
+                source = appConfig.fondoLogin,
+                fallbackResource = R.drawable.fondo_login,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
             Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Black.copy(.7f), ENT_BG))))
             Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
                 Text("Mis Clientes", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
@@ -308,7 +362,7 @@ private fun TabClientes(clientes: List<EntrenadorClienteResponse>, ap: EntAp) {
                                 Text("${c.nombres} ${c.apellidos}", color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(c.email ?: "Sin email", color = ENT_GRIS, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
-                            val dot by animateColorAsState(if (activo) Color(0xFF22C55E) else ENT_GRIS, tween(400), label = "")
+                            val dot by animateColorAsState(if (activo) Color(0xFF22C55E) else ENT_GRIS, tween(150), label = "")
                             Column(horizontalAlignment = Alignment.End) {
                                 Box(Modifier.size(8.dp).background(dot, CircleShape))
                                 Spacer(Modifier.height(3.dp))
@@ -839,34 +893,50 @@ private fun EjBloque(idx: Int, ej: EjEd, ejercicios: List<EjercicioCatalogoRespo
 }
 
 @Composable private fun EntRutinaItem(r: RutinaResumenResponse, ap: EntAp) {
-    Surface(Modifier.fillMaxWidth(), RoundedCornerShape(13.dp), color = ENT_CARD, border = BorderStroke(1.dp, ENT_BORDE)) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).background(ap.soft, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Rounded.FitnessCenter, null, tint = ap.accent, modifier = Modifier.size(18.dp))
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(34.dp).background(ap.soft, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.FitnessCenter, null, tint = ap.accent, modifier = Modifier.size(16.dp))
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(r.nombre ?: r.objetivo ?: "Sin nombre", color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${r.tipoRutina ?: "General"} · ${r.socio ?: "Global"}", color = ENT_GRIS, fontSize = 11.sp)
+                Text(r.nombre ?: r.objetivo ?: "Sin nombre", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${r.tipoRutina ?: "General"} · ${r.socio ?: "Global"}", color = ENT_GRIS, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (r.esGlobal == true) {
-                Surface(shape = RoundedCornerShape(20.dp), color = ap.soft) {
-                    Text("GLOBAL", color = ap.accent, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
-                }
+                Text("GLOBAL", color = ap.accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
         }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(ENT_BORDE))
     }
 }
 
-@Composable private fun EntStatCard(label: String, valor: String, icono: ImageVector, ap: EntAp, modifier: Modifier) {
-    Surface(modifier, RoundedCornerShape(16.dp), color = ENT_CARD, border = BorderStroke(1.dp, ENT_BORDE)) {
-        Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(36.dp).background(ap.soft, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-                Icon(icono, null, tint = ap.accent, modifier = Modifier.size(17.dp))
+@Composable
+private fun EntStatSummary(dash: EntrenadorDashboardResponse?) {
+    val datos = listOf(
+        "Clientes" to (dash?.clientesAsignados?.toString() ?: "—"),
+        "Rutinas" to (dash?.rutinasCreadas?.toString() ?: "—"),
+        "Pendientes" to (dash?.evaluacionesPendientes?.toString() ?: "—")
+    )
+
+    Surface(
+        Modifier.fillMaxWidth().animateContentSize(
+            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+        ),
+        RoundedCornerShape(16.dp),
+        color = ENT_CARD
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            datos.forEachIndexed { index, (label, value) ->
+                if (index > 0) Box(Modifier.width(1.dp).height(32.dp).background(ENT_BORDE))
+                Column(Modifier.weight(1f).padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(value, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                    Text(label, color = ENT_GRIS, fontSize = 11.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
-            Spacer(Modifier.height(8.dp))
-            Text(valor, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-            Text(label, color = ENT_GRIS, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

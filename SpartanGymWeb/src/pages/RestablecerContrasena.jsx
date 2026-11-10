@@ -3,11 +3,15 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, Lock } from 'lucide-react';
 import { authApi } from '../services/api';
 import { useLogosApp } from '../utils/logosApp';
+import { obtenerNombreGimnasio, useConfiguracionApp } from '../utils/configuracionApp';
 
 const RestablecerContrasena = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const logos = useLogosApp();
+  const configuracion = useConfiguracionApp();
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
+  const logoAcceso = logos.acceso || logos.principal;
   const token = useMemo(() => searchParams.get('token') || '', [searchParams]);
 
   const [password, setPassword] = useState('');
@@ -45,23 +49,18 @@ const RestablecerContrasena = () => {
   return (
     <div className="auth-screen relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-black p-4">
       <div
-        className="absolute inset-0 bg-cover bg-center opacity-20"
+        className="auth-photograph absolute inset-0 bg-cover bg-center opacity-20"
         style={{ backgroundImage: `url(${logos.fondoLogin})` }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/80 to-black" />
+      <div className="auth-scrim absolute inset-0 bg-gradient-to-b from-black/55 via-black/80 to-black" />
 
       <Link to="/" className="relative z-10 mb-10" aria-label="Volver al inicio">
-        <img
-          src={logos.acceso}
-          alt="Logo Spartan Gym"
-          width="512"
-          height="512"
-          decoding="async"
-          className="h-auto w-64 object-contain drop-shadow-[0_0_15px_rgba(220,38,38,0.7)]"
-        />
+        {logoAcceso ? (
+          <img src={logoAcceso} alt={nombreGimnasio} width="512" height="512" decoding="async" className="h-auto w-32 object-contain sm:w-36" />
+        ) : <span className="text-lg font-black uppercase tracking-wide text-white">{nombreGimnasio}</span>}
       </Link>
 
-      <section className="tarjeta-sistema relative z-10 w-full max-w-sm rounded-3xl border border-red-900/30 bg-[#0c0c0d] p-6 shadow-2xl sm:p-8">
+      <section className="auth-panel relative z-10 w-full max-w-sm rounded-2xl border border-white/10 bg-[#0c0c0d] p-6 sm:p-8">
         <div className="mb-6 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.25em] text-red-500">Acceso seguro</p>
           <h1 className="mt-2 text-2xl font-black text-white">Restablecer contraseña</h1>

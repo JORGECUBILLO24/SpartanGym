@@ -1,4 +1,4 @@
-import { convertirTextoMoneda, leerConfiguracionApp } from './configuracionApp';
+import { convertirTextoMoneda, leerConfiguracionApp, obtenerNombreGimnasio } from './configuracionApp';
 import { obtenerEtiquetaCuentaActual } from './cuentaActual';
 
 export { leerCuentaActual, obtenerEtiquetaCuentaActual } from './cuentaActual';
@@ -122,7 +122,7 @@ const agregarImagenContenida = (pdf, imagen, x, y, anchoMaximo, altoMaximo) => {
   pdf.addImage(imagen.dataUrl, 'PNG', x + desplazamientoX, y + desplazamientoY, ancho, alto, undefined, 'FAST');
 };
 
-const agregarPiePdf = (pdf) => {
+const agregarPiePdf = (pdf, nombreGimnasio) => {
   const totalPaginas = pdf.getNumberOfPages();
   const anchoPagina = pdf.internal.pageSize.getWidth();
   const altoPagina = pdf.internal.pageSize.getHeight();
@@ -134,6 +134,7 @@ const agregarPiePdf = (pdf) => {
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor(107, 114, 128);
+    pdf.text(nombreGimnasio, 42, altoPagina - 26, { maxWidth: anchoPagina / 2 });
     pdf.text(`Pagina ${pagina} de ${totalPaginas}`, anchoPagina - 42, altoPagina - 26, {
       align: 'right',
     });
@@ -145,6 +146,72 @@ const asegurarPagina = (pdf, y, altoNecesario, altoPagina) => {
 
   pdf.addPage();
   return 54;
+};
+
+const dibujarMetadatosPdf = (pdf, items, { yInicial, margen, anchoPagina, altoPagina }) => {
+  const anchoDisponible = anchoPagina - margen * 2;
+  const columnas = 2;
+  const filas = Math.ceil(items.length / columnas);
+  const altoFila = 34;
+  const altoBloque = filas * altoFila + 12;
+  const y = asegurarPagina(pdf, yInicial, altoBloque, altoPagina);
+
+  pdf.setFillColor(245, 246, 248);
+  pdf.rect(margen, y, anchoDisponible, altoBloque, 'F');
+
+  items.forEach(([etiqueta, valor], indice) => {
+    const columna = indice % columnas;
+    const fila = Math.floor(indice / columnas);
+    const x = margen + columna * (anchoDisponible / columnas) + 12;
+    const yCelda = y + fila * altoFila + 14;
+    const anchoTexto = anchoDisponible / columnas - 24;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(107, 114, 128);
+    pdf.text(etiqueta, x, yCelda);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(31, 41, 55);
+    pdf.text(pdf.splitTextToSize(String(valor ?? 'N/A'), anchoTexto).slice(0, 2), x, yCelda + 12);
+  });
+
+  return y + altoBloque + 18;
+};
+
+const dibujarResumenPdf = (pdf, items, { yInicial, margen, anchoPagina, altoPagina }) => {
+  if (!items.length) return yInicial;
+
+  const anchoDisponible = anchoPagina - margen * 2;
+  const altoBloque = 54;
+  let y = asegurarPagina(pdf, yInicial, altoBloque + 30, altoPagina);
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(11);
+  pdf.setTextColor(24, 24, 27);
+  pdf.text('Resumen ejecutivo', margen, y);
+  y += 10;
+  pdf.setFillColor(248, 249, 250);
+  pdf.rect(margen, y, anchoDisponible, altoBloque, 'F');
+
+  const anchoColumna = anchoDisponible / items.length;
+  items.forEach(([etiqueta, valor], indice) => {
+    const x = margen + indice * anchoColumna;
+    if (indice > 0) {
+      pdf.setDrawColor(220, 223, 228);
+      pdf.line(x, y + 8, x, y + altoBloque - 8);
+    }
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7.2);
+    pdf.setTextColor(107, 114, 128);
+    pdf.text(pdf.splitTextToSize(String(etiqueta ?? ''), anchoColumna - 16).slice(0, 2), x + 8, y + 17);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(10.5);
+    pdf.setTextColor(24, 24, 27);
+    pdf.text(pdf.splitTextToSize(String(valor ?? ''), anchoColumna - 16).slice(0, 2), x + 8, y + 39);
+  });
+
+  return y + altoBloque + 22;
 };
 
 const dibujarTablaPdf = (pdf, { titulo, headers = [], rows = [], yInicial, margen, anchoPagina, altoPagina }) => {
@@ -165,8 +232,10 @@ const dibujarTablaPdf = (pdf, { titulo, headers = [], rows = [], yInicial, marge
 
   if (headers.length) {
     y = asegurarPagina(pdf, y, 30, altoPagina);
-    pdf.setFillColor(229, 9, 20);
+    pdf.setFillColor(24, 24, 27);
     pdf.rect(margen, y, anchoDisponible, 28, 'F');
+    pdf.setFillColor(229, 9, 20);
+    pdf.rect(margen, y + 26, anchoDisponible, 2, 'F');
     pdf.setTextColor(255, 255, 255);
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(8);
@@ -216,6 +285,13 @@ export const exportarReportePdf = async (reporte, logoUrl) => {
   const logo = await cargarLogoParaPdf(logoUrl);
   let y = 128;
 
+  pdf.setProperties({
+    title: reporteMoneda.titulo,
+    subject: `Reporte ${reporteMoneda.tipo || 'general'} de ${configuracion.gymName}`,
+    author: creadoPor,
+    creator: configuracion.gymName,
+  });
+
   pdf.setFillColor(8, 8, 9);
   pdf.rect(0, 0, anchoPagina, 94, 'F');
   pdf.setFillColor(229, 9, 20);
@@ -242,26 +318,24 @@ export const exportarReportePdf = async (reporte, logoUrl) => {
   pdf.setTextColor(17, 24, 39);
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(20);
-  pdf.text(reporteMoneda.titulo, margen, y, { maxWidth: anchoPagina - margen * 2 });
+  const lineasTitulo = pdf.splitTextToSize(reporteMoneda.titulo, anchoPagina - margen * 2);
+  pdf.text(lineasTitulo, margen, y);
 
-  y += 26;
+  y += lineasTitulo.length * 23 + 4;
   pdf.setFont('helvetica', 'normal');
   pdf.setFontSize(10);
   pdf.setTextColor(75, 85, 99);
-  pdf.text(`Tipo: ${reporteMoneda.tipo || 'General'}`, margen, y);
-  y += 28;
+  pdf.text(`${reporteMoneda.tipo || 'General'}  ·  ${creadoEn}`, margen, y);
+  y += 16;
 
   const metadatos = [
-    ['Nombre del reporte', reporteMoneda.titulo],
     ['Fecha', creadoEn],
-    ['Creado desde la cuenta', creadoPor],
+    ['Cuenta', creadoPor],
     ['Identificador', reporteMoneda.id],
+    ['Tipo de reporte', reporteMoneda.tipo || 'General'],
   ];
 
-  y = dibujarTablaPdf(pdf, {
-    titulo: 'Informacion del reporte',
-    headers: ['Campo', 'Valor'],
-    rows: metadatos,
+  y = dibujarMetadatosPdf(pdf, metadatos, {
     yInicial: y,
     margen,
     anchoPagina,
@@ -269,10 +343,7 @@ export const exportarReportePdf = async (reporte, logoUrl) => {
   });
 
   if (reporteMoneda.summary?.length) {
-    y = dibujarTablaPdf(pdf, {
-      titulo: 'Resumen ejecutivo',
-      headers: ['Indicador', 'Valor'],
-      rows: reporteMoneda.summary,
+    y = dibujarResumenPdf(pdf, reporteMoneda.summary, {
       yInicial: y,
       margen,
       anchoPagina,
@@ -302,7 +373,7 @@ export const exportarReportePdf = async (reporte, logoUrl) => {
     });
   });
 
-  agregarPiePdf(pdf);
+  agregarPiePdf(pdf, configuracion.gymName);
   pdf.save(construirNombreArchivo(reporteMoneda, 'pdf'));
 };
 
@@ -363,17 +434,17 @@ export const exportarReporteExcel = (reporte) => {
       <head>
         <meta charset="UTF-8" />
         <style>
-          body { font-family: Arial, sans-serif; color: #111827; }
+          body { font-family: Aptos, Calibri, sans-serif; color: #111827; }
           .encabezado { background: #080809; color: #ffffff; padding: 18px; border-bottom: 4px solid #e50914; }
           .encabezado h1 { margin: 0; font-size: 22px; }
           .encabezado p { margin: 6px 0 0; color: #d1d5db; font-size: 12px; }
-          table { border-collapse: collapse; margin: 16px 0 22px; min-width: 720px; }
+          table { border-collapse: collapse; margin: 16px 0 22px; width: 100%; min-width: 720px; }
           th, td { border: 1px solid #d9dde5; padding: 9px 10px; mso-number-format:"\\@"; font-size: 12px; }
-          th { background: #e50914; color: #ffffff; font-weight: 700; text-transform: uppercase; }
-          .titulo-tabla td { background: #111827; color: #ffffff; font-size: 14px; font-weight: 700; }
-          .tabla-meta th { background: #374151; }
+          th { background: #171717; color: #ffffff; font-weight: 700; text-transform: uppercase; }
+          .titulo-tabla td { border-top: 3px solid #e50914; background: #f3f4f6; color: #111827; font-size: 14px; font-weight: 700; }
+          .tabla-meta th { background: #262626; }
           .tabla-meta td:first-child, .tabla-resumen td:first-child { background: #f3f4f6; font-weight: 700; }
-          .tabla-resumen th { background: #16a34a; }
+          .tabla-resumen th { background: #8f1118; }
           .tabla-datos tr:nth-child(even) td { background: #f9fafb; }
           .nota { color: #6b7280; font-size: 11px; margin-top: 12px; }
         </style>
@@ -387,7 +458,7 @@ export const exportarReporteExcel = (reporte) => {
         ${tablaResumen}
         ${tablaPrincipal}
         ${tablasDetalle}
-        <p class="nota">Archivo generado desde Spartan Gym Web con datos devueltos por la API.</p>
+        <p class="nota">Archivo generado desde ${escaparHtml(obtenerNombreGimnasio(configuracion))} con datos devueltos por la API.</p>
       </body>
     </html>
   `;

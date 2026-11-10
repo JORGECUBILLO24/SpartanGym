@@ -86,7 +86,7 @@ const Sucursales = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 h-full text-white">
+    <div className="workspace-page text-white">
       {errorApi && (
         <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">
           <AlertCircle size={15} />
@@ -94,10 +94,10 @@ const Sucursales = () => {
         </div>
       )}
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+      <div className="workspace-grid workspace-grid--split-wide">
         
         {/* COLUMNA IZQUIERDA: FORMULARIO */}
-        <div className="lg:col-span-2 bg-[#090909] rounded-2xl border border-white/10 p-6 lg:p-8 shadow-2xl relative overflow-hidden">
+        <div className="min-w-0 bg-[#090909] rounded-2xl border border-white/10 p-4 shadow-2xl relative overflow-hidden sm:p-6">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-50"></div>
 
           <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
@@ -222,8 +222,8 @@ const Sucursales = () => {
         </div>
 
         {/* COLUMNA DERECHA: VISTA PREVIA DE TARJETA DE SUCURSAL */}
-        <div className="bg-[#090909] rounded-2xl border border-white/10 p-6 flex flex-col items-center justify-center shadow-2xl h-full min-h-[500px] relative overflow-hidden group">
-          <h3 className="font-bold text-xs text-gray-500 w-full mb-8 uppercase tracking-widest text-center absolute top-8">Tarjeta de Sucursal</h3>
+        <div className="min-w-0 bg-[#090909] rounded-2xl border border-white/10 p-4 flex flex-col items-center justify-center shadow-2xl relative overflow-hidden group sm:p-5">
+          <h3 className="font-bold text-xs text-gray-500 w-full mb-5 uppercase tracking-widest text-center">Tarjeta de Sucursal</h3>
           
           {/* Tarjeta de Sucursal Digital */}
           <div className="w-full max-w-sm bg-gradient-to-b from-[#151515] to-[#050505] rounded-2xl border border-white/10 p-6 flex flex-col justify-between shadow-[0_15px_40px_rgba(0,0,0,0.8)] relative overflow-hidden transition-all duration-300 h-auto">
@@ -282,7 +282,7 @@ const Sucursales = () => {
                 <span className="text-white font-mono">{formData.capacidad || '0'} Socios</span>
               </div>
               <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                <div className={`h-full rounded-full transition-all duration-500 ${formData.capacidad ? 'w-2/3 bg-red-600' : 'w-0'}`}></div>
+                <div className={`workspace-capacity-progress ${formData.capacidad ? 'is-active' : ''}`} />
               </div>
             </div>
 

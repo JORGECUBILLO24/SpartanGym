@@ -2,11 +2,14 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Flame, ShieldCheck } from 'lucide-react';
 import { beneficiosInicio } from '../data/homeBenefits';
 import { useLogosApp } from '../utils/logosApp';
+import { obtenerNombreGimnasio, useConfiguracionApp } from '../utils/configuracionApp';
 
 const DetalleBeneficio = () => {
   const { slug: rutaBeneficio } = useParams();
   const beneficio = beneficiosInicio.find((elemento) => elemento.ruta === rutaBeneficio);
   const logos = useLogosApp();
+  const configuracion = useConfiguracionApp();
+  const nombreGimnasio = obtenerNombreGimnasio(configuracion);
 
   if (!beneficio) {
     return <Navigate to="/#beneficios" replace />;
@@ -20,23 +23,18 @@ const DetalleBeneficio = () => {
         className="benefit-detail-bg fixed inset-0 -z-10 bg-cover bg-center opacity-20"
         style={{ backgroundImage: `url(${logos.fondoLogin})` }}
       />
-      <div className="benefit-detail-overlay fixed inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.82),rgba(0,0,0,0.96))]" />
+      <div className="benefit-detail-overlay fixed inset-0 -z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.85),rgba(0,0,0,0.98))]" />
 
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
         <Link to="/" aria-label="Volver al inicio">
-          <img
-            src={logos.principal}
-            alt="Logo Spartan Gym Web"
-            width="320"
-            height="213"
-            decoding="async"
-            className="h-auto w-40 object-contain drop-shadow-[0_0_14px_rgba(220,38,38,0.55)] transition duration-300 hover:scale-[1.02] sm:w-52"
-          />
+          {logos.principal ? (
+            <img src={logos.principal} alt={nombreGimnasio} width="320" height="213" decoding="async" className="h-auto w-40 object-contain drop-shadow-[0_0_14px_rgba(255,255,255,0.12)] transition duration-300 hover:scale-[1.02] sm:w-52" />
+          ) : <span className="text-xl font-black uppercase tracking-wide text-white">{nombreGimnasio}</span>}
         </Link>
 
         <Link
           to="/#beneficios"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-red-500/70 hover:bg-red-600/20"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-4 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.1]"
         >
           <ArrowLeft className="h-4 w-4" />
           Volver
@@ -45,8 +43,8 @@ const DetalleBeneficio = () => {
 
       <main className="mx-auto grid min-h-[calc(100vh-88px)] w-full max-w-6xl items-center gap-8 px-4 pb-10 pt-4 sm:px-6 lg:grid-cols-[1fr_0.9fr] lg:px-8">
         <section className="animate-[homeReveal_700ms_ease_both]">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-600/10 px-3 py-2 text-xs font-extrabold uppercase tracking-[0.18em] text-red-300">
-            <Flame className="h-4 w-4" />
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-3.5 py-1.5 text-xs font-extrabold uppercase tracking-[0.16em] text-neutral-300">
+            <Flame className="h-3.5 w-3.5 text-white" />
             {beneficio.etiqueta}
           </div>
 
@@ -54,27 +52,27 @@ const DetalleBeneficio = () => {
             {beneficio.titulo}
           </h1>
 
-          <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-300 sm:text-lg">
+          <p className="mt-5 max-w-2xl text-base leading-7 text-neutral-300 sm:text-lg">
             {beneficio.resumen}
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
               to="/registro"
-              className="inline-flex h-12 items-center justify-center rounded-lg bg-red-600 px-5 text-sm font-black uppercase tracking-wide text-white shadow-[0_14px_35px_rgba(220,38,38,0.28)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-500"
+              className="inline-flex h-12 items-center justify-center rounded-full bg-black border border-white/25 px-6 text-sm font-black uppercase tracking-wide text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-neutral-900 hover:border-white/40"
             >
               Registrarme
             </Link>
             <Link
               to="/login"
-              className="inline-flex h-12 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-5 text-sm font-black uppercase tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-red-500/70 hover:bg-red-600/15"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-6 text-sm font-black uppercase tracking-wide text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.1]"
             >
               Iniciar sesión
             </Link>
           </div>
         </section>
 
-        <section className="animate-[homeReveal_800ms_120ms_ease_both] overflow-hidden rounded-lg border border-white/10 bg-[#0b0b0c]/90 shadow-2xl shadow-black/40 transition-all duration-300 hover:border-red-500/40">
+        <section className="animate-[homeReveal_800ms_120ms_ease_both] overflow-hidden rounded-3xl border border-white/10 bg-[#0d0c0c]/90 shadow-2xl shadow-black/60 transition-all duration-300 hover:border-white/25">
           {beneficio.imagen && (
             <div className="h-52 overflow-hidden border-b border-white/10 sm:h-60">
               <img
@@ -88,12 +86,12 @@ const DetalleBeneficio = () => {
 
           <div className="p-5 sm:p-7">
             <div className="mb-6 flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-red-500/50 bg-red-600/15 text-red-300 transition duration-300 hover:scale-105">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/[0.06] text-white transition duration-300 hover:scale-105">
                 <Icono className="h-7 w-7" />
               </div>
               <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-zinc-500">
-                  Spartan Gym
+                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-neutral-500">
+                  {nombreGimnasio}
                 </p>
                 <h2 className="text-xl font-black text-white">{beneficio.estadistica}</h2>
               </div>
@@ -103,16 +101,16 @@ const DetalleBeneficio = () => {
               {beneficio.puntos.map((punto) => (
                 <div
                   key={punto}
-                  className="flex gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-4 transition-all duration-300 hover:border-red-500/30 hover:bg-white/[0.05]"
+                  className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-all duration-300 hover:border-white/20 hover:bg-white/[0.06]"
                 >
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
-                  <p className="text-sm leading-6 text-zinc-300">{punto}</p>
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-white opacity-80" />
+                  <p className="text-sm leading-6 text-neutral-300">{punto}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 flex items-center gap-3 border-t border-white/10 pt-5 text-sm text-zinc-400">
-              <ShieldCheck className="h-5 w-5 text-red-400" />
+            <div className="mt-6 flex items-center gap-3 border-t border-white/10 pt-5 text-sm text-neutral-400">
+              <ShieldCheck className="h-5 w-5 text-white opacity-80" />
               Listo para socios nuevos y miembros activos.
             </div>
           </div>

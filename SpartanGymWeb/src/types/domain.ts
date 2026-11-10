@@ -47,10 +47,15 @@ export interface Sucursal {
 
 export type SucursalResumen = Pick<Sucursal, 'id' | 'nombre' | 'ubicacion' | 'estado'>;
 
+/** Respuesta pública de GET /api/sucursales/disponibles. */
+export type SucursalDisponible = Pick<Sucursal, 'id' | 'nombre'>;
+
 /** Plan de membresía (TipoMembresia). */
 export interface TipoMembresia {
   id: number;
   nombre: string;
   duracionDias: number;
   precio: number;
+  imagenUrl?: string | null;
+  beneficios?: string | null;
 }

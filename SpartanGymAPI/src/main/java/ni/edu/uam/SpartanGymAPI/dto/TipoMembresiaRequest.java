@@ -9,4 +9,5 @@ public class TipoMembresiaRequest {
     private String nombre;
     private Integer duracionDias;
     private BigDecimal precio;
+    private String beneficios;
 }

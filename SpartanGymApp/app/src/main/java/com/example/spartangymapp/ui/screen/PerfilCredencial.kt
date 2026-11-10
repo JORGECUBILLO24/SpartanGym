@@ -2,9 +2,17 @@ package com.example.spartangymapp.ui.screen
 
 import android.graphics.BitmapFactory
 import android.util.Base64
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.example.spartangymapp.ui.components.applePressScale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,7 +51,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,13 +72,16 @@ internal fun CredencialSistemaCard(
     permisos: String,
     detalles: List<Pair<String, String>> = emptyList(),
     integradaPantalla: Boolean = false,
+    onCambiarFoto: (() -> Unit)? = null,
+    subiendoFoto: Boolean = false,
     fotoUrl: String? = null,
     appConfig: AppConfigResponse = AppConfigResponse(),
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     if (integradaPantalla) {
         CredencialPantallaIntegrada(
-            nombre = nombre,
+            onCambiarFoto = onCambiarFoto,
+            subiendoFoto = subiendoFoto,            nombre = nombre,
             correo = correo,
             bloqueTitulo = bloqueTitulo,
             bloqueValor = bloqueValor,
@@ -196,7 +206,7 @@ internal fun CredencialSistemaCard(
 
                     CredencialBloqueSucursal(
                         titulo = "SUCURSAL ASIGNADA",
-                        valor = sucursal.ifBlank { "Spartan Gym, Centro de Mando" }
+                        valor = sucursal.ifBlank { sucursalPrincipalTexto(appConfig) }
                     )
 
                     if (detalles.isNotEmpty()) {
@@ -250,143 +260,63 @@ private fun CredencialPantallaIntegrada(
     detalles: List<Pair<String, String>>,
     fotoUrl: String? = null,
     appConfig: AppConfigResponse,
+    onCambiarFoto: (() -> Unit)? = null,
+    subiendoFoto: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val minHeight = (LocalConfiguration.current.screenHeightDp - 88).coerceAtLeast(560).dp
-    val apariencia = remember(appConfig.accentColor, appConfig.accentHoverColor, appConfig.accentSoftColor) {
-        CredencialApariencia.desde(appConfig)
-    }
-    val logoPrincipal = appConfig.logoPrincipal?.trim()?.takeIf { it.isNotBlank() }
-    val logoAcceso = appConfig.logoAcceso?.trim()?.takeIf { it.isNotBlank() }
-    val logo = logoPrincipal ?: logoAcceso
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = minHeight)
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        apariencia.soft.copy(alpha = 0.34f),
-                        Color(0xFF080808),
-                        Color(0xFF000000),
-                        Color(0xFF000000)
-                    )
-                )
-            )
-            .padding(horizontal = 20.dp),
-        contentAlignment = Alignment.TopCenter
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 56.dp, bottom = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(44.dp)
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(Color(0xFF272727))
-            )
-
-            Spacer(modifier = Modifier.height(26.dp))
-
-            Surface(
-                modifier = Modifier
-                    .size(84.dp)
-                    .graphicsLayer(rotationZ = 3f),
-                shape = RoundedCornerShape(18.dp),
-                color = Color(0xFF0B1118),
-                border = BorderStroke(1.dp, apariencia.accent)
-            ) {
-                FotoPerfilCredencial(
-                    fotoUrl = fotoUrl,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    LogoConfiguracion(
-                        source = logo,
-                        fallbackTint = apariencia.textMuted,
-                        modifier = Modifier.padding(10.dp)
-                    )
+    val apariencia = remember(appConfig) { CredencialApariencia.desde(appConfig) }
+    val press = remember { MutableInteractionSource() }
+    val filas = detalles.distinctBy { it.first.lowercase() }
+    val vencimiento = filas.firstOrNull { it.first.equals("Vencimiento", true) }?.second
+    Column(modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        PortadaMovil(appConfig.fondoLogin, Modifier.fillMaxWidth().height(224.dp)) {
+            Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Mi perfil", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    Surface(shape = RoundedCornerShape(50), color = Color.Black.copy(alpha = 0.56f)) {
+                        Text(permisos.ifBlank { "Cuenta" }, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), maxLines = 1)
+                    }
+                }
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        Modifier.size(108.dp).applePressScale(press)
+                            .then(if (onCambiarFoto != null) Modifier.clickable(enabled = !subiendoFoto, interactionSource = press, indication = null, role = Role.Button, onClickLabel = "Cambiar foto de perfil", onClick = onCambiarFoto) else Modifier),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(Modifier.size(100.dp), shape = CircleShape, color = Color(0xFF303038), border = BorderStroke(3.dp, Color.White.copy(alpha = 0.88f))) {
+                            FotoPerfilCredencial(fotoUrl, Modifier.fillMaxSize()) {
+                                Text(nombre.trim().split(" ").filter { it.isNotBlank() }.take(2).joinToString("") { it.take(1) }.uppercase(), color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        if (onCambiarFoto != null) Surface(Modifier.align(Alignment.BottomEnd).size(30.dp), shape = CircleShape, color = apariencia.accent, border = BorderStroke(2.dp, Color(0xFF0A0A0C))) {
+                            Box(contentAlignment = Alignment.Center) {
+                                if (subiendoFoto) CircularProgressIndicator(Modifier.size(15.dp), color = Color.White, strokeWidth = 2.dp)
+                                else Icon(Icons.Outlined.CameraAlt, "Cambiar foto", Modifier.size(16.dp), tint = Color.White)
+                            }
+                        }
+                    }
+                    Column(Modifier.weight(1f).padding(bottom = 6.dp)) {
+                        Text(nombre.ifBlank { "Mi perfil" }, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(correo.ifBlank { "Sin correo registrado" }, color = Color(0xFFE0E0E4), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
-
-            Spacer(modifier = Modifier.height(22.dp))
-
-            Text(
-                text = nombre.ifBlank { "Nombre del Staff" },
-                color = Color.White,
-                fontSize = 22.sp,
-                lineHeight = 24.sp,
-                fontWeight = FontWeight.Black,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Text(
-                text = correo.ifBlank { "usuario@spartangym.com" },
-                color = Color(0xFF9AA1AD),
-                fontSize = 13.sp,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(22.dp))
-
-            CredencialBloqueDestacado(
-                titulo = bloqueTitulo,
-                valor = bloqueValor.ifBlank { "Sin asignar" },
-                apariencia = apariencia
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            CredencialBloqueSucursal(
-                titulo = "Sucursal asignada",
-                valor = sucursal.ifBlank { "Spartan Gym, Centro de Mando" },
-                apariencia = apariencia
-            )
-
-            val detallesVisibles = detalles.distinctBy { it.first.lowercase() }
-            if (detallesVisibles.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(14.dp))
-                CredencialDatosRegistrados(detallesVisibles, apariencia)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.VerifiedUser,
-                    contentDescription = null,
-                    tint = apariencia.textMuted,
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(7.dp))
-                Text(
-                    text = permisos.ifBlank { "Sin permisos asignados" }.uppercase(),
-                    color = apariencia.textMuted,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Icon(
-                    imageVector = Icons.Outlined.MoreHoriz,
-                    contentDescription = null,
-                    tint = apariencia.accent,
-                    modifier = Modifier.size(24.dp)
-                )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CredencialDatoPrincipal(bloqueTitulo.replace("asignada", "").trim(), bloqueValor.ifBlank { "Sin asignar" }, Modifier.weight(1f))
+            CredencialDatoPrincipal(if (vencimiento != null) "Vencimiento" else "Sucursal", if (vencimiento != null) fechaMovil(vencimiento) else sucursal.ifBlank { "Sin asignar" }, Modifier.weight(1f))
+        }
+        Text("Tu información", color = Color(0xFFAEAEB8), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 4.dp, top = 2.dp))
+        Surface(shape = RoundedCornerShape(20.dp), color = Color(0xFF1B1B20), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                val otrasFilas = listOf("Sucursal" to sucursal) + filas.filterNot { it.first.equals("Vencimiento", true) || it.first.equals("Sucursal", true) || it.first.equals("Estado", true) }
+                otrasFilas.forEachIndexed { i, (titulo, valor) ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(titulo, color = Color(0xFFAEAEB8), fontSize = 13.sp, modifier = Modifier.weight(0.42f))
+                        Text(valor.ifBlank { "Sin asignar" }, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.End, modifier = Modifier.weight(0.58f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                    if (i < otrasFilas.lastIndex) HorizontalDivider(color = Color.White.copy(alpha = 0.07f))
+                }
             }
         }
     }
@@ -404,8 +334,8 @@ private fun CredencialDatosRegistrados(
         border = BorderStroke(1.dp, Color(0xFF151515))
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(11.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
         ) {
             Text(
                 text = "DATOS REGISTRADOS",
@@ -447,8 +377,8 @@ private fun CredencialDatoPrincipal(
     Surface(
         modifier = modifier.height(76.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF1B2A3F),
-        border = BorderStroke(1.dp, Color(0xFF29405E))
+        color = Color(0xFF1B1B20),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
@@ -509,28 +439,28 @@ private fun CredencialDetalleMini(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier.height(88.dp),
-        shape = RoundedCornerShape(14.dp),
+        modifier = modifier.height(62.dp),
+        shape = RoundedCornerShape(12.dp),
         color = Color(0xFF0C0C0C),
         border = BorderStroke(1.dp, Color(0xFF191919))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = titulo.uppercase(),
                 color = apariencia.textMuted,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
                 fontWeight = FontWeight.Black,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = valor,
                 color = Color.White,
-                fontSize = 15.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -552,11 +482,11 @@ private fun CredencialBloqueDestacado(
         border = BorderStroke(1.dp, apariencia.hover.copy(alpha = 0.55f))
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp),
+            modifier = Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                modifier = Modifier.size(44.dp),
+                modifier = Modifier.size(34.dp),
                 shape = RoundedCornerShape(12.dp),
                 color = Color.Black.copy(alpha = 0.25f),
                 border = BorderStroke(1.dp, apariencia.accent.copy(alpha = 0.32f))
@@ -566,25 +496,25 @@ private fun CredencialBloqueDestacado(
                         imageVector = Icons.Outlined.WorkOutline,
                         contentDescription = null,
                         tint = apariencia.textStrong,
-                        modifier = Modifier.size(21.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(9.dp))
 
             Column(verticalArrangement = Arrangement.Center) {
                 Text(
                     text = titulo.uppercase(),
                     color = apariencia.textMuted,
-                    fontSize = 11.sp,
+                    fontSize = 9.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 0.8.sp
                 )
                 Text(
                     text = valor,
                     color = Color.White,
-                    fontSize = 16.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -606,29 +536,29 @@ private fun CredencialBloqueSucursal(
         color = Color(0xFF070707),
         border = BorderStroke(1.dp, Color(0xFF171717))
     ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 11.dp, vertical = 9.dp)) {
             Text(
                 text = titulo.uppercase(),
                 color = apariencia.textMuted,
-                fontSize = 11.sp,
+                fontSize = 9.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 0.8.sp
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(5.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Outlined.Business,
                     contentDescription = null,
                     tint = apariencia.accent,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(14.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = valor,
                     color = Color.White,
-                    fontSize = 15.sp,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Black,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -781,7 +711,7 @@ private fun oscurecer(color: Color, pesoNegro: Float): Color {
 }
 
 internal fun sucursalPrincipalTexto(appConfig: AppConfigResponse): String {
-    val nombre = appConfig.gymName?.trim().orEmpty()
+    val nombre = appConfig.nombreVisibleApp()
     return when {
         nombre.isBlank() -> "Spartan Gym, Centro de Mando"
         nombre.contains(",") -> nombre

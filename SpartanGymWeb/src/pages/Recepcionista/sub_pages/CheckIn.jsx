@@ -164,8 +164,8 @@ const CheckIn = () => {
       }
 
       const imagen = await QRCode.toDataURL(token, {
-        width: 360,
-        margin: 2,
+        width: 640,
+        margin: 4,
         errorCorrectionLevel: 'M',
         color: {
           dark: '#000000',
@@ -312,9 +312,9 @@ const CheckIn = () => {
   const qrValidado = estadoQr === 'validado';
 
   return (
-    <div className="pagina-stack flex flex-col gap-6">
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
-        <section className="tarjeta-sistema relative flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111111] p-5 shadow-2xl sm:p-6 lg:p-8">
+    <div className="workspace-page">
+      <div className="workspace-grid workspace-grid--split-wide">
+        <section className="tarjeta-sistema relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111111] p-4 shadow-2xl sm:p-5 lg:p-6">
           <div className="relative z-10 flex flex-col gap-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-white">
@@ -440,7 +440,7 @@ const CheckIn = () => {
           </div>
         </section>
 
-        <section className="tarjeta-sistema relative flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111111] p-6 shadow-2xl">
+        <section className="tarjeta-sistema relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111111] p-4 shadow-2xl sm:p-5">
           <h3 className="mb-6 text-sm font-black uppercase tracking-wider text-gray-400">Informacion del socio</h3>
 
           {socioValidado ? (
@@ -508,7 +508,7 @@ const CheckIn = () => {
             </div>
           ) : (
             <div className="animate-fade-in flex flex-1 flex-col items-center justify-center text-center text-gray-500">
-              <QrCode size={60} className="mb-4 animate-pulse opacity-30" />
+              <QrCode size={60} className="mb-4 opacity-30" />
               <p className="text-lg font-bold">Esperando validacion movil o manual...</p>
             </div>
           )}
@@ -533,11 +533,13 @@ const CheckIn = () => {
             <tbody>
               {historialAccesos.map((acceso) => (
                 <tr key={acceso.id} className="border-b border-white/5 transition-colors last:border-0 hover:bg-white/5">
-                  <td className="flex items-center gap-3 py-3 pr-4">
+                  <td className="py-3 pr-4">
+                    <span className="workspace-table-cell-content">
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#2a0808] text-red-500">
                       <User size={12} />
                     </span>
                     <span className="font-bold text-white">{acceso.socio}</span>
+                    </span>
                   </td>
                   <td className="py-3 pr-4 text-gray-400">{formatearFecha(acceso.fechaHora)}</td>
                   <td className="py-3">

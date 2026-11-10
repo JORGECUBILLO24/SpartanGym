@@ -20,6 +20,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
 public class NotificacionService {
 
     private static final String LOGO_CID = "spartan-logo";
+    private static final Pattern MARCADOR_CORREO = Pattern.compile("%(TITULO|LOGO|NOMBRE|INTRO|CONTENIDO)%");
 
     private final JavaMailSender mailSender;
     private final NotificacionRepository notificacionRepository;
@@ -60,8 +63,12 @@ public class NotificacionService {
 
             helper.setFrom(correoEmisor);
             helper.setTo(correoDestino);
-            helper.setSubject("Tu membresia en Spartan Gym ha vencido");
-            helper.setText(construirCorreoVencimientoHtml(nombreSocio, marca), true);
+            helper.setSubject("Tu membresía en " + marca.nombreGimnasio() + " ha vencido");
+            helper.setText(
+                    "Hola " + textoPlano(nombreSocio, "Atleta") + ", tu membresía en " + marca.nombreGimnasio() + " venció. "
+                            + "Acércate a recepción para renovar tu plan y continuar entrenando.",
+                    construirCorreoVencimientoHtml(nombreSocio, marca)
+            );
             adjuntarLogoInline(helper, marca);
 
             mailSender.send(mensaje);
@@ -84,8 +91,12 @@ public class NotificacionService {
 
             helper.setFrom(correoEmisor);
             helper.setTo(correoDestino);
-            helper.setSubject("Bienvenido a Spartan Gym - cuenta creada");
-            helper.setText(construirCorreoBienvenidaHtml(nombreSocio, marca), true);
+            helper.setSubject("Bienvenido a " + marca.nombreGimnasio() + " · cuenta creada");
+            helper.setText(
+                    "Hola " + textoPlano(nombreSocio, "Atleta") + ", tu cuenta en " + marca.nombreGimnasio() + " está lista.\n\n"
+                            + "Pasa por recepción para activar o renovar tu membresía. Al completar el pago, tu acceso quedará habilitado.",
+                    construirCorreoBienvenidaHtml(nombreSocio, marca)
+            );
             adjuntarLogoInline(helper, marca);
 
             mailSender.send(mensaje);
@@ -118,8 +129,15 @@ public class NotificacionService {
 
             helper.setFrom(correoEmisor);
             helper.setTo(correoDestino);
-            helper.setSubject("Nueva rutina agregada en Spartan Gym");
+            helper.setSubject("Nueva rutina en " + marca.nombreGimnasio());
             helper.setText(
+                    "Hola " + textoPlano(nombreSocio, "Atleta") + ", se agregó una rutina para ti en " + marca.nombreGimnasio() + ".\n\n"
+                            + "Rutina: " + textoPlano(nombreRutina, "Nueva rutina") + "\n"
+                            + "Objetivo: " + textoPlano(objetivo, "Plan de entrenamiento") + "\n"
+                            + "Entrenador: " + textoPlano(entrenador, "Equipo " + marca.nombreGimnasio()) + "\n"
+                            + "Ejercicios: " + Math.max(totalEjercicios, 0) + "\n"
+                            + "Vigencia: " + textoPlano(fechaInicio, "Sin fecha definida") + " – " + textoPlano(fechaFin, "Sin fecha definida") + "\n\n"
+                            + "Abre la app para revisar el plan completo.",
                     construirCorreoRutinaAsignadaHtml(
                             nombreSocio,
                             nombreRutina,
@@ -130,8 +148,7 @@ public class NotificacionService {
                             fechaFin,
                             global,
                             marca
-                    ),
-                    true
+                    )
             );
             adjuntarLogoInline(helper, marca);
 
@@ -156,8 +173,13 @@ public class NotificacionService {
 
             helper.setFrom(correoEmisor);
             helper.setTo(correoDestino);
-            helper.setSubject("Restablece tu contraseña de Spartan Gym");
-            helper.setText(construirCorreoRecuperacionPasswordHtml(nombreUsuario, enlace, minutosValidez, marca), true);
+            helper.setSubject("Restablece tu contraseña de " + marca.nombreGimnasio());
+            helper.setText(
+                    "Hola " + textoPlano(nombreUsuario, marca.nombreGimnasio()) + ", recibimos una solicitud para cambiar la contraseña.\n\n"
+                            + "Usa este enlace para crear una nueva contraseña. Vence en " + minutosValidez + " minutos y solo se puede usar una vez:\n"
+                            + enlace + "\n\nSi no solicitaste el cambio, ignora este mensaje.",
+                    construirCorreoRecuperacionPasswordHtml(nombreUsuario, enlace, minutosValidez, marca)
+            );
             adjuntarLogoInline(helper, marca);
 
             mailSender.send(mensaje);
@@ -202,10 +224,10 @@ public class NotificacionService {
         }
 
         try {
-            String asunto = titulo == null || titulo.isBlank()
-                    ? "Aviso global de Spartan Gym"
-                    : titulo.trim();
             EmailBrand marca = obtenerMarcaCorreo(null);
+            String asunto = titulo == null || titulo.isBlank()
+                    ? "Aviso global de " + marca.nombreGimnasio()
+                    : titulo.trim();
             MimeMessage mensaje = mailSender.createMimeMessage();
             MimeMessageHelper helper = crearHelper(mensaje);
 
@@ -213,7 +235,12 @@ public class NotificacionService {
             helper.setTo(correoEmisor);
             helper.setBcc(correosDestino.toArray(new String[0]));
             helper.setSubject(asunto);
-            helper.setText(construirCorreoGlobalHtml(tipo, asunto, cuerpo, marca), true);
+            helper.setText(
+                    asunto + " · " + (tipo == null || tipo.isBlank() ? "General" : tipo.trim()) + "\n\n"
+                            + (cuerpo == null || cuerpo.isBlank() ? "Tienes un nuevo aviso de " + marca.nombreGimnasio() + "." : cuerpo.trim())
+                            + "\n\nEste aviso también está disponible en tus notificaciones.",
+                    construirCorreoGlobalHtml(tipo, asunto, cuerpo, marca)
+            );
             adjuntarLogoInline(helper, marca);
 
             mailSender.send(mensaje);
@@ -248,7 +275,7 @@ public class NotificacionService {
         String intro = "Hola <strong style=\"color:#ffffff;\">" + nombreSeguro + "</strong>, tu cuenta fue creada correctamente. Desde hoy formas parte de una comunidad enfocada en disciplina, fuerza y progreso.";
         String contenido = """
                 <tr>
-                  <td style="padding:28px 30px 8px;">
+                    <td class="email-content-padding" style="padding:26px 30px 8px;">
                     <div style="padding:16px;background:#141416;border:1px solid rgba(255,255,255,.08);border-radius:16px;">
                       <p style="margin:0 0 10px;color:#ffffff;font-size:16px;font-weight:800;">Siguiente paso</p>
                       <p style="margin:0;color:#a1a1aa;font-size:14px;line-height:1.6;">Pasa por recepcion para activar o renovar tu membresia. Al completar el pago, tu acceso quedara habilitado para entrenar.</p>
@@ -256,7 +283,7 @@ public class NotificacionService {
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:14px 30px 28px;">
+                    <td class="email-content-padding" style="padding:14px 30px 26px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
                         <td style="padding:14px 0;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);">
@@ -270,45 +297,45 @@ public class NotificacionService {
                         </td>
                       </tr>
                     </table>
-                    <p style="margin:24px 0 0;color:#d4d4d8;font-size:14px;line-height:1.7;">Prepara tus metas. Nosotros nos encargamos de darte el espacio, el control y la motivacion para superarlas.</p>
-                    <p style="margin:24px 0 0;color:#ffffff;font-size:15px;font-weight:800;">El equipo de Spartan Gym</p>
+                    <p style="margin:24px 0 0;color:#d4d4d8;font-size:14px;line-height:1.7;">Prepara tus metas. Nosotros nos encargamos de darte el espacio, el control y la motivación para superarlas.</p>
+                    <p style="margin:24px 0 0;color:#ffffff;font-size:15px;font-weight:800;">El equipo de %NOMBRE%</p>
                   </td>
                 </tr>
-                """;
+                """.replace("%NOMBRE%", escapeHtml(marca.nombreGimnasio()));
 
-        return construirTarjetaCorreoHtml("Bienvenido a la legion", intro, contenido, marca);
+        return construirTarjetaCorreoHtml("Bienvenido a la legión", intro, contenido, marca);
     }
 
     private String construirCorreoVencimientoHtml(String nombreSocio, EmailBrand marca) {
         String nombreSeguro = escapeHtml(nombreSocio == null || nombreSocio.isBlank() ? "Atleta" : nombreSocio);
-        String intro = "Hola <strong style=\"color:#ffffff;\">" + nombreSeguro + "</strong>, tu membresia expiro y tu acceso queda suspendido temporalmente hasta que completes la renovacion.";
+        String intro = "Hola <strong style=\"color:#ffffff;\">" + nombreSeguro + "</strong>, tu membresía venció y tu acceso está suspendido temporalmente hasta que completes la renovación.";
         String contenido = """
                 <tr>
-                  <td style="padding:28px 30px;">
+                  <td class="email-content-padding" style="padding:26px 30px;">
                     <div style="padding:16px;background:#141416;border:1px solid rgba(255,255,255,.08);border-radius:16px;">
-                      <p style="margin:0 0 10px;color:#fff;font-size:16px;font-weight:800;">Que hacer ahora</p>
-                      <p style="margin:0;color:#a1a1aa;font-size:14px;line-height:1.6;">Acercate a recepcion para renovar tu plan y seguir entrenando sin interrupciones.</p>
+                      <p style="margin:0 0 10px;color:#fff;font-size:16px;font-weight:800;">Qué hacer ahora</p>
+                      <p style="margin:0;color:#a1a1aa;font-size:14px;line-height:1.6;">Acércate a recepción para renovar tu plan y seguir entrenando sin interrupciones.</p>
                     </div>
-                    <p style="margin:24px 0 0;color:#fff;font-size:15px;font-weight:800;">El equipo de Spartan Gym</p>
+                    <p style="margin:24px 0 0;color:#fff;font-size:15px;font-weight:800;">El equipo de %NOMBRE%</p>
                   </td>
                 </tr>
-                """;
+                """.replace("%NOMBRE%", escapeHtml(marca.nombreGimnasio()));
 
-        return construirTarjetaCorreoHtml("Membresia vencida", intro, contenido, marca);
+        return construirTarjetaCorreoHtml("Membresía vencida", intro, contenido, marca);
     }
 
     private String construirCorreoRecuperacionPasswordHtml(String nombreUsuario, String enlace, long minutosValidez, EmailBrand marca) {
-        String nombreSeguro = escapeHtml(nombreUsuario == null || nombreUsuario.isBlank() ? "Spartan" : nombreUsuario);
+        String nombreSeguro = escapeHtml(nombreUsuario == null || nombreUsuario.isBlank() ? marca.nombreGimnasio() : nombreUsuario);
         String enlaceSeguro = escapeHtml(enlace);
         String intro = "Hola <strong style=\"color:#ffffff;\">" + nombreSeguro + "</strong>, recibimos una solicitud para cambiar la contraseña de tu cuenta.";
         String contenido = """
                 <tr>
-                  <td style="padding:28px 30px;">
-                    <p style="margin:0 0 18px;color:#a1a1aa;font-size:14px;line-height:1.7;">Usa el boton siguiente para crear una nueva contraseña. El enlace vence en %MINUTOS% minutos y solo puede usarse una vez.</p>
-                    <a href="%ENLACE%" style="display:inline-block;background:#dc2626;color:#ffffff;text-decoration:none;font-size:14px;font-weight:800;border-radius:12px;padding:14px 22px;">Restablecer contraseña</a>
-                    <p style="margin:18px 0 0;color:#a1a1aa;font-size:12px;line-height:1.6;">Si el boton no abre, copia y pega este enlace en tu navegador:</p>
+                  <td class="email-content-padding" style="padding:26px 30px;">
+                    <p style="margin:0 0 18px;color:#c4c4cc;font-size:14px;line-height:1.7;">Usa el botón para crear una contraseña nueva. El enlace vence en %MINUTOS% minutos y solo puede utilizarse una vez.</p>
+                    <a href="%ENLACE%" style="display:inline-block;background:#e50914;color:#ffffff;text-decoration:none;font-size:14px;font-weight:800;border-radius:10px;padding:13px 20px;">Restablecer contraseña</a>
+                    <p style="margin:18px 0 0;color:#c4c4cc;font-size:12px;line-height:1.6;">Si el botón no abre, copia y pega este enlace en tu navegador:</p>
                     <p style="margin:8px 0 0;padding:12px;background:#09090b;border:1px solid rgba(255,255,255,.08);border-radius:10px;color:#e5e7eb;font-size:12px;line-height:1.5;word-break:break-all;">%ENLACE%</p>
-                    <p style="margin:22px 0 0;color:#71717a;font-size:12px;line-height:1.6;">Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
+                    <p style="margin:22px 0 0;color:#a1a1aa;font-size:12px;line-height:1.6;">Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
                   </td>
                 </tr>
                 """.replace("%MINUTOS%", String.valueOf(minutosValidez))
@@ -331,14 +358,14 @@ public class NotificacionService {
         String nombreSeguro = escapeHtml(nombreSocio == null || nombreSocio.isBlank() ? "Atleta" : nombreSocio);
         String rutinaSegura = escapeHtml(nombreRutina == null || nombreRutina.isBlank() ? "Nueva rutina" : nombreRutina);
         String objetivoSeguro = escapeHtml(objetivo == null || objetivo.isBlank() ? "Plan de entrenamiento" : objetivo);
-        String entrenadorSeguro = escapeHtml(entrenador == null || entrenador.isBlank() ? "Equipo Spartan Gym" : entrenador);
+        String entrenadorSeguro = escapeHtml(entrenador == null || entrenador.isBlank() ? "Equipo " + marca.nombreGimnasio() : entrenador);
         String inicioSeguro = escapeHtml(fechaInicio == null || fechaInicio.isBlank() ? "Sin fecha definida" : fechaInicio);
         String finSeguro = escapeHtml(fechaFin == null || fechaFin.isBlank() ? "Sin fecha definida" : fechaFin);
         String alcance = global ? "Rutina global" : "Rutina personal";
-        String intro = "Hola <strong style=\"color:#ffffff;\">" + nombreSeguro + "</strong>, tienes una nueva rutina agregada en Spartan Gym.";
+        String intro = "Hola <strong style=\"color:#ffffff;\">" + nombreSeguro + "</strong>, tienes una nueva rutina en " + escapeHtml(marca.nombreGimnasio()) + ".";
         String contenido = """
                 <tr>
-                  <td style="padding:28px 30px 8px;">
+                  <td class="email-content-padding" style="padding:26px 30px 8px;">
                     <div style="padding:18px;background:#141416;border:1px solid rgba(255,255,255,.08);border-radius:16px;">
                       <p style="margin:0 0 8px;color:#f87171;font-size:12px;font-weight:900;letter-spacing:2px;text-transform:uppercase;">%ALCANCE%</p>
                       <p style="margin:0;color:#ffffff;font-size:20px;font-weight:900;line-height:1.25;">%RUTINA%</p>
@@ -347,7 +374,7 @@ public class NotificacionService {
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:14px 30px 28px;">
+                  <td class="email-content-padding" style="padding:14px 30px 26px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:separate;border-spacing:0 10px;">
                       <tr>
                         <td style="padding:14px;background:#0a0a0b;border:1px solid rgba(255,255,255,.08);border-radius:12px;color:#d4d4d8;font-size:14px;">Entrenador</td>
@@ -366,8 +393,8 @@ public class NotificacionService {
                         <td style="padding:14px;background:#0a0a0b;border:1px solid rgba(255,255,255,.08);border-radius:12px;color:#ffffff;font-size:14px;font-weight:800;text-align:right;">%FIN%</td>
                       </tr>
                     </table>
-                    <p style="margin:16px 0 0;color:#d4d4d8;font-size:14px;line-height:1.7;">Abre tu app para revisar el plan completo antes de entrenar.</p>
-                    <p style="margin:24px 0 0;color:#ffffff;font-size:15px;font-weight:800;">El equipo de Spartan Gym</p>
+                    <p style="margin:16px 0 0;color:#d4d4d8;font-size:14px;line-height:1.7;">Abre la app para revisar el plan completo antes de entrenar.</p>
+                    <p style="margin:24px 0 0;color:#ffffff;font-size:15px;font-weight:800;">El equipo de %NOMBRE%</p>
                   </td>
                 </tr>
                 """
@@ -377,7 +404,8 @@ public class NotificacionService {
                 .replace("%ENTRENADOR%", entrenadorSeguro)
                 .replace("%EJERCICIOS%", String.valueOf(Math.max(totalEjercicios, 0)))
                 .replace("%INICIO%", inicioSeguro)
-                .replace("%FIN%", finSeguro);
+                .replace("%FIN%", finSeguro)
+                .replace("%NOMBRE%", escapeHtml(marca.nombreGimnasio()));
 
         return construirTarjetaCorreoHtml("Nueva rutina agregada", intro, contenido, marca);
     }
@@ -385,49 +413,60 @@ public class NotificacionService {
     private String construirCorreoGlobalHtml(String tipo, String titulo, String cuerpo, EmailBrand marca) {
         String categoria = escapeHtml(tipo == null || tipo.isBlank() ? "General" : tipo.trim());
         String tituloSeguro = escapeHtml(titulo == null || titulo.isBlank() ? "Aviso global" : titulo.trim());
-        String cuerpoSeguro = escapeHtml(cuerpo == null || cuerpo.isBlank() ? "Tienes un nuevo aviso de Spartan Gym." : cuerpo.trim())
+        String nombreSeguro = escapeHtml(marca.nombreGimnasio());
+        String cuerpoSeguro = escapeHtml(cuerpo == null || cuerpo.isBlank() ? "Tienes un nuevo aviso de " + marca.nombreGimnasio() + "." : cuerpo.trim())
                 .replace("\r\n", "\n")
                 .replace("\r", "\n")
                 .replace("\n", "<br/>");
         String intro = "<span style=\"display:inline-block;margin-bottom:10px;color:#f87171;font-size:12px;font-weight:900;letter-spacing:2px;text-transform:uppercase;\">" + categoria + "</span><br/>" + cuerpoSeguro;
         String contenido = """
                 <tr>
-                  <td style="padding:28px 30px;">
+                  <td class="email-content-padding" style="padding:26px 30px;">
                     <div style="padding:16px;background:#141416;border:1px solid rgba(255,255,255,.08);border-radius:16px;">
-                      <p style="margin:0;color:#ffffff;font-size:14px;line-height:1.7;">Este aviso tambien esta disponible dentro de tus notificaciones de Spartan Gym.</p>
+                      <p style="margin:0;color:#ffffff;font-size:14px;line-height:1.7;">Este aviso también está disponible en tus notificaciones de %NOMBRE%.</p>
                     </div>
                   </td>
                 </tr>
-                """;
+                """.replace("%NOMBRE%", nombreSeguro);
 
         return construirTarjetaCorreoHtml(tituloSeguro, intro, contenido, marca);
     }
 
     private String construirTarjetaCorreoHtml(String titulo, String introHtml, String contenidoHtml, EmailBrand marca) {
-        return """
+        String plantilla = """
                 <!doctype html>
                 <html lang="es">
                 <head>
                   <meta charset="UTF-8" />
                   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                   <title>%TITULO%</title>
+                  <style>
+                    @media only screen and (max-width: 620px) {
+                      .email-outer-padding { padding: 18px 8px !important; }
+                      .email-heading { padding: 26px 20px 22px !important; }
+                      .email-content-padding { padding-right: 20px !important; padding-left: 20px !important; }
+                      .email-footer { padding: 18px 20px 22px !important; }
+                    }
+                  </style>
                 </head>
-                <body style="margin:0;padding:0;background:#0f1115;color:#e7e9ee;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
-                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0f1115;padding:34px 14px;">
+                <body style="margin:0;padding:0;background:#080809;color:#e7e9ee;font-family:Arial,'Segoe UI',Roboto,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;">
+                  <div style="display:none!important;visibility:hidden;opacity:0;color:#080809;height:0;width:0;overflow:hidden;mso-hide:all;">%NOMBRE% · %TITULO%</div>
+                  <table role="presentation" class="email-outer-padding" width="100%" cellspacing="0" cellpadding="0" bgcolor="#080809" style="background:#080809;padding:28px 14px;">
                     <tr>
                       <td align="center">
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#181b21;border:1px solid #262b33;border-radius:18px;overflow:hidden;box-shadow:0 16px 42px rgba(0,0,0,.38);">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="#111113" style="max-width:600px;background:#111113;border:1px solid #2a2a2e;border-radius:16px;overflow:hidden;">
+                          <tr><td height="4" bgcolor="#e50914" style="height:4px;background:#e50914;font-size:0;line-height:0;">&nbsp;</td></tr>
                           <tr>
-                            <td style="padding:38px 42px 30px;text-align:center;border-bottom:1px solid #262b33;">
+                            <td class="email-heading" style="padding:30px 36px 26px;text-align:center;border-bottom:1px solid #29292d;">
                               %LOGO%
-                              <h1 style="margin:20px 0 0;font-size:23px;line-height:1.35;color:#f4f5f7;font-weight:600;letter-spacing:.2px;">%TITULO%</h1>
-                              <p style="margin:12px auto 0;max-width:440px;color:#aeb4bf;font-size:15px;line-height:1.7;">%INTRO%</p>
+                              <h1 style="margin:16px 0 0;font-size:23px;line-height:1.3;color:#fafafa;font-weight:750;letter-spacing:-.3px;">%TITULO%</h1>
+                              <p style="margin:10px auto 0;max-width:440px;color:#c4c4cc;font-size:14px;line-height:1.65;">%INTRO%</p>
                             </td>
                           </tr>
                           %CONTENIDO%
                           <tr>
-                            <td style="padding:22px 42px 26px;border-top:1px solid #262b33;">
-                              <p style="margin:0;color:#767c88;font-size:12px;line-height:1.6;text-align:center;">Mensaje automatico de %NOMBRE%. Por favor no respondas a este correo.</p>
+                            <td class="email-footer" style="padding:18px 36px 22px;border-top:1px solid #29292d;">
+                              <p style="margin:0;color:#a1a1aa;font-size:11px;line-height:1.6;text-align:center;">Mensaje automático de %NOMBRE%. Por favor, no respondas a este correo.</p>
                             </td>
                           </tr>
                         </table>
@@ -436,12 +475,21 @@ public class NotificacionService {
                   </table>
                 </body>
                 </html>
-                """
-                .replace("%TITULO%", titulo)
-                .replace("%LOGO%", construirLogoHtml(marca))
-                .replace("%INTRO%", introHtml)
-                .replace("%NOMBRE%", escapeHtml(marca.nombreGimnasio()))
-                .replace("%CONTENIDO%", contenidoHtml);
+                """;
+        Map<String, String> reemplazos = Map.of(
+                "%TITULO%", titulo,
+                "%LOGO%", construirLogoHtml(marca),
+                "%NOMBRE%", escapeHtml(marca.nombreGimnasio()),
+                "%INTRO%", introHtml,
+                "%CONTENIDO%", contenidoHtml
+        );
+        Matcher matcher = MARCADOR_CORREO.matcher(plantilla);
+        StringBuffer html = new StringBuffer();
+        while (matcher.find()) {
+            matcher.appendReplacement(html, Matcher.quoteReplacement(reemplazos.get(matcher.group())));
+        }
+        matcher.appendTail(html);
+        return html.toString();
     }
 
     private String construirLogoHtml(EmailBrand marca) {
@@ -457,9 +505,8 @@ public class NotificacionService {
 
         return """
                 <div style="display:inline-block;padding:14px 22px;border:1px solid #33383f;border-radius:14px;background:#20242c;">
-                  <div style="font-size:24px;line-height:1;color:#f4f5f7;font-weight:800;letter-spacing:1px;">SPARTAN <span style="color:#ef4b57;">GYM</span></div>
+                  <div style="font-size:24px;line-height:1;color:#f4f5f7;font-weight:800;letter-spacing:1px;">%NOMBRE%</div>
                 </div>
-                <div style="margin-top:12px;font-size:11px;line-height:1;letter-spacing:3px;text-transform:uppercase;color:#8a909b;font-weight:700;">%NOMBRE%</div>
                 """.replace("%NOMBRE%", nombre);
     }
 
@@ -480,8 +527,8 @@ public class NotificacionService {
         String nombreGimnasio = stringConfig(config, "gymName", "Spartan Gym");
         String logo = firstNonBlank(
                 logoPreferido,
-                stringConfig(config, "logoPrincipal", ""),
-                stringConfig(config, "logoAcceso", "")
+                logoConfiguradoParaNombre(config, nombreGimnasio, "logoPrincipal", "logoPrincipalNombre"),
+                logoConfiguradoParaNombre(config, nombreGimnasio, "logoAcceso", "logoAccesoNombre")
         );
 
         if (logo.startsWith("data:image/")) {
@@ -503,6 +550,15 @@ public class NotificacionService {
         }
 
         return new EmailBrand(nombreGimnasio, "", null, null);
+    }
+
+    private String logoConfiguradoParaNombre(Map<String, Object> config, String nombreActual, String claveLogo, String claveNombre) {
+        String logo = stringConfig(config, claveLogo, "");
+        String nombreLogo = stringConfig(config, claveNombre, "").trim();
+        boolean coincide = nombreLogo.isEmpty()
+                ? nombreActual.equalsIgnoreCase("Spartan Gym")
+                : nombreLogo.equalsIgnoreCase(nombreActual.trim());
+        return coincide ? logo : "";
     }
 
     private String stringConfig(Map<String, Object> config, String clave, String valorDefault) {
@@ -532,6 +588,10 @@ public class NotificacionService {
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    private String textoPlano(String valor, String predeterminado) {
+        return valor == null || valor.isBlank() ? predeterminado : valor.trim();
     }
 
     private record EmailBrand(String nombreGimnasio, String logoSrc, String contentType, byte[] logoBytes) {

@@ -313,7 +313,7 @@ public class AsistenciaService {
 
         String[] partes = token.split("\\|");
         if (partes.length != 5 || !prefijoEsperado.equals(partes[0])) {
-            throw new ReglaNegocioException("QR invalido para Spartan Gym.");
+            throw new ReglaNegocioException("QR invalido para este gimnasio.");
         }
         return partes;
     }

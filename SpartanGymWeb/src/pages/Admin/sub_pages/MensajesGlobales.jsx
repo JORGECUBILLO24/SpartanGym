@@ -78,8 +78,8 @@ const MensajesGlobales = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col gap-6 pb-10 text-white">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="workspace-page pb-4 text-white">
+      <div className="workspace-grid--cards">
         <ResumenCard icon={Users} title="Audiencia" value="Todos" detail="Usuarios con acceso" />
         <ResumenCard icon={Mail} title="Canal" value="App + correo" detail="Notificacion y email" />
         <ResumenCard icon={Bell} title="Historial" value={historial.length} detail="Mensajes globales" />
@@ -96,7 +96,7 @@ const MensajesGlobales = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="workspace-grid workspace-grid--split-wide">
         <form onSubmit={enviarMensaje} className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#090909] p-5 shadow-2xl sm:p-6 lg:p-8">
           <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-60" />
 

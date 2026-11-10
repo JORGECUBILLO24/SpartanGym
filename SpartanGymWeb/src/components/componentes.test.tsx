@@ -40,8 +40,8 @@ describe('TarjetaMetrica', () => {
   it('muestra título, valor y detalle', () => {
     render(<TarjetaMetrica titulo="Socios activos" valor="128" detalle="+4 esta semana" icono={Users} />);
 
-    expect(screen.getByText('Socios activos')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 3, name: '128' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Socios activos' })).toBeInTheDocument();
+    expect(screen.getByText('128')).toBeInTheDocument();
     expect(screen.getByText('+4 esta semana')).toBeInTheDocument();
   });
 

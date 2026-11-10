@@ -1,0 +1,1211 @@
+/* ==========================================================================
+   Spartan Gym — Paleta Monocromática Negro / Blanco Premium
+   Filosofía: Elegancia Obsidian, Glassmorphism, Microinteracciones Hápticas,
+   Tipografía Ultra-nítida, Profundidad Espacial y Animaciones Scroll-Driven.
+   ========================================================================== */
+
+.spartan-editorial {
+  --sp-bg: #090808;
+  --sp-surface: #141212;
+  --sp-surface-glass: rgba(22, 19, 19, 0.72);
+  --sp-text: #f5f2ec;
+  --sp-muted: #b8b0a7;
+  --sp-line: rgba(255, 255, 255, 0.09);
+  --sp-accent: #ffffff;
+  --sp-accent-muted: #d6cec7;
+  --sp-accent-glow: rgba(255, 255, 255, 0.2);
+  --sp-curve: cubic-bezier(0.16, 1, 0.3, 1);
+  --sp-spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  background: var(--sp-bg);
+  color: var(--sp-text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+.spartan-editorial [id] {
+  scroll-margin-top: 6rem;
+}
+
+.spartan-editorial :focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 4px;
+}
+
+.sp-wrap {
+  width: min(100% - 2.5rem, 82rem);
+  margin-inline: auto;
+}
+
+/* --------------------------------------------------------------------------
+   Film Grain Overlay — Textura Cinematográfica
+   -------------------------------------------------------------------------- */
+.sp-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 180px;
+  mix-blend-mode: overlay;
+}
+
+.sp-skip {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 99;
+  padding: 0.75rem 1.25rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #111111;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.sp-skip:not(:focus) {
+  clip-path: inset(50%);
+}
+
+/* --------------------------------------------------------------------------
+   Encabezado Flotante estilo Dynamic Island
+   -------------------------------------------------------------------------- */
+.sp-header-wrapper {
+  position: sticky;
+  top: 1rem;
+  z-index: 50;
+  width: 100%;
+  pointer-events: none;
+}
+
+.sp-header-capsule {
+  pointer-events: auto;
+  width: min(100% - 2rem, 76rem);
+  min-height: 4rem;
+  margin-inline: auto;
+  padding: 0.45rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border-radius: 9999px;
+  background: rgba(16, 14, 14, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  box-shadow:
+    0 20px 40px -10px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  transition: transform 200ms ease, background-color 200ms ease;
+}
+
+.sp-brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.sp-brand img {
+  width: 6.2rem;
+  height: 2.8rem;
+  object-fit: contain;
+  transition: transform 180ms var(--sp-curve);
+}
+
+.sp-brand:hover img {
+  transform: scale(1.03);
+}
+
+.sp-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sp-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0.35rem 0.95rem;
+  border-radius: 9999px;
+  color: #cfc8c0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 160ms var(--sp-curve);
+}
+
+.sp-nav-link:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sp-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sp-access-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 38px;
+  padding: 0.4rem 1.15rem;
+  border-radius: 9999px;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 750;
+  text-decoration: none;
+  box-shadow:
+    0 4px 16px -2px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition:
+    transform 140ms var(--sp-curve),
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.sp-access-btn:hover {
+  background: #141416;
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 6px 20px -2px rgba(0, 0, 0, 0.95);
+}
+
+.sp-access-btn:active {
+  transform: scale(0.96);
+}
+
+.sp-menu {
+  display: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   Hero Cinematográfico con Paralaje Multicapa
+   -------------------------------------------------------------------------- */
+.sp-hero-section {
+  position: relative;
+  isolation: isolate;
+  min-height: calc(100svh - 5rem);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: #0a0909;
+}
+
+.sp-hero-ambient {
+  position: absolute;
+  inset: -20% -10%;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 75% 40%, rgba(255, 255, 255, 0.08) 0%, rgba(200, 200, 200, 0.03) 42%, transparent 70%),
+    radial-gradient(circle at 20% 70%, rgba(255, 255, 255, 0.04) 0%, transparent 50%);
+  filter: blur(50px);
+  will-change: transform;
+}
+
+.sp-hero-media-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sp-hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 110%;
+  object-fit: cover;
+  object-position: 62% 48%;
+  filter: brightness(0.95) saturate(0.88) contrast(1.08);
+  will-change: transform;
+}
+
+.sp-hero-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    linear-gradient(90deg, #090808 0%, rgba(9, 8, 8, 0.94) 34%, rgba(9, 8, 8, 0.45) 68%, rgba(9, 8, 8, 0.78) 100%),
+    linear-gradient(0deg, #090808 0%, transparent 35%);
+}
+
+.sp-hero-inner {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  align-items: center;
+  gap: 3rem;
+  padding-block: 5rem 6.5rem;
+}
+
+.sp-hero-copy {
+  max-width: 44rem;
+}
+
+.sp-ios-pill-kicker {
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--sp-accent-muted);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.sp-ios-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+  animation: sp-pulse 2.2s infinite ease-in-out;
+}
+
+@keyframes sp-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.sp-hero-heading {
+  margin: 0;
+  font-size: clamp(3.4rem, 8.6vw, 8rem);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  background: linear-gradient(180deg, #ffffff 45%, #a8a29e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sp-hero-heading span {
+  -webkit-text-fill-color: var(--sp-accent);
+  color: var(--sp-accent);
+}
+
+.sp-description {
+  color: var(--sp-muted);
+  max-width: 48ch;
+  margin-block: 1.5rem 2rem;
+  font-size: clamp(1rem, 1.35vw, 1.18rem);
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.sp-hero-cta-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.15rem;
+}
+
+.sp-ios-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-height: 50px;
+  padding: 0.75rem 1.85rem;
+  border-radius: 9999px;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  font-size: 0.96rem;
+  font-weight: 750;
+  text-decoration: none;
+  box-shadow:
+    0 10px 28px -4px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition:
+    transform 160ms var(--sp-curve),
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.sp-ios-btn-primary:hover {
+  background: #161618;
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 12px 34px -4px rgba(0, 0, 0, 0.95);
+  transform: translateY(-1px);
+}
+
+.sp-ios-btn-primary:active {
+  transform: scale(0.96);
+}
+
+.sp-ios-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 50px;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  color: #f5f2ec;
+  font-size: 0.92rem;
+  font-weight: 650;
+  text-decoration: none;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: all 160ms var(--sp-curve);
+}
+
+.sp-ios-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.sp-ios-btn-secondary:active {
+  transform: scale(0.96);
+}
+
+/* Badges Flotantes 3D con Paralaje Espacial */
+.sp-hero-floating-elements {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  will-change: transform;
+}
+
+.sp-ios-floating-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 22rem;
+  padding: 1rem 1.35rem;
+  border-radius: 24px;
+  background: rgba(18, 16, 16, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  box-shadow:
+    0 20px 45px -12px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  will-change: transform;
+  color: #ffffff;
+}
+
+.sp-float-card-1 {
+  align-self: flex-end;
+}
+
+.sp-float-card-2 {
+  align-self: flex-start;
+  margin-left: -1rem;
+}
+
+.sp-float-icon-box {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.sp-float-title {
+  font-size: 0.94rem;
+  font-weight: 750;
+  color: #ffffff;
+}
+
+.sp-float-sub {
+  font-size: 0.76rem;
+  color: var(--sp-muted);
+  margin-top: 0.15rem;
+}
+
+/* --------------------------------------------------------------------------
+   Sección El Espacio & Bento Grid (La Experiencia)
+   -------------------------------------------------------------------------- */
+.sp-experience-section {
+  padding-block: clamp(3rem, 7vw, 6rem);
+}
+
+.sp-section-heading {
+  margin-bottom: 2rem;
+}
+
+.sp-section-heading h2 {
+  margin: 0;
+  font-size: clamp(2.4rem, 5.5vw, 4.8rem);
+  font-weight: 850;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.sp-section-heading h2 span {
+  color: var(--sp-accent-muted);
+}
+
+/* Bento Grid estilo Apple */
+.sp-bento-section {
+  margin-top: clamp(4rem, 8vw, 7rem);
+}
+
+.sp-bento-header {
+  margin-bottom: 2.5rem;
+}
+
+.sp-bento-title {
+  margin: 0;
+  font-size: clamp(1.8rem, 3.8vw, 2.8rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+}
+
+.sp-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.sp-bento-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 2rem;
+  border-radius: 28px;
+  background: rgba(20, 18, 18, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow:
+    0 16px 36px -12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+  transition:
+    transform 220ms var(--sp-curve),
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.sp-bento-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 24px 50px -12px rgba(0, 0, 0, 0.8),
+    0 0 30px -6px rgba(255, 255, 255, 0.08),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.sp-bento-card:hover .sp-bento-arrow-circle {
+  background: #ffffff;
+  color: #0a0909;
+  transform: translate(2px, -2px);
+}
+
+/* Tarjeta Destacada Bento */
+.sp-bento-card-featured {
+  grid-column: span 1;
+}
+
+.sp-bento-bg-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.sp-bento-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.55) contrast(1.1);
+  transition: transform 350ms var(--sp-curve);
+}
+
+.sp-bento-card:hover .sp-bento-img {
+  transform: scale(1.05);
+}
+
+.sp-bento-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(14, 12, 12, 0.5) 0%,
+    rgba(14, 12, 12, 0.88) 60%,
+    rgba(12, 10, 10, 0.98) 100%
+  );
+}
+
+.sp-bento-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  gap: 1.5rem;
+}
+
+.sp-bento-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sp-bento-icon-capsule {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.sp-bento-badge {
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sp-accent-muted);
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sp-bento-body {
+  flex: 1;
+}
+
+.sp-bento-card-title {
+  margin: 0 0 0.65rem;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+}
+
+.sp-bento-card-desc {
+  margin: 0;
+  color: var(--sp-muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.sp-bento-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.sp-bento-bullet-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: #d6cec7;
+}
+
+.sp-bento-bullet-item svg {
+  color: #ffffff;
+  opacity: 0.75;
+}
+
+.sp-bento-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 1rem;
+}
+
+.sp-bento-link-text {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.sp-bento-arrow-circle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  transition: all 160ms var(--sp-curve);
+}
+
+/* --------------------------------------------------------------------------
+   Sección Barra Ensamblada (Ingeniería de Fuerza)
+   -------------------------------------------------------------------------- */
+.sp-load {
+  position: relative;
+  background: var(--sp-bg);
+  overflow: clip;
+  border-block: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sp-load-ambient-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
+  filter: blur(40px);
+}
+
+.sp-load-frame {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: clamp(1rem, 2.5vw, 2rem);
+  padding-block: clamp(3.5rem, 8vw, 6.5rem);
+}
+
+.sp-load-title {
+  margin: 0;
+  font-size: clamp(2.4rem, 5.5vw, 4.5rem);
+  font-weight: 850;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.sp-load-title span,
+.sp-dot-neutral {
+  -webkit-text-fill-color: #ffffff;
+  color: #ffffff;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.4);
+}
+
+.sp-load-weight-hud {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  margin-top: 1rem;
+  padding: 0.6rem 1.4rem;
+  border-radius: 9999px;
+  background: rgba(18, 16, 16, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  width: fit-content;
+  margin-inline: auto;
+}
+
+.sp-weight-display {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.sp-weight-number {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.sp-weight-unit {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--sp-muted);
+}
+
+.sp-weight-status {
+  font-size: 0.78rem;
+  color: var(--sp-muted);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  padding-left: 1rem;
+}
+
+.sp-ios-replay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: 9999px;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  transition: all 160ms ease;
+}
+
+.sp-ios-replay-btn:hover:not(:disabled) {
+  background: #181616;
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: translateY(-1px);
+}
+
+.sp-ios-replay-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.sp-olympic-bar {
+  filter: drop-shadow(0 4px 14px rgba(255, 255, 255, 0.18));
+}
+
+.sp-load-stage {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding-block: 1rem;
+}
+
+.sp-load-art {
+  display: block;
+  width: min(100%, 65rem);
+  filter: brightness(1.22) drop-shadow(0 14px 30px rgba(0, 0, 0, 0.8));
+}
+
+.sp-load-specs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.sp-ios-spec-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  transition: transform 160ms var(--sp-curve), background-color 160ms ease;
+}
+
+.sp-ios-spec-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sp-ios-spec-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.sp-ios-spec-val {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-ios-spec-desc {
+  font-size: 0.7rem;
+  color: var(--sp-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Membresía: Tarjeta Premium estilo Vidrio iOS
+   -------------------------------------------------------------------------- */
+.sp-membership-section {
+  padding-block: clamp(3.5rem, 8vw, 7rem);
+}
+
+.sp-membership-glass-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 3rem;
+  padding: clamp(2.5rem, 6vw, 4.5rem);
+  border-radius: 36px;
+  background: rgba(18, 15, 15, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(30px) saturate(190%);
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+  box-shadow:
+    0 30px 65px -15px rgba(0, 0, 0, 0.85),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.sp-membership-glow {
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 450px;
+  height: 450px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.09) 0%, transparent 65%);
+  filter: blur(50px);
+  pointer-events: none;
+}
+
+.sp-membership-heading {
+  margin: 0;
+  font-size: clamp(2.2rem, 4.8vw, 3.8rem);
+  font-weight: 850;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.sp-membership-heading span {
+  color: var(--sp-accent-muted);
+}
+
+.sp-membership-perks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 1.5rem;
+}
+
+.sp-perk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: #e5ded8;
+}
+
+.sp-perk-pill svg {
+  color: #ffffff;
+  opacity: 0.7;
+}
+
+.sp-membership-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  text-align: center;
+}
+
+.sp-btn-large {
+  min-height: 54px;
+  padding: 0.95rem 2.5rem;
+  font-size: 1.05rem;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.sp-membership-note {
+  font-size: 0.8rem;
+  color: var(--sp-muted);
+  max-width: 24ch;
+}
+
+/* --------------------------------------------------------------------------
+   Footer Minimalista Apple
+   -------------------------------------------------------------------------- */
+.sp-footer-modern {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-block: 3rem 2rem;
+}
+
+.sp-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sp-footer-tagline {
+  color: var(--sp-muted);
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.sp-footer-back-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #f5f2ec;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.sp-footer-back-top:hover {
+  color: var(--sp-accent-muted);
+}
+
+.sp-footer-bottom {
+  padding-top: 1.5rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: #78716c;
+}
+
+/* ==========================================================================
+   ANIMACIONES SCROLL-DRIVEN (CSS nativas — scroll-timeline / view())
+   Restaura la animación de los discos de la barra + agrega reveal/depth
+   ========================================================================== */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+
+    /* — Hero: Profundidad de imagen al hacer scroll (sale más lento) — */
+    .sp-hero-section { view-timeline: --sp-hero block; }
+    .sp-hero-image {
+      animation: sp-hero-depth linear both;
+      animation-timeline: --sp-hero;
+      animation-range: exit 0% exit 100%;
+    }
+    @keyframes sp-hero-depth {
+      to { transform: translateY(9%) scale(1.025); }
+    }
+
+    /* — Reveal genérico: los elementos con .sp-reveal entran suavemente — */
+    .sp-reveal {
+      animation: sp-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 65%;
+    }
+    @keyframes sp-reveal {
+      from { opacity: 0.45; transform: translateY(22px); }
+    }
+
+    /* — Bento cards: entrada escalonada — */
+    .sp-bento-card {
+      animation: sp-card-enter linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 50%;
+    }
+    @keyframes sp-card-enter {
+      from { opacity: 0; transform: translateY(36px) scale(0.96); }
+    }
+
+    /* — Galería: profundidad de foto al hacer scroll — */
+    .sp-gallery-card-frame { view-timeline: --sp-gallery block; }
+
+    /* — Membresía: reveal completo — */
+    .sp-membership-glass-card {
+      animation: sp-membership-enter linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+    @keyframes sp-membership-enter {
+      from { opacity: 0; transform: translateY(40px) scale(0.97); }
+    }
+
+    /* — Specs de la barra: entrada por debajo — */
+    .sp-ios-spec-card {
+      animation: sp-spec-enter linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+    @keyframes sp-spec-enter {
+      from { opacity: 0; transform: translateY(18px); }
+    }
+  }
+}
+
+/* ==========================================================================
+   ANIMACIÓN DE ENTRADA DEL HERO (al cargar la página)
+   ========================================================================== */
+@media (prefers-reduced-motion: no-preference) {
+  .sp-stagger-reveal {
+    animation: sp-stagger-in 700ms var(--sp-curve) both;
+  }
+  .sp-stagger-reveal > *:nth-child(1) { animation: sp-stagger-child 600ms var(--sp-curve) 100ms both; }
+  .sp-stagger-reveal > *:nth-child(2) { animation: sp-stagger-child 600ms var(--sp-curve) 220ms both; }
+  .sp-stagger-reveal > *:nth-child(3) { animation: sp-stagger-child 600ms var(--sp-curve) 340ms both; }
+  .sp-stagger-reveal > *:nth-child(4) { animation: sp-stagger-child 600ms var(--sp-curve) 460ms both; }
+
+  @keyframes sp-stagger-in {
+    from { opacity: 0; }
+  }
+  @keyframes sp-stagger-child {
+    from { opacity: 0; transform: translateY(16px); }
+  }
+
+  .sp-hero-floating-elements {
+    animation: sp-float-enter 900ms var(--sp-curve) 500ms both;
+  }
+  @keyframes sp-float-enter {
+    from { opacity: 0; transform: translateY(30px) scale(0.95); }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Responsividad Móvil
+   -------------------------------------------------------------------------- */
+@media (max-width: 64rem) {
+  .sp-bento-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sp-membership-glass-card {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .sp-membership-action {
+    align-items: flex-start;
+  }
+
+  .sp-btn-large {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 50rem) {
+  .sp-header-capsule {
+    width: calc(100% - 1.25rem);
+    padding: 0.35rem 0.9rem;
+    border-radius: 20px;
+  }
+
+  .sp-menu {
+    display: grid;
+  }
+
+  .sp-nav {
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.65rem);
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    padding: 1rem;
+    border-radius: 24px;
+    background: rgba(18, 16, 16, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(28px);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.8);
+  }
+
+  .sp-nav[data-open="true"] {
+    display: flex;
+  }
+
+  .sp-nav-link {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .sp-hero-inner {
+    grid-template-columns: 1fr;
+    padding-block: 4rem;
+  }
+
+  .sp-hero-floating-elements {
+    display: none;
+  }
+
+  .sp-hero-heading {
+    font-size: clamp(2.8rem, 13vw, 4.2rem);
+  }
+
+  .sp-hero-cta-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sp-ios-btn-primary,
+  .sp-ios-btn-secondary {
+    width: 100%;
+  }
+
+  .sp-footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Movimiento Reducido
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .sp-ios-dot { animation: none; }
+  .sp-access-btn,
+  .sp-ios-btn-primary,
+  .sp-ios-btn-secondary,
+  .sp-ios-floating-card,
+  .sp-bento-card,
+  .sp-bento-img,
+  .sp-bento-arrow-circle,
+  .sp-ios-spec-card,
+  .sp-brand img { transition: none; }
+
+  .sp-access-btn:active,
+  .sp-ios-btn-primary:active,
+  .sp-ios-btn-secondary:active { transform: none; }
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .sp-header-capsule,
+  .sp-ios-floating-card,
+  .sp-ios-btn-secondary,
+  .sp-membership-glass-card {
+    background: #141010;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .sp-grain { display: none; }
+}

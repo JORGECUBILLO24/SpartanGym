@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS tipos_membresia (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(50) UNIQUE NOT NULL,
     duracion_dias INT NOT NULL CHECK (duracion_dias > 0),
-    precio DECIMAL(10, 2) NOT NULL CHECK (precio >= 0)
+    precio DECIMAL(10, 2) NOT NULL CHECK (precio >= 0),
+    imagen_url TEXT,
+    beneficios TEXT
 );
 
 CREATE TABLE IF NOT EXISTS grupos_musculares (
@@ -419,7 +421,7 @@ CREATE TABLE IF NOT EXISTS configuracion_app (
 INSERT INTO configuracion_app (id, configuracion_json)
 VALUES (
     1,
-    '{"gymName":"Spartan Gym","email":"admin@spartangym.com","phone":"+505 0000 0000","currency":"USD","taxRate":"15","theme":"system","themeSource":"system","accentColor":"#e50914","accentHoverColor":"#b91c1c","accentSoftColor":"#450a0a","logoPrincipal":"","logoAcceso":"","fondoLogin":"","emailAlerts":true,"smsAlerts":false,"dailyReports":true,"twoFactor":false,"sessionTimeout":"30"}'
+    '{"gymName":"Spartan Gym","email":"admin@spartangym.com","phone":"+505 0000 0000","currency":"USD","taxRate":"15","theme":"system","themeSource":"system","accentColor":"#e50914","accentHoverColor":"#b91c1c","accentSoftColor":"#450a0a","logoPrincipal":"","logoPrincipalNombre":"","logoAcceso":"","logoAccesoNombre":"","fondoLogin":"","emailAlerts":true,"smsAlerts":false,"dailyReports":true,"twoFactor":false,"sessionTimeout":"30"}'
 )
 ON CONFLICT (id) DO NOTHING;
 
@@ -461,3 +463,6 @@ CREATE TABLE IF NOT EXISTS ejercicios_completados (
     CONSTRAINT uq_ec_dia UNIQUE (rutina_id, ejercicio_id, fecha)
 );
 CREATE INDEX IF NOT EXISTS idx_ec_rutina_fecha ON ejercicios_completados (rutina_id, fecha);
+
+-- Portadas compartidas entre el panel web y la app móvil.
+ALTER TABLE rutinas ADD COLUMN IF NOT EXISTS imagen_url TEXT;

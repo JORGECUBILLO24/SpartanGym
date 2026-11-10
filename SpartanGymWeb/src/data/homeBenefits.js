@@ -1,7 +1,7 @@
 import { CalendarCheck, Dumbbell, UsersRound } from 'lucide-react';
-import ImagenEntrenador from '../assets/beneficio-entrenador.webp';
-import ImagenInstalaciones from '../assets/fondo_login.webp';
-import ImagenComunidad from '../assets/MembresiaSpartan.webp';
+import ImagenEntrenador from '../assets/gym-youngla-coach.webp';
+import ImagenInstalaciones from '../assets/gym-aesthetic-workout.webp';
+import ImagenComunidad from '../assets/gym-youngla-athlete.webp';
 
 export const beneficiosInicio = [
   {
@@ -11,7 +11,7 @@ export const beneficiosInicio = [
     resumen:
       'Nuestro objetivo es acompañarte en cada rutina. Siempre habrá un entrenador ayudándote a mejorar tu técnica, entrenar con confianza y avanzar sin sentirte solo.',
     imagen: ImagenEntrenador,
-    imagenAlt: 'Entrenador guiando a un socio durante una rutina en máquina',
+    imagenAlt: 'Entrenador atlético de alto rendimiento guiando técnica de levantamiento',
     icono: Dumbbell,
     estadistica: 'Entrenadores expertos',
     puntos: [
@@ -27,7 +27,7 @@ export const beneficiosInicio = [
     resumen:
       'Contamos con instalaciones de calidad, máquinas modernas y espacios cuidados para que cada entrenamiento se sienta cómodo, seguro y potente.',
     imagen: ImagenInstalaciones,
-    imagenAlt: 'Instalaciones y equipo de Spartan Gym',
+    imagenAlt: 'Instalaciones de alta gama con equipamiento de pesas y máquinas modernas',
     icono: CalendarCheck,
     estadistica: 'Equipo moderno',
     puntos: [
@@ -43,7 +43,7 @@ export const beneficiosInicio = [
     resumen:
       'Entrena rodeado de energía, disciplina y personas que te impulsan a regresar, dar un poco más y celebrar cada avance.',
     imagen: ImagenComunidad,
-    imagenAlt: 'Membresía Spartan Gym como símbolo de comunidad',
+    imagenAlt: 'Atletas entrenando en un ambiente de alta disciplina y enfoque Spartan',
     icono: UsersRound,
     estadistica: 'Comunidad Spartan',
     puntos: [

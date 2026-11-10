@@ -11,6 +11,7 @@ public class RutinaRequest {
     private UUID idEntrenador;
     private Boolean esGlobal;
     private String nombre;
+    private String imagenUrl;
     private String tipoRutina;
     private String generoObjetivo;
     private LocalDate fechaInicio;

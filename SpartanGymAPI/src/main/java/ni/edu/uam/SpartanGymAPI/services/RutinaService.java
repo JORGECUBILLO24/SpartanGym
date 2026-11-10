@@ -43,6 +43,14 @@ public class RutinaService {
     }
 
     @Transactional
+    public void actualizarImagen(UUID id, String imagenUrl) {
+        Rutina rutina = rutinaRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Rutina no encontrada"));
+        rutina.setImagenUrl(ni.edu.uam.SpartanGymAPI.util.FotoPerfilValidator.validar(imagenUrl));
+        rutinaRepository.save(rutina);
+    }
+
+    @Transactional
     public Rutina crearRutinaPersonalizada(RutinaRequest request) {
         validarRutina(request);
 
@@ -115,6 +123,7 @@ public class RutinaService {
         Rutina rutina = new Rutina();
         rutina.setEntrenador(entrenador);
         rutina.setSocio(socio);
+        rutina.setImagenUrl(ni.edu.uam.SpartanGymAPI.util.FotoPerfilValidator.validar(request.getImagenUrl()));
         rutina.setNombre(textoOpcional(request.getNombre(), nombreRutinaDefault(request)));
         rutina.setTipoRutina(textoOpcional(request.getTipoRutina(), "General"));
         rutina.setGeneroObjetivo(textoOpcional(request.getGeneroObjetivo(), "Todos"));

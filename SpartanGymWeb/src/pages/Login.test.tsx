@@ -5,9 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Login from './Login';
 import { CLAVE_CUENTA_ACTUAL } from '../utils/cuentaActual';
 
-// useLogosApp pide la configuración remota por red; en estas pruebas no interesa.
+// useLogosApp y useConfiguracionApp piden la configuración remota por red; en estas pruebas
+// no interesa, y así el único fetch es el del login.
 vi.mock('../utils/logosApp', () => ({
   useLogosApp: () => ({ principal: '', acceso: '', fondoLogin: '' }),
+}));
+vi.mock('../utils/configuracionApp', () => ({
+  useConfiguracionApp: () => ({}),
+  obtenerNombreGimnasio: () => 'Spartan Gym',
 }));
 
 const fetchMock = vi.fn();
@@ -31,10 +36,10 @@ const renderizar = () =>
 
 async function completarYEnviar(rol = '') {
   const usuario = userEvent.setup();
-  await usuario.type(screen.getByPlaceholderText('Ingresa tu correo'), 'admin@spartangym.com');
-  await usuario.type(screen.getByPlaceholderText('Ingresa tu contraseña'), 'clave-de-prueba');
-  if (rol) await usuario.selectOptions(screen.getByRole('combobox'), rol);
-  await usuario.click(screen.getByRole('button', { name: 'Iniciar sesion' }));
+  await usuario.type(screen.getByLabelText('Correo electrónico'), 'admin@spartangym.com');
+  await usuario.type(screen.getByLabelText('Contraseña'), 'clave-de-prueba');
+  if (rol) await usuario.selectOptions(screen.getByLabelText(/^Rol/), rol);
+  await usuario.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
 }
 
 beforeEach(() => {
@@ -64,8 +69,10 @@ describe('Login: mensajes de error', () => {
     renderizar();
     await completarYEnviar();
 
-    expect(await screen.findByText('No se pudo conectar con la API. Verifica tu conexion a internet.')).toBeInTheDocument();
-    expect(screen.queryByText(/credenciales/i)).not.toBeInTheDocument();
+    expect(await screen.findByText('No se pudo conectar con la API. Verifica tu conexión a internet.')).toBeInTheDocument();
+    // El subtítulo "Ingresa tus credenciales..." es parte del diseño; lo que no debe aparecer es
+    // el mensaje viejo que culpaba a las credenciales de un fallo de red.
+    expect(screen.queryByText(/verifica tus credenciales/i)).not.toBeInTheDocument();
   });
 
   it('un 503 con problem+json muestra el mensaje de indisponibilidad de la API', async () => {
@@ -129,9 +136,9 @@ describe('Login: inicio de sesión correcto', () => {
     renderizar();
     await completarYEnviar();
 
-    expect(await screen.findByRole('button', { name: 'Conectando con API...' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Iniciando sesión…' })).toBeDisabled();
 
     resolver(problema('Correo o contraseña incorrectos.', 400, 'CREDENCIALES_INVALIDAS'));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Iniciar sesion' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeEnabled());
   });
 });

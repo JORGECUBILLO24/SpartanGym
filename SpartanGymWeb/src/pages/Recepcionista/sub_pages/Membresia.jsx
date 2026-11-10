@@ -7,6 +7,7 @@ const Membresias = () => {
   const [catalogo, setCatalogo] = useState([]);
   const [membresiasSocios, setMembresiasSocios] = useState([]);
   const [error, setError] = useState('');
+  const [cargando, setCargando] = useState(true);
   const configuracion = useConfiguracionApp();
   const formatearMonto = (valor) => formatearMoneda(valor, configuracion.currency);
 
@@ -22,11 +23,12 @@ const Membresias = () => {
   useEffect(() => {
     Promise.resolve()
       .then(cargarDatos)
-      .catch(() => setError('No se pudieron cargar membresias desde la API.'));
+      .catch(() => setError('No se pudieron cargar membresias desde la API.'))
+      .finally(() => setCargando(false));
   }, []);
 
   return (
-    <div className="pagina-stack mx-auto w-full max-w-6xl space-y-8">
+    <div className="workspace-page mx-auto w-full max-w-6xl">
       {error && (
         <div className="flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">
           <AlertCircle size={15} />
@@ -47,7 +49,7 @@ const Membresias = () => {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="workspace-grid--cards">
           {catalogo.map((plan) => (
             <article key={plan.id} className="tarjeta-sistema relative rounded-2xl border border-white/10 bg-[#0d0d0d] p-6 shadow-2xl">
               <h4 className="text-lg font-black text-white">{plan.nombre}</h4>
@@ -60,6 +62,11 @@ const Membresias = () => {
               </div>
             </article>
           ))}
+          {!cargando && catalogo.length === 0 && (
+            <p className="col-span-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center text-sm text-gray-400">
+              {error ? 'No se pudo cargar el catálogo.' : 'Aún no hay planes disponibles.'}
+            </p>
+          )}
         </div>
       </section>
 
@@ -80,19 +87,22 @@ const Membresias = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {membresiasSocios.map((membresia) => (
+              {!cargando && membresiasSocios.map((membresia) => (
                 <tr key={membresia.id} className="hover:bg-white/[0.02]">
                   <td className="py-5 font-bold text-white">{membresia.socio}</td>
                   <td className="py-5">{membresia.tipoMembresia}</td>
-                  <td className="flex items-center gap-2 py-5 text-gray-400">
+                  <td className="py-3 text-gray-400">
+                    <span className="workspace-table-cell-content">
                     <Calendar size={14} /> {membresia.fechaVencimiento || 'N/A'}
+                    </span>
                   </td>
                   <td className="py-5">
                     <EtiquetaEstado estado={membresia.estado} />
                   </td>
                 </tr>
               ))}
-              {!membresiasSocios.length && (
+              {cargando && <tr><td colSpan="4" className="py-8 text-center text-sm text-gray-400">Cargando membresías…</td></tr>}
+              {!cargando && !membresiasSocios.length && (
                 <tr>
                   <td colSpan="4" className="py-10 text-center text-sm text-gray-500">
                     No hay membresias registradas.

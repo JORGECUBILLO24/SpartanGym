@@ -111,7 +111,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -119,7 +119,7 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null
       - name: Install Android SDK packages
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+        run: sdkmanager "platforms;android-36.1" "build-tools;36.0.0"
       - name: Run unit tests
         run: ./gradlew test --no-daemon
       # Verifica que ambos tipos de build compilan: debug apunta al emulador (10.0.2.2) y

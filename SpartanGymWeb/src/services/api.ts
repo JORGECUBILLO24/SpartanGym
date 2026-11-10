@@ -1,5 +1,5 @@
 import { cerrarSesionActual } from '../utils/cuentaActual';
-import type { Sucursal, SesionUsuario, TipoMembresia, UsuarioGuardado } from '../types/domain';
+import type { Sucursal, SucursalDisponible, SesionUsuario, TipoMembresia, UsuarioGuardado } from '../types/domain';
 
 const FALLBACK_API_BASE_URL = 'http://localhost:8080/api';
 
@@ -133,6 +133,8 @@ export interface TipoMembresiaRequest {
   nombre: string;
   duracionDias: number;
   precio: number;
+  /** Texto libre con los beneficios del plan. */
+  beneficios?: string | null;
 }
 
 export interface MovimientoFinancieroRequest {
@@ -145,6 +147,10 @@ export interface MovimientoFinancieroRequest {
 }
 
 export const authApi = {
+  loginGoogle: (credential: string) => apiRequest<SesionUsuario>('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
+  }),
   login: (email: string, password: string) => apiRequest<SesionUsuario>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
@@ -209,6 +215,9 @@ export const catalogoApi = {
 };
 
 export const rutinasApi = {
+  actualizarImagen: (id: string, imagenUrl: string) => apiRequest(`/rutinas/${id}/imagen`, {
+    method: 'PATCH', body: JSON.stringify({ imagenUrl }),
+  }),
   listar: () => apiRequest('/rutinas'),
   crear: (rutina: Record<string, unknown>) => apiRequest('/rutinas', {
     method: 'POST',
@@ -222,9 +231,17 @@ export const rutinasApi = {
 
 export const membresiasApi = {
   tipos: () => apiRequest<TipoMembresia[]>('/membresias/tipos'),
-  crearTipo: ({ nombre, duracionDias, precio }: TipoMembresiaRequest) => apiRequest<TipoMembresia>('/membresias/tipos', {
+  actualizarImagen: (id: number, imagenUrl: string) => apiRequest<TipoMembresia>(`/membresias/tipos/${id}/imagen`, {
+    method: 'PATCH',
+    body: JSON.stringify({ imagenUrl }),
+  }),
+  crearTipo: ({ nombre, duracionDias, precio, beneficios }: TipoMembresiaRequest) => apiRequest<TipoMembresia>('/membresias/tipos', {
     method: 'POST',
-    body: JSON.stringify({ nombre, duracionDias, precio }),
+    body: JSON.stringify({ nombre, duracionDias, precio, beneficios }),
+  }),
+  actualizarTipo: (id: number, { nombre, duracionDias, precio, beneficios }: TipoMembresiaRequest) => apiRequest<TipoMembresia>(`/membresias/tipos/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ nombre, duracionDias, precio, beneficios }),
   }),
   eliminarTipo: (id: number) => apiRequest(`/membresias/tipos/${id}`, { method: 'DELETE' }),
   comprar: ({ tipoMembresiaId, metodoPago }: { tipoMembresiaId: number; metodoPago: string }) => apiRequest('/membresias/comprar', {
@@ -286,6 +303,8 @@ export const ventasApi = {
 
 export const sucursalesApi = {
   listar: () => apiRequest<Sucursal[]>('/sucursales'),
+  /** Público (sin sesión): solo id y nombre, para el formulario de registro. */
+  listarDisponibles: () => apiRequest<SucursalDisponible[]>('/sucursales/disponibles', { skipAuth: true }),
   crear: (sucursal: Partial<Sucursal>) => apiRequest<Sucursal>('/sucursales', {
     method: 'POST',
     body: JSON.stringify(sucursal),

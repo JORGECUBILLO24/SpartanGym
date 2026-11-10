@@ -7,8 +7,10 @@ import android.graphics.BitmapFactory
 import android.util.Size as CameraSize
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
@@ -19,6 +21,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,9 +29,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ShowChart
 import androidx.compose.material.icons.rounded.CreditCard
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.ShoppingCart
@@ -53,11 +59,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.spartangymapp.R
 import com.example.spartangymapp.network.ActualizarFotoRequest
 import com.example.spartangymapp.network.AppConfigResponse
+import com.example.spartangymapp.ui.components.applePressScale
 import com.example.spartangymapp.network.AsistenciaQrRequest
 import com.example.spartangymapp.network.AsistenciaQrValidationResponse
 import com.example.spartangymapp.network.CompraMembresiaAppRequest
@@ -80,12 +88,13 @@ import com.example.spartangymapp.util.rotarLuminancia
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.zxing.BinaryBitmap
-import com.google.zxing.MultiFormatReader
-import com.google.zxing.NotFoundException
+import com.google.zxing.qrcode.QRCodeReader
+import com.google.zxing.ReaderException
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
@@ -118,7 +127,8 @@ private data class RutinaSocio(
     val dias: Int,
     val foco: String,
     val progreso: Float,
-    val ejercicios: List<EjercicioSocio>
+    val ejercicios: List<EjercicioSocio>,
+    val imagenUrl: String? = null
 )
 
 private data class SocioNavItem(
@@ -167,7 +177,8 @@ private fun RutinaResumenResponse.toRutinaSocio(index: Int): RutinaSocio {
         dias = ejerciciosMapeados.size,
         foco = zonas.ifBlank { "—" },
         progreso = (progresoSemana ?: 0.0).toFloat(),
-        ejercicios = ejerciciosMapeados
+        ejercicios = ejerciciosMapeados,
+        imagenUrl = imagenUrl
     )
 }
 
@@ -282,12 +293,27 @@ fun PantallaUsuario(
         if (rutinaSeleccionada >= rutinas.size) rutinaSeleccionada = 0
     }
 
+    LaunchedEffect(seccionActual) {
+        if (seccionActual == 2) {
+            while (true) {
+                runCatching { RetrofitClient.apiService.listarTiposMembresia() }
+                    .getOrNull()?.body()?.let { tiposMembresia = it }
+                delay(30_000)
+            }
+        }
+    }
+
     val nombreMostrar = run {
         val n = listOfNotNull(perfilActual?.nombres, perfilActual?.apellidos)
             .filter { it.isNotBlank() }.joinToString(" ")
         n.ifBlank { dashboard?.nombreCompleto.apiValor(usuario) }
     }
+    val planActivo = tiposMembresia.firstOrNull {
+        it.nombre?.equals(dashboard?.tipoMembresia, ignoreCase = true) == true
+    }
 
+    val scrollPantalla = rememberScrollState()
+    LaunchedEffect(seccionActual, subPantalla) { scrollPantalla.scrollTo(0) }
     Scaffold(
         containerColor = Negro,
         bottomBar = {
@@ -297,23 +323,23 @@ fun PantallaUsuario(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(Negro)
-                .then(
-                    if (seccionActual == 4 && subPantalla.isBlank()) Modifier
-                    else Modifier.statusBarsPadding()
-                )
-                .verticalScroll(rememberScrollState())
+        Box(
+            Modifier.fillMaxSize().padding(padding).background(Negro),
+            contentAlignment = Alignment.TopCenter
         ) {
-            when {
-                cargando -> PantallaCargando()
-                error != null -> PantallaError(error!!)
-                else -> when {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 640.dp)
+                    .fillMaxHeight()
+                    .verticalScroll(scrollPantalla)
+            ) {
+                when {
+                    cargando -> PantallaCargando(appConfig.nombreVisibleApp())
+                    error != null -> PantallaError(error!!)
+                    else -> when {
                     subPantalla == "membresia" -> DetalleMembresiaUsuario(
-                        dashboard = dashboard, onVolver = { subPantalla = "" }
+                        dashboard = dashboard, plan = planActivo, onVolver = { subPantalla = "" }
                     )
                     subPantalla == "rutina_detalle" && rutinas.isNotEmpty() ->
                         DetalleRutinaUsuario(
@@ -382,11 +408,13 @@ fun PantallaUsuario(
                     else -> when (seccionActual) {
                         0 -> TabInicio(
                             nombre = nombreMostrar,
+                            desplazamiento = { scrollPantalla.value.toFloat() },
+                            appConfig = appConfig,
                             dashboard = dashboard,
                             rutina = rutinas.getOrNull(rutinaSeleccionada),
                             productosCount = productos.size,
                             onMembresia = { subPantalla = "membresia" },
-                            onRutina = { subPantalla = "rutina_detalle" },
+                            onRutina = { if (rutinas.isNotEmpty()) subPantalla = "rutina_detalle" else seccionActual = 1 },
                             onProgreso = { subPantalla = "progreso" },
                             onPago = { seccionActual = 2; subPantalla = "pago" },
                             onProductos = { subPantalla = "productos" }
@@ -398,9 +426,11 @@ fun PantallaUsuario(
                             onAbrirDetalle = { subPantalla = "rutina_detalle" }
                         )
                         2 -> TabPagos(
+                            appConfig = appConfig,
                             dashboard = dashboard,
+                            plan = planActivo,
                             pagos = pagos,
-                            onPagar = { subPantalla = "pago" },
+                            onDetalles = { subPantalla = "membresia" },
                             onRenovar = { subPantalla = "renovar_membresia" }
                         )
                         3 -> TabQrAsistencia(appConfig = appConfig)
@@ -429,6 +459,7 @@ fun PantallaUsuario(
                         )
                         else -> {}
                     }
+                    }
                 }
             }
         }
@@ -437,7 +468,7 @@ fun PantallaUsuario(
 
 // ─── Carga y error ──────────────────────────────────────────────────────────
 @Composable
-private fun PantallaCargando() {
+private fun PantallaCargando(nombreGimnasio: String) {
     Box(
         modifier = Modifier.fillMaxWidth().padding(64.dp),
         contentAlignment = Alignment.Center
@@ -445,7 +476,7 @@ private fun PantallaCargando() {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
             Spacer(Modifier.height(16.dp))
-            Text("Cargando tu perfil", color = GrisTexto, fontSize = 14.sp)
+            Text("Cargando $nombreGimnasio · tu perfil", color = GrisTexto, fontSize = 14.sp, textAlign = TextAlign.Center)
         }
     }
 }
@@ -474,184 +505,152 @@ private fun PantallaError(mensaje: String) {
 @Composable
 private fun TabInicio(
     nombre: String,
+    appConfig: AppConfigResponse,
     dashboard: DashboardResponse?,
     rutina: RutinaSocio?,
     productosCount: Int,
+    desplazamiento: () -> Float,
     onMembresia: () -> Unit,
     onRutina: () -> Unit,
     onProgreso: () -> Unit,
     onPago: () -> Unit,
     onProductos: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-        // Header
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Hola, ${nombre.split(" ").firstOrNull() ?: nombre}",
-                    color = GrisTexto,
-                    fontSize = 15.sp
-                )
-                Text(
-                    text = "Tu plan hoy",
-                    color = Color.White,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Black
-                )
+    val nombreCorto = nombre.trim().substringBefore(" ").ifBlank { "Socio" }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Hola, $nombreCorto", color = GrisTexto, fontSize = 14.sp)
+                Text("Vamos a entrenar", color = Color.White, fontSize = 27.sp, lineHeight = 31.sp, letterSpacing = (-0.6).sp, fontWeight = FontWeight.Bold)
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Image(
-                    painter = painterResource(id = R.drawable.logo_spartangym),
-                    contentDescription = "Spartan Gym",
-                    modifier = Modifier
-                        .width(76.dp)
-                        .height(44.dp),
-                    contentScale = ContentScale.Fit
-                )
-                Spacer(Modifier.height(6.dp))
-                EstadoBadge(dashboard?.estadoAcceso.apiValor())
-            }
+            EstadoBadge(dashboard?.estadoAcceso.apiValor())
         }
-
-        Spacer(Modifier.height(24.dp))
-
-        // Hero card — rutina activa
-        HeroRutinaCard(rutina = rutina, onClick = onRutina)
-
-        Spacer(Modifier.height(16.dp))
-
-        // Stats rápidos desde dashboard
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatCard(
-                label = "Ejercicios",
-                valor = dashboard?.totalEjercicios.apiValor(),
-                modifier = Modifier.weight(1f)
-            )
-            StatCard(
-                label = "Peso",
-                valor = dashboard?.ultimoPesoKg.apiValor("kg"),
-                modifier = Modifier.weight(1f)
-            )
-            StatCard(
-                label = "Membresía",
-                valor = dashboard?.tipoMembresia.apiValor(),
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        // Acciones rápidas con borde izquierdo (firma visual)
-        Text("Acciones rápidas", color = GrisTexto, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        PortadaMovil(
+            imagen = rutina?.imagenUrl?.takeIf { it.isNotBlank() } ?: appConfig.fondoLogin,
+            modifier = Modifier.fillMaxWidth().height(242.dp),
+            desplazamiento = desplazamiento
         ) {
-            AccionCard("Membresía", dashboard?.tipoMembresia.apiValor(), onMembresia)
-            AccionCard("Rutina", rutina?.nombre.apiValor(), onRutina)
-            AccionCard("Progreso", dashboard?.ultimoPesoKg.apiValor("kg"), onProgreso)
-            AccionCard("Pago", dashboard?.fechaVencimiento.apiValor(), onPago)
+            Surface(Modifier.align(Alignment.TopStart).padding(18.dp), color = Color.Black.copy(alpha = 0.35f), shape = CircleShape) {
+                Text(if (rutina == null) "TU ESPACIO DE ENTRENAMIENTO" else "TU PLAN DE HOY", color = Color.White, fontSize = 10.sp, letterSpacing = 1.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+            }
+            Column(Modifier.align(Alignment.BottomStart).padding(20.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                Text(rutina?.nombre ?: "Todo empieza contigo", color = Color.White, fontSize = 25.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold, maxLines = 2)
+                Text(if (rutina == null) "Tu plan aparecerá aquí cuando te lo asignen." else "${rutina.ejercicios.size} ejercicios · ${rutina.dificultad}", color = Color(0xFFDEDEE3), fontSize = 13.sp)
+                val press = remember { MutableInteractionSource() }
+                Button(onClick = onRutina, interactionSource = press, modifier = Modifier.heightIn(min = 48.dp).applePressScale(press), shape = CircleShape, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF17171B))) {
+                    Icon(Icons.Rounded.FitnessCenter, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (rutina == null) "Mis rutinas" else "Ver entrenamiento", fontWeight = FontWeight.SemiBold)
+                    Icon(Icons.Rounded.ChevronRight, null, Modifier.padding(start = 6.dp).size(18.dp))
+                }
+            }
         }
+        DashboardStats(dashboard?.totalEjercicios.apiValor(), dashboard?.ultimoPesoKg.apiValor(" kg"))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            AccionRapida("Mi plan", Icons.Rounded.CreditCard, Modifier.weight(1f), onMembresia)
+            AccionRapida("Progreso", Icons.AutoMirrored.Rounded.ShowChart, Modifier.weight(1f), onProgreso)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            AccionRapida("Pagos", Icons.Rounded.Payments, Modifier.weight(1f), onPago)
+            AccionRapida("Tienda", Icons.Rounded.ShoppingCart, Modifier.weight(1f), onProductos)
+        }
+        ResumenMembresia(dashboard?.tipoMembresia.apiValor(), fechaMovil(dashboard?.fechaVencimiento), dashboard?.nombreEntrenador.apiValor(), onMembresia)
+    }
+}
 
-        // Ventana de la tienda del gym
-        Spacer(Modifier.height(24.dp))
-        Text("Tienda del gym", color = GrisTexto, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
-        ProductosBanner(productosCount = productosCount, onClick = onProductos)
-
-        // Entrenador asignado (solo si API lo devuelve)
-        if (!dashboard?.nombreEntrenador.isNullOrBlank()) {
-            Spacer(Modifier.height(24.dp))
-            FilaDatoAPI(
-                titulo = "Entrenador asignado",
-                valor = dashboard!!.nombreEntrenador!!,
-                etiqueta = "API"
-            )
+@Composable
+private fun ResumenMembresia(tipo: String, vencimiento: String, entrenador: String, onClick: () -> Unit) {
+    val interaccion = remember { MutableInteractionSource() }
+    Surface(
+        modifier = Modifier.fillMaxWidth().applePressScale(interaccion)
+            .clickable(interactionSource = interaccion, indication = null, role = Role.Button, onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = SuperficieOscura,
+        border = BorderStroke(1.dp, BordeSutil)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier.size(38.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.CreditCard, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
+            }
+            Spacer(Modifier.width(11.dp))
+            Column(Modifier.weight(1f)) {
+                Text(tipo.ifBlank { "Membresía" }, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    listOfNotNull(
+                        vencimiento.takeIf { it.isNotBlank() && it != "N/A" }?.let { "Vence $it" },
+                        entrenador.takeIf { it.isNotBlank() && it != "N/A" }?.let { "Entrena con $it" }
+                    ).joinToString(" · ").ifBlank { "Consulta los datos de tu plan" },
+                    color = GrisTexto,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Icon(Icons.Rounded.ChevronRight, contentDescription = "Ver membresía", tint = GrisTexto, modifier = Modifier.size(20.dp))
         }
     }
 }
 
-// ─── Hero card ─────────────────────────────────────────────────────────────
+// ─── Resumen de rutina ─────────────────────────────────────────────────────
 @Composable
-private fun HeroRutinaCard(rutina: RutinaSocio?, onClick: () -> Unit) {
+private fun RutinaDestacada(rutina: RutinaSocio?, onClick: () -> Unit) {
     val colorPrincipal = MaterialTheme.colorScheme.primary
-    Box(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 210.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(colorPrincipal.copy(alpha = 0.22f), Color(0xFF0A0A0A))
-                )
+            .animateContentSize(
+                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
             )
-            .clickable(enabled = rutina != null) { onClick() }
+            .clickable(enabled = rutina != null, role = Role.Button, onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = SuperficieOscura,
+        border = BorderStroke(1.dp, BordeSutil)
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.image_03453d),
-            contentDescription = "Entrenamiento Spartan Gym",
-            modifier = Modifier.matchParentSize(),
-            contentScale = ContentScale.Crop
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Black.copy(alpha = 0.16f), Color.Black.copy(alpha = 0.88f))
-                    )
-                )
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(20.dp)
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .width(3.dp)
-                        .height(40.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
-                )
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text("PLAN ACTIVO", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Black)
-                    Text(
-                        text = rutina?.nombre?.uppercase() ?: "SIN RUTINA ASIGNADA",
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            Box(
+                Modifier.size(42.dp).clip(CircleShape).background(colorPrincipal.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.FitnessCenter, contentDescription = null, tint = colorPrincipal, modifier = Modifier.size(20.dp))
             }
-
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (rutina == null) "TU RUTINA" else "PLAN ACTIVO",
+                    color = colorPrincipal,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp
+                )
+                Text(
+                    rutina?.nombre ?: "Esperando tu plan",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    if (rutina == null) "Tu entrenador lo verá aquí"
+                    else "${rutina.ejercicios.size} ejercicios · ${rutina.dificultad}",
+                    color = GrisTexto,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             if (rutina != null) {
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "Zonas: ${rutina.foco}",
-                    color = GrisTexto,
-                    fontSize = 13.sp
-                )
-                Spacer(Modifier.height(12.dp))
-                BarraProgreso(rutina.progreso)
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "${rutina.ejercicios.size} ejercicios · ${rutina.dificultad}",
-                    color = GrisTexto,
-                    fontSize = 12.sp
-                )
-            } else {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "El administrador aún no ha asignado una rutina.",
-                    color = GrisTexto,
-                    fontSize = 13.sp
-                )
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Rounded.ChevronRight, contentDescription = "Abrir rutina", tint = GrisTexto, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -665,6 +664,7 @@ private fun TabRutinas(
     onSeleccionar: (Int) -> Unit,
     onAbrirDetalle: () -> Unit
 ) {
+    var ejercicioActivo by remember { mutableStateOf<EjercicioSocio?>(null) }
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
         SeccionHeader("Mis rutinas", "Plan asignado desde el servidor")
         Spacer(Modifier.height(16.dp))
@@ -688,6 +688,12 @@ private fun TabRutinas(
 
         val rutina = rutinas[rutinaSeleccionada]
 
+        rutina.imagenUrl?.takeIf { it.isNotBlank() }?.let { imagen ->
+            PortadaMovil(imagen, Modifier.fillMaxWidth().height(190.dp)) {
+                Text(rutina.nombre, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.BottomStart).padding(18.dp))
+            }
+            Spacer(Modifier.height(12.dp))
+        }
         // Tarjeta resumen rutina
         Box(
             modifier = Modifier
@@ -719,73 +725,85 @@ private fun TabRutinas(
         Text("Ejercicios", color = GrisTexto, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(10.dp))
 
-        rutina.ejercicios.forEach { ItemEjercicio(it) {} }
+        rutina.ejercicios.forEach { ejercicio ->
+            ItemEjercicio(ejercicio, onOpen = { ejercicioActivo = ejercicio })
+        }
+    }
+    ejercicioActivo?.let { ejercicio ->
+        DemostracionEjercicio(ejercicio.nombre, ejercicio.detalle) { ejercicioActivo = null }
     }
 }
 
 // ─── TAB: Pagos ───────────────────────────────────────────────────────────
 @Composable
 private fun TabPagos(
+    appConfig: AppConfigResponse,
     dashboard: DashboardResponse?,
+    plan: TipoMembresiaResponse?,
     pagos: List<PagoSocioResponse>,
-    onPagar: () -> Unit,
+    onDetalles: () -> Unit,
     onRenovar: () -> Unit
 ) {
-    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-        SeccionHeader("Pagos", "Historial y estado de membresía")
-        Spacer(Modifier.height(16.dp))
-
-        // Estado membresía
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(Superficie)
-                .padding(20.dp)
-        ) {
-            Column {
-                Text("Vencimiento", color = GrisTexto, fontSize = 12.sp)
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    dashboard?.fechaVencimiento.apiValor(),
-                    color = Color.White,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(dashboard?.tipoMembresia.apiValor(), color = GrisTexto, fontSize = 14.sp)
-                Spacer(Modifier.height(16.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilaDatoInline("Acceso", dashboard?.estadoAcceso.apiValor())
+    val beneficios = plan?.beneficios.orEmpty().lines().map { it.trim() }.filter { it.isNotBlank() }
+    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        SeccionHeader("Tu membresía", "Plan, renovaciones y movimientos")
+        PortadaMovil(plan?.imagenUrl, Modifier.fillMaxWidth().height(196.dp), mostrarImagenFallback = false) {
+            Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.CreditCard, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.weight(1f))
+                    EstadoBadge(dashboard?.estadoAcceso.apiValor())
                 }
-                Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = onRenovar,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Renovar / Pagar membresía", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-                TextButton(onClick = onPagar, modifier = Modifier.fillMaxWidth()) {
-                    Text("Ver detalle de pago", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Column {
+                    Text(dashboard?.tipoMembresia.apiValor("Tu plan"), color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                    Text("Válida hasta el ${fechaMovil(dashboard?.fechaVencimiento)}", color = Color(0xFFDEDEE3), fontSize = 13.sp)
                 }
             }
         }
-
-        Spacer(Modifier.height(24.dp))
-        Text("Historial", color = GrisTexto, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(10.dp))
-
-        if (pagos.isEmpty()) {
-            EstadoVacioAPI("Sin registros", "Los pagos aparecerán aquí cuando sean registrados.")
-        } else {
-            pagos.forEach { pago ->
-                FilaDatoAPI(
-                    titulo = pago.fechaTransaccion.apiValor(),
-                    valor = pago.metodoPago.apiValor() + " · " + (pago.monto?.let { "$it" } ?: "—"),
-                    etiqueta = "Pagado"
-                )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            val press = remember { MutableInteractionSource() }
+            Button(onClick = onRenovar, interactionSource = press, modifier = Modifier.weight(1f).heightIn(min = 50.dp).applePressScale(press), shape = RoundedCornerShape(16.dp)) { Text("Renovar plan", fontWeight = FontWeight.SemiBold) }
+            OutlinedButton(onClick = onDetalles, modifier = Modifier.weight(1f).heightIn(min = 50.dp), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFF38383D))) { Text("Ver detalles", color = Color.White) }
+        }
+        if (plan != null) {
+            Surface(shape = RoundedCornerShape(20.dp), color = Color(0xFF1B1B20), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Tu plan incluye", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text("${plan.duracionDias ?: 0} días", color = GrisTexto, fontSize = 12.sp)
+                    }
+                    if (beneficios.isEmpty()) Text("Consulta los detalles de tu membresía.", color = GrisTexto, fontSize = 12.sp)
+                    beneficios.take(3).forEach { beneficio ->
+                        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Text("✓", color = Color(0xFF68D9A4), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Text(beneficio, color = Color(0xFFE2E2E7), fontSize = 13.sp, lineHeight = 18.sp)
+                        }
+                    }
+                    if (beneficios.size > 3) Text("Y ${beneficios.size - 3} más en Ver detalles", color = GrisTexto, fontSize = 12.sp)
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Movimientos", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text("${pagos.size} pagos", color = GrisTexto, fontSize = 12.sp)
+        }
+        Surface(shape = RoundedCornerShape(22.dp), color = Color(0xFF1B1B20)) {
+            Column(Modifier.padding(horizontal = 16.dp)) {
+                if (pagos.isEmpty()) Text("Tus pagos aparecerán aquí.", color = GrisTexto, modifier = Modifier.padding(vertical = 22.dp))
+                pagos.forEachIndexed { index, pago ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Payments, null, tint = Color(0xFF68D9A4), modifier = Modifier.size(23.dp))
+                        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                            Text(pago.metodoPago.apiValor(), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            Text(fechaMovil(pago.fechaTransaccion), color = GrisTexto, fontSize = 12.sp)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(pago.monto?.let { String.format(java.util.Locale.US, "%,.2f", it) } ?: "—", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            Text("Pagado", color = Color(0xFF68D9A4), fontSize = 11.sp)
+                        }
+                    }
+                    if (index < pagos.lastIndex) HorizontalDivider(color = Color.White.copy(alpha = 0.07f))
+                }
             }
         }
     }
@@ -844,32 +862,56 @@ private fun TabPerfil(
 
 // ─── Sub-pantallas ─────────────────────────────────────────────────────────
 @Composable
-private fun DetalleMembresiaUsuario(dashboard: DashboardResponse?, onVolver: () -> Unit) {
+private fun DetalleMembresiaUsuario(dashboard: DashboardResponse?, plan: TipoMembresiaResponse?, onVolver: () -> Unit) {
+    val beneficios = plan?.beneficios.orEmpty().lines().map { it.trim() }.filter { it.isNotBlank() }
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
         BotonVolver(onVolver)
         Spacer(Modifier.height(16.dp))
-        SeccionHeader("Membresía", "Estado de acceso")
+        SeccionHeader("Tu plan", "Detalles y beneficios de tu membresía")
         Spacer(Modifier.height(16.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(Superficie)
-                .padding(20.dp)
-        ) {
-            Column {
-                Text(dashboard?.estadoAcceso.apiValor(), color = VerdeEstado, fontSize = 36.sp, fontWeight = FontWeight.Black)
-                Text(dashboard?.tipoMembresia.apiValor(), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text("Vence: ${dashboard?.fechaVencimiento.apiValor()}", color = GrisTexto, fontSize = 14.sp)
+        PortadaMovil(plan?.imagenUrl, Modifier.fillMaxWidth().height(210.dp), mostrarImagenFallback = false) {
+            Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                EstadoBadge(dashboard?.estadoAcceso.apiValor())
+                Column {
+                    Text(dashboard?.tipoMembresia.apiValor("Sin plan activo"), color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+                    Text("Vence: ${fechaMovil(dashboard?.fechaVencimiento)}", color = Color(0xFFE2E2E7), fontSize = 13.sp)
+                }
             }
         }
-
         Spacer(Modifier.height(16.dp))
-
+        if (plan != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(Modifier.weight(1f), shape = RoundedCornerShape(17.dp), color = Color(0xFF1B1B20)) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("DURACIÓN", color = GrisTexto, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("${plan.duracionDias ?: 0} días", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Surface(Modifier.weight(1f), shape = RoundedCornerShape(17.dp), color = Color(0xFF1B1B20)) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text("PRECIO", color = GrisTexto, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("${plan.precio?.let { String.format(java.util.Locale.US, "%,.2f", it) } ?: "—"}", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+        }
+        Text("Beneficios", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(10.dp))
+        Surface(shape = RoundedCornerShape(20.dp), color = Color(0xFF1B1B20), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (beneficios.isEmpty()) Text("Este plan todavía no tiene beneficios descritos.", color = GrisTexto, fontSize = 13.sp)
+                beneficios.forEach { beneficio ->
+                    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("✓", color = Color(0xFF68D9A4), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text(beneficio, color = Color.White, fontSize = 14.sp, lineHeight = 20.sp)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
         FilaDatoAPI("Entrenador", dashboard?.nombreEntrenador.apiValor(), "API")
         FilaDatoAPI("Rutina objetivo", dashboard?.objetivoRutina.apiValor(), "API")
-        FilaDatoAPI("Total ejercicios", dashboard?.totalEjercicios.apiValor(), "API")
     }
 }
 
@@ -879,12 +921,17 @@ private fun DetalleRutinaUsuario(
     onToggleEjercicio: (Int) -> Unit,
     onVolver: () -> Unit
 ) {
+    var ejercicioActivo by remember { mutableStateOf<EjercicioSocio?>(null) }
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
         BotonVolver(onVolver)
         Spacer(Modifier.height(16.dp))
         SeccionHeader(rutina.nombre, rutina.objetivo)
         Spacer(Modifier.height(16.dp))
 
+        rutina.imagenUrl?.takeIf { it.isNotBlank() }?.let { imagen ->
+            PortadaMovil(imagen, Modifier.fillMaxWidth().height(210.dp)) {}
+            Spacer(Modifier.height(16.dp))
+        }
         // Ring de progreso
         Row(verticalAlignment = Alignment.CenterVertically) {
             RingProgreso(rutina.progreso, Modifier.size(80.dp))
@@ -901,8 +948,15 @@ private fun DetalleRutinaUsuario(
         Spacer(Modifier.height(10.dp))
 
         rutina.ejercicios.forEachIndexed { i, e ->
-            ItemEjercicio(e) { onToggleEjercicio(i) }
+            ItemEjercicio(
+                ejercicio = e,
+                onOpen = { ejercicioActivo = e },
+                onToggleCompletion = { onToggleEjercicio(i) }
+            )
         }
+    }
+    ejercicioActivo?.let { ejercicio ->
+        DemostracionEjercicio(ejercicio.nombre, ejercicio.detalle) { ejercicioActivo = null }
     }
 }
 
@@ -1176,17 +1230,28 @@ private fun RenovarMembresiaUsuario(
                     color = if (sel) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else Superficie,
                     border = BorderStroke(1.dp, if (sel) MaterialTheme.colorScheme.primary else BordeSutil)
                 ) {
-                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(tipo.nombre.apiValor(), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                            Text("${tipo.duracionDias ?: 0} días", color = GrisTexto, fontSize = 12.sp)
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(tipo.nombre.apiValor(), color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                Text("${tipo.duracionDias ?: 0} días", color = GrisTexto, fontSize = 12.sp)
+                            }
+                            Text(
+                                "${simboloMoneda(appConfig.currency)}${"%.2f".format(tipo.precio ?: 0.0)}",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Black
+                            )
                         }
-                        Text(
-                            "${simboloMoneda(appConfig.currency)}${"%.2f".format(tipo.precio ?: 0.0)}",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Black
-                        )
+                        if (sel) {
+                            val beneficios = tipo.beneficios.orEmpty().lines().map { it.trim() }.filter { it.isNotBlank() }
+                            if (beneficios.isNotEmpty()) beneficios.forEach { beneficio ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                                    Text("✓", color = Color(0xFF68D9A4), fontSize = 13.sp)
+                                    Text(beneficio, color = Color(0xFFE2E2E7), fontSize = 12.sp, lineHeight = 17.sp)
+                                }
+                            } else Text("Aún no hay beneficios descritos para este plan.", color = GrisTexto, fontSize = 12.sp)
+                        }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
@@ -1254,36 +1319,39 @@ private fun ProductosBanner(productosCount: Int, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 64.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(Superficie)
-            .clickable { onClick() }
-            .padding(16.dp),
+            .background(SuperficieOscura)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(46.dp)
+                .size(38.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Rounded.ShoppingCart,
-                contentDescription = "Productos",
+                contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(19.dp)
             )
         }
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
-            Text("Productos del gym", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            Text("Tienda", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 if (productosCount > 0) "$productosCount productos disponibles" else "Ver catálogo de la tienda",
                 color = GrisTexto,
-                fontSize = 12.sp
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
-        Text("Ver →", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Icon(Icons.Rounded.ChevronRight, contentDescription = "Abrir tienda", tint = GrisTexto, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -1476,6 +1544,7 @@ private fun TabQrAsistencia(appConfig: AppConfigResponse) {
     var mensajeQr by remember { mutableStateOf<String?>(null) }
     var validacion by remember { mutableStateOf<AsistenciaQrValidationResponse?>(null) }
     var ultimoTokenEnviado by rememberSaveable { mutableStateOf("") }
+    var intentoEscaneo by remember { mutableStateOf(0) }
 
     fun validarTokenQrWeb(token: String) {
         val tokenLimpio = token.trim()
@@ -1526,7 +1595,7 @@ private fun TabQrAsistencia(appConfig: AppConfigResponse) {
     }
 
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-        SeccionHeader("Escanear QR", appConfig.gymName?.takeIf { it.isNotBlank() } ?: "Spartan Gym")
+        SeccionHeader("Escanear QR", appConfig.nombreVisibleApp())
         Spacer(Modifier.height(16.dp))
 
         Surface(
@@ -1556,6 +1625,7 @@ private fun TabQrAsistencia(appConfig: AppConfigResponse) {
 
                 QrScannerCamera(
                     activo = !validando && validacion == null,
+                    intento = intentoEscaneo,
                     onTokenDetectado = { token ->
                         val tokenLimpio = token.trim()
                         tokenEscaneado = tokenLimpio
@@ -1571,7 +1641,7 @@ private fun TabQrAsistencia(appConfig: AppConfigResponse) {
                 if (tokenEscaneado.isBlank()) {
                     EstadoVacioAPI("Sin QR detectado", "Coloca el codigo de la web dentro del visor.")
                 } else {
-                    FilaDatoAPI("QR detectado", tokenEscaneado.take(28) + "...", "Web")
+                    FilaDatoAPI("Código leído", "QR de recepción", "Web")
                 }
 
                 validacion?.let { respuesta ->
@@ -1650,7 +1720,9 @@ private fun TabQrAsistencia(appConfig: AppConfigResponse) {
                         mensajeQr = null
                         errorQr = null
                         ultimoTokenEnviado = ""
+                        intentoEscaneo++
                     },
+                    enabled = !validando,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Escanear otro QR", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -1660,10 +1732,10 @@ private fun TabQrAsistencia(appConfig: AppConfigResponse) {
     }
 }
 
-@OptIn(ExperimentalGetImage::class)
 @Composable
 private fun QrScannerCamera(
     activo: Boolean,
+    intento: Int,
     onTokenDetectado: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -1672,6 +1744,7 @@ private fun QrScannerCamera(
     val activoActualizado = rememberUpdatedState(activo)
     val mainExecutor = remember(context) { ContextCompat.getMainExecutor(context) }
     val ultimoToken = remember { AtomicReference("") }
+    LaunchedEffect(intento) { ultimoToken.set("") }
     var tienePermiso by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
     }
@@ -1764,39 +1837,34 @@ private fun QrScannerCamera(
     }
 }
 
-@androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
 private fun decodificarQr(imageProxy: ImageProxy): String? {
-    val imagen = imageProxy.image ?: return null
-    val ancho = imagen.width
-    val alto = imagen.height
-    val planoY = imagen.planes[0]
-    val buffer = planoY.buffer
+    val ancho = imageProxy.width
+    val alto = imageProxy.height
+    val planoY = imageProxy.planes.firstOrNull() ?: return null
+    val buffer = planoY.buffer.duplicate()
+    val inicio = buffer.position()
     val rowStride = planoY.rowStride
     val pixelStride = planoY.pixelStride
-    val datos = ByteArray(ancho * alto)
-    val fila = ByteArray(rowStride)
-    var offset = 0
+    if (ancho <= 0 || alto <= 0 || rowStride <= 0 || pixelStride <= 0 ||
+        inicio.toLong() + (alto - 1L) * rowStride + (ancho - 1L) * pixelStride >= buffer.limit()
+    ) return null
 
+    val datos = ByteArray(ancho * alto)
     for (y in 0 until alto) {
-        buffer.position(y * rowStride)
-        buffer.get(fila, 0, minOf(rowStride, buffer.remaining()))
-        for (x in 0 until ancho) {
-            datos[offset++] = fila[x * pixelStride]
+        val fila = inicio + y * rowStride
+        if (pixelStride == 1) {
+            buffer.position(fila)
+            buffer.get(datos, y * ancho, ancho)
+        } else {
+            for (x in 0 until ancho) datos[y * ancho + x] = buffer.get(fila + x * pixelStride)
         }
     }
 
-    // CameraX entrega el frame en la orientacion nativa del sensor (normalmente
-    // apaisada). rotationDegrees indica cuanto hay que rotarlo en sentido horario
-    // para que quede "de pie" como lo ve el usuario; sin esto ZXing recibe el
-    // frame mal orientado y falla en la mayoria de posiciones normales del telefono.
     val frame = rotarLuminancia(datos, ancho, alto, imageProxy.imageInfo.rotationDegrees)
-
     val source = PlanarYUVLuminanceSource(frame.datos, frame.ancho, frame.alto, 0, 0, frame.ancho, frame.alto, false)
-    val bitmap = BinaryBitmap(HybridBinarizer(source))
-
     return try {
-        MultiFormatReader().decode(bitmap).text
-    } catch (_: NotFoundException) {
+        QRCodeReader().decode(BinaryBitmap(HybridBinarizer(source))).text
+    } catch (_: ReaderException) {
         null
     }
 }
@@ -1811,9 +1879,11 @@ private fun BarraNavegacion(seleccionado: Int, onSeleccionar: (Int) -> Unit) {
         SocioNavItem("Perfil", Icons.Rounded.Person)
     )
     Surface(
-        color = Color(0xFF0B0B0B),
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(28.dp),
+        color = Color(0xF21B1B20),
         tonalElevation = 0.dp,
-        border = BorderStroke(1.dp, Color(0xFF1F1F1F))
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f))
     ) {
         NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp) {
             tabs.forEachIndexed { i, item ->
@@ -1825,14 +1895,14 @@ private fun BarraNavegacion(seleccionado: Int, onSeleccionar: (Int) -> Unit) {
                     Icon(
                         imageVector = item.icon,
                         contentDescription = item.label,
-                        modifier = Modifier.size(if (activo) 24.dp else 21.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 },
                 label = {
                     Text(
                         item.label,
-                        fontSize = 11.sp,
-                        fontWeight = if (activo) FontWeight.Black else FontWeight.Medium
+                        fontSize = 12.sp,
+                        fontWeight = if (activo) FontWeight.SemiBold else FontWeight.Medium
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
@@ -1880,43 +1950,49 @@ private fun EstadoBadge(texto: String) {
 }
 
 @Composable
-private fun StatCard(label: String, valor: String, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(Superficie)
-            .padding(14.dp)
+private fun DashboardStats(ejercicios: String, peso: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().animateContentSize(
+            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        color = SuperficieOscura
     ) {
-        Column {
-            Text(label, color = GrisTexto, fontSize = 11.sp)
-            Text(valor, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DashboardMetric("Ejercicios", ejercicios, Modifier.weight(1f))
+            Box(Modifier.width(1.dp).height(34.dp).background(BordeSutil))
+            DashboardMetric("Peso reciente", peso, Modifier.weight(1f))
         }
     }
 }
 
-// Firma visual: borde izquierdo rojo
 @Composable
-private fun AccionCard(titulo: String, dato: String, onClick: () -> Unit) {
+private fun DashboardMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, color = GrisTexto, fontSize = 12.sp, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun AccionRapida(
+    titulo: String,
+    icono: ImageVector,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
     Row(
-        modifier = Modifier
-            .width(160.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Superficie)
-            .clickable { onClick() }
+        modifier.heightIn(min = 58.dp).applePressScale(interactionSource).clip(RoundedCornerShape(18.dp))
+            .background(Color(0xFF1B1B20)).clickable(interactionSource = interactionSource, indication = null, role = Role.Button, onClick = onClick).padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.primary)
-        )
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(titulo, color = GrisTexto, fontSize = 12.sp)
-            Spacer(Modifier.height(6.dp))
-            Text(dato, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(6.dp))
-            Text("Ver →", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-        }
+        Icon(icono, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp))
+        Text(titulo, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f).padding(start = 10.dp))
+        Icon(Icons.Rounded.ChevronRight, null, tint = GrisTexto, modifier = Modifier.size(16.dp))
     }
 }
 
@@ -1951,41 +2027,60 @@ private fun FilaDatoInline(label: String, valor: String) {
 }
 
 @Composable
-private fun ItemEjercicio(ejercicio: EjercicioSocio, onClick: () -> Unit) {
+private fun ItemEjercicio(
+    ejercicio: EjercicioSocio,
+    onOpen: () -> Unit,
+    onToggleCompletion: (() -> Unit)? = null
+) {
+    val interaccion = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (ejercicio.completado) Color(0xFF0D2B18) else Superficie)
-            .clickable { onClick() }
-            .padding(14.dp),
+            .padding(bottom = 7.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (ejercicio.completado) Color(0xFF0D2116) else SuperficieOscura)
+            .clickable(interactionSource = interaccion, indication = null, role = Role.Button, onClick = onOpen)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(38.dp)
+                .clip(CircleShape)
                 .background(
-                    if (ejercicio.completado) VerdeEstado else Color(0xFF242424),
-                    CircleShape
+                    if (ejercicio.completado) VerdeEstado.copy(alpha = 0.16f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                 ),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                if (ejercicio.completado) "✓" else "●",
-                color = Color.White,
+                if (ejercicio.completado) "✓" else "▶",
+                color = if (ejercicio.completado) VerdeEstado else MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Black,
-                fontSize = 14.sp
+                fontSize = 13.sp
             )
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(11.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(ejercicio.nombre, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(ejercicio.detalle, color = GrisTexto, fontSize = 12.sp)
+            Text(ejercicio.nombre, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(ejercicio.detalle, color = GrisTexto, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFF1A0608)) {
-            Text(ejercicio.zona, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+        if (ejercicio.zona.isNotBlank()) {
+            Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFF1A0608)) {
+                Text(ejercicio.zona, color = MaterialTheme.colorScheme.primary, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        if (onToggleCompletion != null) {
+            IconButton(onClick = onToggleCompletion, modifier = Modifier.size(48.dp)) {
+                Text(
+                    if (ejercicio.completado) "✓" else "○",
+                    color = if (ejercicio.completado) VerdeEstado else GrisTexto,
+                    fontSize = 23.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        } else {
+            Icon(Icons.Rounded.ChevronRight, contentDescription = "Ver demostración", tint = GrisTexto, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -2089,27 +2184,12 @@ private fun TabPerfilCredencial(
                 "Rutina" to ejercicios.ifBlank { "0 ejercicios" }
             ),
             integradaPantalla = true,
+            onCambiarFoto = onCambiarFoto,
+            subiendoFoto = subiendoFoto,
             fotoUrl = fotoUrl,
             appConfig = appConfig,
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = onCambiarFoto,
-            enabled = !subiendoFoto,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                disabledContainerColor = BordeSutil
-            ),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            if (subiendoFoto) {
-                CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(10.dp))
-            }
-            Text(if (subiendoFoto) "Subiendo foto" else "Cambiar foto de perfil", color = Color.White, fontWeight = FontWeight.Bold)
-        }
         mensajeFoto?.let {
             Spacer(Modifier.height(8.dp))
             Text(
