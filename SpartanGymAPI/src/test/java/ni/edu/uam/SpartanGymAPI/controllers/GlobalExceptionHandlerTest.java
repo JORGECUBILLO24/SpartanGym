@@ -4,7 +4,10 @@ import ni.edu.uam.SpartanGymAPI.exceptions.ConflictoException;
 import ni.edu.uam.SpartanGymAPI.exceptions.RecursoNoEncontradoException;
 import ni.edu.uam.SpartanGymAPI.exceptions.RespuestaError;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -108,5 +111,26 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, r.getStatusCode());
         assertEquals("x", r.getBody());
+    }
+
+    @Test
+    void falloDeConcurrencia_esUn409ReintentableYNoUn500() {
+        ResponseEntity<String> r = handler.handleConcurrencia(
+                new CannotAcquireLockException("deadlock detected"), peticionProblem());
+
+        assertEquals(HttpStatus.CONFLICT, r.getStatusCode());
+        assertEquals("CONFLICTO", json.readTree(r.getBody()).get("codigo").asString());
+    }
+
+    @Test
+    void dependenciaCaidaOConTimeout_es503YNoUn500() {
+        for (RuntimeException ex : new RuntimeException[]{
+                new DataAccessResourceFailureException("no se pudo conectar con Redis"),
+                new QueryTimeoutException("Redis command timed out")}) {
+            ResponseEntity<String> r = handler.handleDependenciaNoDisponible(ex, peticionProblem());
+
+            assertEquals(HttpStatus.SERVICE_UNAVAILABLE, r.getStatusCode());
+            assertEquals("SERVICIO_NO_DISPONIBLE", json.readTree(r.getBody()).get("codigo").asString());
+        }
     }
 }

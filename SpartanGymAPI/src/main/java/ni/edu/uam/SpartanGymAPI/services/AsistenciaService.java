@@ -1,5 +1,6 @@
 package ni.edu.uam.SpartanGymAPI.services;
 
+import jakarta.annotation.PostConstruct;
 import ni.edu.uam.SpartanGymAPI.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import ni.edu.uam.SpartanGymAPI.dto.AsistenciaQrRequest;
@@ -14,6 +15,8 @@ import ni.edu.uam.SpartanGymAPI.repositories.AsistenciaRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.MembresiaSocioRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.SocioRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.UsuarioRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,12 +28,11 @@ import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 @Service
 @RequiredArgsConstructor
@@ -39,14 +41,43 @@ public class AsistenciaService {
     private static final String QR_SOCIO_PREFIX = "SPARTAN_GYM_ASISTENCIA";
     private static final String QR_WEB_PREFIX = "SPARTAN_GYM_VALIDACION_WEB";
     private static final long QR_TTL_SECONDS = 180;
-    private static final long QR_SESSION_RETENTION_SECONDS = 600;
     private static final String HMAC_ALGORITHM = "HmacSHA256";
+    private static final int LARGO_MINIMO_SECRETO = 32;
+    // Solo se usa en el perfil "local". Fuera de ese perfil, app.qr.secret es obligatorio.
+    private static final String SECRETO_DESARROLLO = "secreto-qr-solo-para-desarrollo-local-no-usar-en-produccion";
+    // Valor que antes se usaba por defecto y esta publicado en el repositorio: nunca es valido en produccion.
+    private static final String SECRETO_PUBLICO_ANTIGUO = "spartan-gym-attendance-secret";
 
     private final AsistenciaRepository asistenciaRepository;
     private final SocioRepository socioRepository;
     private final UsuarioRepository usuarioRepository;
     private final MembresiaSocioRepository membresiaSocioRepository;
-    private final ConcurrentMap<UUID, QrWebSession> sesionesQrWeb = new ConcurrentHashMap<>();
+    private final QrWebSessionStore sesionesQrWeb;
+    private final Environment environment;
+
+    @Value("${app.qr.secret:}")
+    private String qrSecret;
+
+    // Falla el arranque si falta ATTENDANCE_QR_SECRET fuera del perfil local, en vez de firmar
+    // los QR con un valor fijo que cualquiera puede leer en el repositorio y usar para fabricar QR.
+    @PostConstruct
+    void validarSecreto() {
+        boolean local = Arrays.asList(environment.getActiveProfiles()).contains("local");
+        if (qrSecret == null || qrSecret.isBlank()) {
+            if (local) {
+                qrSecret = SECRETO_DESARROLLO;
+                return;
+            }
+            throw new IllegalStateException(
+                    "app.qr.secret no esta configurado (variable de entorno ATTENDANCE_QR_SECRET). "
+                            + "Es obligatoria fuera del perfil 'local'.");
+        }
+        if (!local && (qrSecret.length() < LARGO_MINIMO_SECRETO || SECRETO_PUBLICO_ANTIGUO.equals(qrSecret))) {
+            throw new IllegalStateException(
+                    "ATTENDANCE_QR_SECRET es demasiado debil: debe tener al menos " + LARGO_MINIMO_SECRETO
+                            + " caracteres y no puede ser el valor publico del repositorio.");
+        }
+    }
 
     @Transactional
     public Asistencia registrarEntrada(AsistenciaRequest request) {
@@ -79,7 +110,6 @@ public class AsistenciaService {
 
     public AsistenciaQrTokenResponse generarQrValidacionWeb(String emailUsuario) {
         buscarUsuarioAutenticado(emailUsuario);
-        limpiarSesionesQrWeb();
 
         Instant generado = Instant.now();
         Instant expira = generado.plusSeconds(QR_TTL_SECONDS);
@@ -89,7 +119,7 @@ public class AsistenciaService {
         String firma = firmar(datos);
         String token = QR_WEB_PREFIX + "|" + datos + "|" + firma;
         String tokenHash = hashToken(token);
-        sesionesQrWeb.put(sessionId, new QrWebSession(sessionId, tokenHash, expira));
+        sesionesQrWeb.guardar(sessionId, tokenHash, expira);
 
         return AsistenciaQrTokenResponse.builder()
                 .token(token)
@@ -127,7 +157,7 @@ public class AsistenciaService {
         Socio socio = socioRepository.findById(usuario.getId())
                 .orElseThrow(() -> new AccesoDenegadoException("El usuario autenticado no tiene perfil de socio."));
         QrWebPayload payload = validarTokenQrWeb(request != null ? request.getToken() : null, true);
-        QrWebSession sesion = buscarSesionQrWeb(payload.sessionId());
+        QrWebSessionStore.Session sesion = buscarSesionQrWeb(payload.sessionId());
 
         if (!sesion.tokenHash().equals(payload.tokenHash())) {
             throw new ReglaNegocioException("QR invalido: sesion no coincide con el token.");
@@ -147,7 +177,7 @@ public class AsistenciaService {
 
     public AsistenciaQrValidationResponse consultarEstadoQrValidacion(AsistenciaQrRequest request) {
         QrWebPayload payload = validarTokenQrWeb(request != null ? request.getToken() : null, false);
-        QrWebSession sesion = sesionesQrWeb.get(payload.sessionId());
+        QrWebSessionStore.Session sesion = sesionesQrWeb.buscar(payload.sessionId()).orElse(null);
 
         if (sesion != null && !sesion.tokenHash().equals(payload.tokenHash())) {
             throw new ReglaNegocioException("QR invalido: sesion no coincide con el token.");
@@ -157,9 +187,8 @@ public class AsistenciaService {
     }
 
     public AsistenciaQrValidationResponse consultarEstadoQrValidacion(UUID sessionId) {
-        limpiarSesionesQrWeb();
 
-        QrWebSession sesion = sesionesQrWeb.get(sessionId);
+        QrWebSessionStore.Session sesion = sesionesQrWeb.buscar(sessionId).orElse(null);
         if (sesion == null) {
             return AsistenciaQrValidationResponse.builder()
                     .sessionId(sessionId)
@@ -309,9 +338,8 @@ public class AsistenciaService {
         return expirado;
     }
 
-    private QrWebSession buscarSesionQrWeb(UUID sessionId) {
-        limpiarSesionesQrWeb();
-        QrWebSession sesion = sesionesQrWeb.get(sessionId);
+    private QrWebSessionStore.Session buscarSesionQrWeb(UUID sessionId) {
+        QrWebSessionStore.Session sesion = sesionesQrWeb.buscar(sessionId).orElse(null);
 
         if (sesion == null) {
             throw new ReglaNegocioException("QR expirado o sesion no encontrada. Genera uno nuevo.");
@@ -324,18 +352,11 @@ public class AsistenciaService {
         return sesion;
     }
 
-    private void limpiarSesionesQrWeb() {
-        Instant ahora = Instant.now();
-        sesionesQrWeb.entrySet().removeIf((entry) ->
-                ahora.isAfter(entry.getValue().expira().plusSeconds(QR_SESSION_RETENTION_SECONDS))
-        );
-    }
 
     private String firmar(String datos) {
         try {
-            String secreto = System.getenv().getOrDefault("ATTENDANCE_QR_SECRET", "spartan-gym-attendance-secret");
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);
-            mac.init(new SecretKeySpec(secreto.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM));
+            mac.init(new SecretKeySpec(qrSecret.getBytes(StandardCharsets.UTF_8), HMAC_ALGORITHM));
             byte[] firma = mac.doFinal(datos.getBytes(StandardCharsets.UTF_8));
             return Base64.getUrlEncoder().withoutPadding().encodeToString(firma);
         } catch (Exception e) {
@@ -359,9 +380,4 @@ public class AsistenciaService {
     private record QrWebPayload(UUID sessionId, String tokenHash, boolean expirado) {
     }
 
-    private record QrWebSession(UUID sessionId, String tokenHash, Instant expira) {
-        private boolean expirado() {
-            return Instant.now().isAfter(expira);
-        }
-    }
 }

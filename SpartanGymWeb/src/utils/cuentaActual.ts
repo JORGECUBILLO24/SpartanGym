@@ -4,16 +4,35 @@ export const CLAVE_CUENTA_ACTUAL = 'spartanGym.currentAccount';
 export const EVENTO_CUENTA_ACTUAL = 'spartanGym.currentAccountChanged';
 export const CLAVE_ULTIMO_CIERRE = 'spartanGym.lastLogout';
 
-const CUENTA_SIN_SESION = {
+/** Cuenta que la interfaz muestra como "sesión actual". Todos los campos son opcionales. */
+export interface CuentaActual {
+  id?: string;
+  username?: string;
+  email?: string;
+  name?: string;
+  /** Etiqueta legible del rol ("Superadmin"), o el valor crudo de la API ("ROLE_ADMIN"). */
+  role?: string;
+  loggedAt?: string;
+}
+
+const CUENTA_SIN_SESION: CuentaActual = {
   username: '',
   role: '',
 };
 
-const leerCuentaApi = () => {
+interface UsuarioApiGuardado {
+  id?: string;
+  email?: string;
+  rol?: string;
+}
+
+const leerCuentaApi = (): CuentaActual | null => {
   if (typeof window === 'undefined') return null;
 
   try {
-    const usuario = JSON.parse(window.localStorage.getItem('spartan_user'));
+    const bruto = window.localStorage.getItem('spartan_user');
+    if (!bruto) return null;
+    const usuario = JSON.parse(bruto) as UsuarioApiGuardado | null;
     if (!usuario) return null;
 
     return {
@@ -27,13 +46,13 @@ const leerCuentaApi = () => {
   }
 };
 
-export const leerCuentaActiva = () => leerDatoLocal(CLAVE_CUENTA_ACTUAL, null);
+export const leerCuentaActiva = (): CuentaActual | null => leerDatoLocal<CuentaActual | null>(CLAVE_CUENTA_ACTUAL, null);
 
-export const haySesionActiva = () => Boolean(leerCuentaActiva()?.role);
+export const haySesionActiva = (): boolean => Boolean(leerCuentaActiva()?.role);
 
-export const leerCuentaActual = () => leerCuentaActiva() || leerCuentaApi() || CUENTA_SIN_SESION;
+export const leerCuentaActual = (): CuentaActual => leerCuentaActiva() || leerCuentaApi() || CUENTA_SIN_SESION;
 
-export const guardarCuentaActual = (cuenta) => {
+export const guardarCuentaActual = (cuenta: CuentaActual): CuentaActual => {
   const cuentaGuardada = guardarDatoLocal(CLAVE_CUENTA_ACTUAL, cuenta);
 
   if (typeof window !== 'undefined') {
@@ -44,7 +63,8 @@ export const guardarCuentaActual = (cuenta) => {
   return cuentaGuardada;
 };
 
-export const cerrarSesionActual = (motivo = 'manual') => {
+/** Cierra la sesión en los DOS lugares donde vive (cuenta actual y token/usuario de la API). */
+export const cerrarSesionActual = (motivo = 'manual'): void => {
   if (typeof window === 'undefined') return;
 
   window.localStorage.removeItem(CLAVE_CUENTA_ACTUAL);
@@ -57,7 +77,7 @@ export const cerrarSesionActual = (motivo = 'manual') => {
   window.dispatchEvent(new Event(EVENTO_CUENTA_ACTUAL));
 };
 
-export const obtenerEtiquetaCuentaActual = () => {
+export const obtenerEtiquetaCuentaActual = (): string => {
   const cuenta = leerCuentaActual();
   const usuario = cuenta.username || cuenta.email || cuenta.name || 'Cuenta local';
   const rol = cuenta.role ? ` (${cuenta.role})` : '';
@@ -65,7 +85,10 @@ export const obtenerEtiquetaCuentaActual = () => {
   return `${usuario}${rol}`;
 };
 
-export const obtenerInicialesCuenta = (cuenta, respaldo = 'AD') => {
+export const obtenerInicialesCuenta = (
+  cuenta: Pick<CuentaActual, 'name' | 'username' | 'email'> | null | undefined,
+  respaldo = 'AD',
+): string => {
   const nombre = cuenta?.name || cuenta?.username || cuenta?.email || '';
 
   if (!nombre || nombre.includes('@')) return respaldo;

@@ -5,6 +5,7 @@ import ni.edu.uam.SpartanGymAPI.models.Ejercicio;
 import ni.edu.uam.SpartanGymAPI.models.GrupoMuscular;
 import ni.edu.uam.SpartanGymAPI.services.CatalogoService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +18,9 @@ public class CatalogoController {
     private final CatalogoService catalogoService;
 
     // Endpoints para Grupos Musculares
+    // Leer el catalogo es libre para cualquier sesion; modificarlo, solo para quien arma rutinas.
     @PostMapping("/grupos-musculares")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN', 'ENTRENADOR')")
     public ResponseEntity<GrupoMuscular> crearGrupo(@RequestBody GrupoMuscular grupo) {
         return ResponseEntity.ok(catalogoService.crearGrupoMuscular(grupo));
     }
@@ -29,6 +32,7 @@ public class CatalogoController {
 
     // Endpoints para Ejercicios
     @PostMapping("/ejercicios")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ADMIN', 'ENTRENADOR')")
     public ResponseEntity<Ejercicio> crearEjercicio(@RequestBody Ejercicio ejercicio) {
         return ResponseEntity.ok(catalogoService.crearEjercicio(ejercicio));
     }

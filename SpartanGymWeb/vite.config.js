@@ -22,4 +22,11 @@ export default defineConfig({
       external: ['canvg'],
     },
   },
+  // Vitest: pruebas de unidad y de componentes (jsdom). Ver src/test/setup.ts.
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
+    css: false,
+  },
 })

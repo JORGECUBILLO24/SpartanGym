@@ -5,14 +5,52 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+# Un push nuevo a la misma rama cancela la corrida anterior (ahorra minutos de Actions).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   api:
     name: API tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Servicios reales para las pruebas de integracion (concurrencia de ventas y pagos contra
+    # PostgreSQL, almacen de sesiones QR contra Redis). Sin estas variables esas pruebas se
+    # omiten y el resto corre igual que antes.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: spartangym_it
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d spartangym_it"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SPARTAN_IT_DB_URL: jdbc:postgresql://localhost:5432/spartangym_it
+      SPARTAN_IT_DB_USER: postgres
+      SPARTAN_IT_DB_PASSWORD: postgres
+      SPARTAN_IT_REDIS_URL: redis://localhost:6379
     defaults:
       run:
         working-directory: SpartanGymAPI
@@ -25,12 +63,16 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: Load database schema
+        working-directory: .
+        run: psql "postgresql://postgres:postgres@localhost:5432/spartangym_it" -v ON_ERROR_STOP=1 -q -f spartan_gym_schema.sql
       - name: Run tests
-        run: ./mvnw -B test
+        run: ./mvnw -B --no-transfer-progress test
 
   web:
     name: Web lint and build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: SpartanGymWeb
@@ -47,12 +89,18 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
+      # Comprobacion de tipos de los modulos ya migrados a TypeScript (ver docs/TYPESCRIPT_MIGRATION.md).
+      - name: Type check
+        run: npm run typecheck
+      - name: Unit and component tests
+        run: npm test
       - name: Build
         run: npm run build
 
   android:
     name: Android unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: SpartanGymApp
@@ -74,3 +122,7 @@ jobs:
         run: sdkmanager "platforms;android-36.1" "build-tools;36.0.0"
       - name: Run unit tests
         run: ./gradlew test --no-daemon
+      # Verifica que ambos tipos de build compilan: debug apunta al emulador (10.0.2.2) y
+      # release a la API de produccion, y cada uno lee su URL de un BuildConfig distinto.
+      - name: Assemble debug and release
+        run: ./gradlew assembleDebug assembleRelease --no-daemon

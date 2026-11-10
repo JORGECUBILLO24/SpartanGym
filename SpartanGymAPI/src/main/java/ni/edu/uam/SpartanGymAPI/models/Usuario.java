@@ -3,6 +3,7 @@ package ni.edu.uam.SpartanGymAPI.models;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
 import org.hibernate.annotations.Fetch;
 
 import java.time.LocalDateTime;
@@ -19,7 +20,10 @@ public class Usuario {
     @Column(unique = true, nullable = false, length = 100)
     private String email;
 
+    // Nunca debe salir en un JSON ni en un log: varias entidades (Asistencia, Socio, ...)
+    // arrastran a Usuario y se serializaban enteras, con el hash incluido.
     @JsonIgnore
+    @ToString.Exclude
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 

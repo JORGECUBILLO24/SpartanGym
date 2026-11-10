@@ -1,6 +1,17 @@
 import { obtenerInicialesCuenta } from '../utils/cuentaActual';
 
-const Avatar = ({ fotoUrl, nombre, email, tamano = 40, respaldo = 'US', className = '' }) => {
+interface AvatarProps {
+  fotoUrl?: string | null;
+  nombre?: string | null;
+  email?: string | null;
+  /** Lado en píxeles (el avatar es cuadrado y redondo). */
+  tamano?: number;
+  /** Iniciales a mostrar cuando no hay nombre utilizable. */
+  respaldo?: string;
+  className?: string;
+}
+
+const Avatar = ({ fotoUrl, nombre, email, tamano = 40, respaldo = 'US', className = '' }: AvatarProps) => {
   const estiloTamano = { width: tamano, height: tamano };
 
   if (fotoUrl) {
@@ -14,7 +25,7 @@ const Avatar = ({ fotoUrl, nombre, email, tamano = 40, respaldo = 'US', classNam
     );
   }
 
-  const iniciales = obtenerInicialesCuenta({ name: nombre, email }, respaldo);
+  const iniciales = obtenerInicialesCuenta({ name: nombre ?? undefined, email: email ?? undefined }, respaldo);
   return (
     <span
       style={{ ...estiloTamano, fontSize: Math.round(tamano * 0.4) }}

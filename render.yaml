@@ -25,6 +25,11 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      # Firma los QR de asistencia. OBLIGATORIA: sin ella la API no arranca fuera del perfil
+      # local. Minimo 32 caracteres aleatorios; generar uno propio, por ejemplo con:
+      #   openssl rand -base64 48
+      - key: ATTENDANCE_QR_SECRET
+        sync: false
       # Origen(es) del web desplegado para CORS (separados por coma). Ej:
       #   https://spartangym.vercel.app,http://localhost:5173
       - key: APP_CORS_ORIGINS

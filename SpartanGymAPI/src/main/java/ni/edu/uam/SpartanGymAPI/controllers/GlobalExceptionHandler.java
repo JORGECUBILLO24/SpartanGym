@@ -5,7 +5,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import ni.edu.uam.SpartanGymAPI.exceptions.ApiException;
 import ni.edu.uam.SpartanGymAPI.exceptions.RespuestaError;
+import org.springframework.dao.ConcurrencyFailureException;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -78,6 +81,24 @@ public class GlobalExceptionHandler {
         log.warn("Violación de integridad de datos en {}: {}", origen(request), ex.getMostSpecificCause().getMessage());
         return respuestaError.construir(HttpStatus.CONFLICT, "CONFLICTO",
                 "Ya existe un registro con esos datos (por ejemplo, el correo ya está en uso).", request);
+    }
+
+    // Una dependencia (PostgreSQL, Redis) no responde o agoto el tiempo: no es un error de la
+    // peticion ni un bug, es indisponibilidad temporal -> 503 en vez de un 500 generico.
+    @ExceptionHandler({DataAccessResourceFailureException.class, QueryTimeoutException.class})
+    public ResponseEntity<String> handleDependenciaNoDisponible(RuntimeException ex, HttpServletRequest request) {
+        log.error("Dependencia no disponible en {}: {}", origen(request), ex.getMessage(), ex);
+        return respuestaError.construir(HttpStatus.SERVICE_UNAVAILABLE, "SERVICIO_NO_DISPONIBLE",
+                "El servicio no esta disponible temporalmente. Intenta de nuevo en un momento.", request);
+    }
+
+    // Otra transaccion tenia bloqueados los mismos datos (timeout de bloqueo, deadlock, version
+    // desactualizada). No es un error del servidor ni del usuario: reintentar suele bastar -> 409.
+    @ExceptionHandler(ConcurrencyFailureException.class)
+    public ResponseEntity<String> handleConcurrencia(ConcurrencyFailureException ex, HttpServletRequest request) {
+        log.warn("Conflicto de concurrencia en {}: {}", origen(request), ex.getMostSpecificCause().getMessage());
+        return respuestaError.construir(HttpStatus.CONFLICT, "CONFLICTO",
+                "Otra operacion esta modificando los mismos datos. Intenta de nuevo en unos segundos.", request);
     }
 
     // Excepciones propias de Spring MVC (404 de ruta desconocida, 405, etc.): conservan su status.

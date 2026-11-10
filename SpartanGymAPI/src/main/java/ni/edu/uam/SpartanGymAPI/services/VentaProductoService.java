@@ -27,6 +27,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -98,10 +99,14 @@ public class VentaProductoService {
         venta.setObservaciones(limpiarTexto(request.getObservaciones()));
         venta.setFechaCreacion(LocalDateTime.now());
 
+        // Se bloquean TODOS los productos de la venta antes de leer su stock, siempre en el mismo
+        // orden (por id). Sin esto, dos ventas simultaneas facturaban unidades que ya no existian,
+        // y dos ventas con los mismos productos en orden distinto terminaban en deadlock.
+        Map<UUID, ProductoInventario> productos = bloquearProductos(request.getDetalles());
+
         BigDecimal subtotal = BigDecimal.ZERO;
         for (VentaProductoDetalleRequest detalleRequest : request.getDetalles()) {
-            ProductoInventario producto = productoRepository.findById(detalleRequest.getProductoId())
-                    .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado"));
+            ProductoInventario producto = productos.get(detalleRequest.getProductoId());
             int cantidad = detalleRequest.getCantidad() == null ? 0 : detalleRequest.getCantidad();
             if (cantidad <= 0) {
                 throw new ReglaNegocioException("La cantidad debe ser mayor a cero");
@@ -164,6 +169,22 @@ public class VentaProductoService {
         request.setDetalles(List.of(detalle));
 
         return vender(request, auth);
+    }
+
+    private Map<UUID, ProductoInventario> bloquearProductos(List<VentaProductoDetalleRequest> detalles) {
+        Map<UUID, ProductoInventario> productos = new LinkedHashMap<>();
+        detalles.stream()
+                .map(detalle -> {
+                    if (detalle.getProductoId() == null) {
+                        throw new ReglaNegocioException("Selecciona un producto para cada linea de la venta");
+                    }
+                    return detalle.getProductoId();
+                })
+                .distinct()
+                .sorted()
+                .forEach(id -> productos.put(id, productoRepository.findByIdForUpdate(id)
+                        .orElseThrow(() -> new RecursoNoEncontradoException("Producto no encontrado"))));
+        return productos;
     }
 
     private Usuario obtenerVendedor(Authentication auth) {
