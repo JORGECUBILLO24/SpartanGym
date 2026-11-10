@@ -10,7 +10,8 @@ import org.springframework.test.context.DynamicPropertySource;
  * restricciones de la base). Con mocks no se puede probar una carrera: lo que importa es cómo
  * se comportan las transacciones y los bloqueos de la base de datos.
  *
- * Solo corren si SPARTAN_IT_DB_URL está definida. La CI la define con un servicio postgres:16.
+ * Solo corren si SPARTAN_IT_DB_URL está definida: cada subclase debe declarar también
+ * @EnabledIfEnvironmentVariable, porque JUnit no hereda esa condición de esta clase base. La CI la define con un servicio postgres:16.
  * En local, apuntarla a una base DESCARTABLE con el esquema ya cargado, nunca a una de verdad:
  *
  *   SPARTAN_IT_DB_URL=jdbc:postgresql://localhost:5432/spartangym_it

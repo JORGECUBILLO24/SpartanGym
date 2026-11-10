@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -35,6 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Antes de bloquear las filas de producto, 12 ventas de 1 unidad con stock 5 se facturaban todas,
  * y dos ventas con los mismos productos en orden opuesto terminaban en deadlock.
  */
+// La condicion va en cada clase: JUnit no la hereda de IntegracionPostgresBase.
+@EnabledIfEnvironmentVariable(named = "SPARTAN_IT_DB_URL", matches = ".+")
 class VentaProductoConcurrenciaIntegrationTest extends IntegracionPostgresBase {
 
     @Autowired private VentaProductoService ventaProductoService;

@@ -17,6 +17,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.util.List;
@@ -52,6 +53,9 @@ class AutorizacionPorObjetoTest {
     @MockitoBean private SocioService socioService;
     @MockitoBean private NotificacionRepository notificacionRepository;
     @MockitoBean private CatalogoService catalogoService;
+    // marcarLeida es @Transactional: sin esto la prueba abriría una conexión real a PostgreSQL y
+    // fallaría con 500 en cualquier entorno sin esa base (como la CI). Acá solo importa la autorización.
+    @MockitoBean private PlatformTransactionManager transactionManager;
 
     private MockMvc mockMvc;
     private Usuario socio;

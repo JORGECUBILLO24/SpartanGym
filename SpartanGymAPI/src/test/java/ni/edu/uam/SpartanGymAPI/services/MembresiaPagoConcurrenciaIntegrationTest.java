@@ -13,6 +13,7 @@ import ni.edu.uam.SpartanGymAPI.repositories.UsuarioRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -35,6 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * PostgreSQL real. Lo que se verifica es el DINERO: nunca debe quedar un pago cobrado sin la
  * membresía que le corresponde, ni dos membresías activas para el mismo socio.
  */
+// La condicion va en cada clase: JUnit no la hereda de IntegracionPostgresBase.
+@EnabledIfEnvironmentVariable(named = "SPARTAN_IT_DB_URL", matches = ".+")
 class MembresiaPagoConcurrenciaIntegrationTest extends IntegracionPostgresBase {
 
     private static final String EMAIL = "socio-it-membresia@ejemplo.com";
