@@ -28,7 +28,7 @@ rutinas, inventario, ventas, finanzas, reportes, sucursales y notificaciones.
 ### 1. Clonar y preparar la base de datos
 
 ```powershell
-git clone https://github.com/JORGECUBILLO24/SpartanGym.git
+git clone https://github.com/JORGECUBILLO24/SaasGym.git
 cd SaasGym
 ```
 
