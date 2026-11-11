@@ -1,4 +1,4 @@
-# SpartanGym
+# SaasGym
 
 Sistema de gestión para gimnasios compuesto por una API REST, una aplicación web
 para administración y recepción, y una aplicación Android para socios y
@@ -8,9 +8,9 @@ entrenadores.
 
 | Componente | Ubicación | Tecnología |
 | --- | --- | --- |
-| API | `SpartanGymAPI` | Spring Boot 4, Java 17, PostgreSQL, JWT |
-| Web | `SpartanGymWeb` | React 19, Vite, Tailwind CSS |
-| Android | `SpartanGymApp` | Kotlin, Jetpack Compose, Retrofit |
+| API | `SaasGym` | Spring Boot 4, Java 17, PostgreSQL, JWT |
+| Web | `SaasGym` | React 19, Vite, Tailwind CSS |
+| Android | `SaasGym` | Kotlin, Jetpack Compose, Retrofit |
 
 La API expone autenticación, socios, personal, membresías, pagos, asistencias,
 rutinas, inventario, ventas, finanzas, reportes, sucursales y notificaciones.
@@ -29,7 +29,7 @@ rutinas, inventario, ventas, finanzas, reportes, sucursales y notificaciones.
 
 ```powershell
 git clone https://github.com/JORGECUBILLO24/SpartanGym.git
-cd SpartanGym
+cd SaasGym
 ```
 
 Crea una base de datos PostgreSQL llamada `spartangym_db` y ejecuta
