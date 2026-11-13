@@ -13,10 +13,13 @@ import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class MembresiaService {
+
+    private static final Set<String> METODOS_PAGO_VALIDOS = Set.of("Efectivo", "Tarjeta", "Transferencia");
 
     private final SocioRepository socioRepository;
     private final TipoMembresiaRepository tipoMembresiaRepository;
@@ -82,7 +85,7 @@ public class MembresiaService {
     public MembresiaSocio comprarMembresia(String emailSocio, CompraMembresiaRequest request) {
 
         // 1. Identificar al usuario a partir del email extraído de su token
-        Usuario usuario = usuarioRepository.findByEmail(emailSocio)
+        Usuario usuario = usuarioRepository.findByEmailIgnoreCase(emailSocio)
                 .orElseThrow(() -> new NoAutenticadoException("Usuario no encontrado en el sistema"));
 
         Socio socio = socioRepository.findById(usuario.getId())
@@ -91,6 +94,7 @@ public class MembresiaService {
         // 2. Buscar el catálogo de membresía seleccionado
         TipoMembresia tipo = tipoMembresiaRepository.findById(request.getTipoMembresiaId())
                 .orElseThrow(() -> new RecursoNoEncontradoException("Tipo de membresía inválido"));
+        String metodoPago = validarMetodoPago(request.getMetodoPago());
 
         // 3. Regla de Negocio: Prevenir compras si ya tiene una activa (Evita romper el Index de BD)
         Optional<MembresiaSocio> membresiaActiva = membresiaSocioRepository
@@ -104,7 +108,7 @@ public class MembresiaService {
         Pago pago = new Pago();
         pago.setSocio(socio);
         pago.setMonto(tipo.getPrecio()); // El precio es el oficial de la base de datos
-        pago.setMetodoPago(request.getMetodoPago());
+        pago.setMetodoPago(metodoPago);
         pago = pagoRepository.save(pago);
 
         // 5. Crear y calcular la nueva membresía
@@ -119,5 +123,15 @@ public class MembresiaService {
         nuevaMembresia.setEstado("Activa");
 
         return membresiaSocioRepository.save(nuevaMembresia);
+    }
+
+    static String validarMetodoPago(String metodoPago) {
+        String normalizado = metodoPago == null ? "" : metodoPago.trim();
+        return METODOS_PAGO_VALIDOS.stream()
+                .filter(metodo -> metodo.equalsIgnoreCase(normalizado))
+                .findFirst()
+                .orElseThrow(() -> new ReglaNegocioException(
+                        "El método de pago debe ser Efectivo, Tarjeta o Transferencia."
+                ));
     }
 }

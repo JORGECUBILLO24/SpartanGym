@@ -35,6 +35,8 @@ services:
       - key: APP_CORS_ORIGINS
         sync: false
       # Opcionales para que funcionen los correos:
+      - key: MAIL_HOST
+        value: smtp-relay.brevo.com
       - key: MAIL_USERNAME
         sync: false
       - key: MAIL_PASSWORD

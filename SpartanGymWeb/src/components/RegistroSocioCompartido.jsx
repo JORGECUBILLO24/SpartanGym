@@ -192,7 +192,7 @@ const RegistroSocioCompartido = ({
             <CampoRegistro icono={User} etiqueta="Apellidos" nombre="apellidos" valor={formulario.apellidos} placeholder="Ej. Perez Silva" onChange={actualizarCampo} requerido />
             <CampoRegistro icono={Mail} etiqueta="Correo electronico" nombre="email" type="email" valor={formulario.email} placeholder="correo@ejemplo.com" onChange={actualizarCampo} requerido />
             <CampoRegistro icono={Phone} etiqueta="Telefono" nombre="telefono" type="tel" valor={formulario.telefono} placeholder="+505 0000 0000" onChange={actualizarCampo} />
-            <CampoRegistro icono={Lock} etiqueta="Contraseña inicial" nombre="password" type="text" valor={formulario.password} placeholder="Mínimo 6 caracteres" onChange={actualizarCampo} requerido />
+            <CampoRegistro icono={Lock} etiqueta="Contraseña inicial" nombre="password" type="text" valor={formulario.password} placeholder="Mínimo 8 caracteres" onChange={actualizarCampo} minLength={8} requerido />
             <label className="block">
               <span className="mb-2 block text-xs font-black uppercase tracking-widest text-gray-500">Sucursal</span>
               <select
@@ -378,12 +378,12 @@ const RegistroSocioCompartido = ({
                 <Lock className="absolute left-4 top-3.5 text-gray-500" size={18} />
                 <input
                   type="text"
-                  minLength={6}
+                  minLength={8}
                   required
                   value={passwordTemporal}
                   onChange={(e) => setPasswordTemporal(e.target.value)}
                   className="campo-sistema w-full rounded-xl border border-white/10 bg-[#050505] py-3 pl-12 pr-4 text-sm text-white outline-none transition-all focus:border-amber-400"
-                  placeholder="Minimo 6 caracteres"
+                  placeholder="Minimo 8 caracteres"
                 />
               </span>
             </label>
@@ -391,7 +391,12 @@ const RegistroSocioCompartido = ({
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => setPasswordTemporal(Math.random().toString(36).slice(-8) + 'Gym!')}
+                onClick={() => {
+                  const bytes = new Uint8Array(12);
+                  crypto.getRandomValues(bytes);
+                  const aleatorio = Array.from(bytes, (byte) => (byte % 36).toString(36)).join('');
+                  setPasswordTemporal(`${aleatorio}Gym!`);
+                }}
                 className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-gray-300 transition-colors hover:bg-white/10"
               >
                 Generar
@@ -430,6 +435,7 @@ const CampoRegistro = ({
   onChange,
   type = 'text',
   requerido = false,
+  minLength,
 }) => (
   <label className="block">
     <span className="mb-2 block text-xs font-black uppercase tracking-widest text-gray-500">{etiqueta}</span>
@@ -439,6 +445,7 @@ const CampoRegistro = ({
         type={type}
         name={nombre}
         required={requerido}
+        minLength={minLength}
         value={valor}
         onChange={onChange}
         placeholder={placeholder}

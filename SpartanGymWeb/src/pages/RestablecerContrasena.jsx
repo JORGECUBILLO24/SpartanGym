@@ -71,7 +71,7 @@ const RestablecerContrasena = () => {
             label="Nueva contraseña"
             value={password}
             onChange={setPassword}
-            placeholder="Minimo 6 caracteres"
+            placeholder="Minimo 8 caracteres"
           />
           <CampoPassword
             label="Confirmar contraseña"
@@ -118,7 +118,7 @@ const CampoPassword = ({ label, value, onChange, placeholder }) => {
         <Lock className="absolute left-3 top-3.5 h-4 w-4 text-gray-600 transition-colors group-focus-within:text-red-500" />
         <input
           type={mostrar ? 'text' : 'password'}
-          minLength={6}
+          minLength={8}
           required
           value={value}
           onChange={(e) => onChange(e.target.value)}
