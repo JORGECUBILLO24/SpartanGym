@@ -35,7 +35,7 @@ import {
   personalCreadoPorCuentaActual,
 } from '../../../utils/personalCompartido';
 import { formatearMoneda, useConfiguracionApp } from '../../../utils/configuracionApp';
-import { operacionApi, sociosApi, sucursalesApi, asistenciasApi } from '../../../services/api';
+import { operacionApi, personalApi, sociosApi, sucursalesApi, asistenciasApi } from '../../../services/api';
 import { useSucursalGlobal } from '../../../context/SucursalContext';
 import QRCode from 'qrcode';
 
@@ -242,11 +242,11 @@ const PerfilAdmin = () => {
     });
   };
 
-  const guardarPerfil = (evento) => {
+  const guardarPerfil = async (evento) => {
     evento.preventDefault();
     setGuardando(true);
 
-    setTimeout(() => {
+    try {
       const perfilNormalizado = {
         ...perfil,
         nombre: perfil.nombre.trim(),
@@ -257,6 +257,16 @@ const PerfilAdmin = () => {
         ubicacion: perfil.ubicacion.trim(),
       };
       const cuentaPrevia = leerCuentaActual();
+      const partesNombre = perfilNormalizado.nombre.split(/\s+/).filter(Boolean);
+      const nombres = partesNombre.shift() || perfilNormalizado.nombre;
+      const apellidos = partesNombre.join(' ');
+
+      const datosActualizados = await personalApi.actualizarPerfil({
+        email: perfilNormalizado.correo,
+        nombres,
+        ...(apellidos ? { apellidos } : {}),
+        telefono: perfilNormalizado.telefono,
+      });
 
       guardarDatoLocal(CLAVE_PERFIL_ADMIN, perfilNormalizado);
       const cuentaGuardada = guardarCuentaActual({
@@ -270,10 +280,19 @@ const PerfilAdmin = () => {
 
       setPerfil(perfilNormalizado);
       setCuentaActual(cuentaGuardada);
-      setGuardando(false);
       setGuardado(true);
       setTimeout(() => setGuardado(false), 2600);
-    }, 700);
+      if (datosActualizados?.email) {
+        setPerfil((actual) => ({ ...actual, correo: datosActualizados.email }));
+      }
+    } catch (error) {
+      setMensajePersonal({
+        tipo: 'error',
+        texto: error?.message || 'No se pudo guardar el perfil en la API.',
+      });
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const persistirFotoLocal = (nueva) => {

@@ -114,28 +114,6 @@ ALTER TABLE personal
 ALTER TABLE personal
     ADD COLUMN IF NOT EXISTS sucursal_id UUID REFERENCES sucursales(id);
 
--- Usuario inicial para administración del sistema.
--- Email: admin@spartangym
--- Contraseña: admin123
-WITH rol_superadmin AS (
-    SELECT id FROM roles WHERE nombre = 'ROLE_SUPERADMIN'
-), usuario_superadmin AS (
-    INSERT INTO usuarios (email, password_hash, rol_id, activo)
-    SELECT 'admin@spartangym', '$2y$12$qMiACDBSKqYNbjb7JHPYKeoKFj0G3mDbiQUrZscdptgrkglHeJ9hW', id, TRUE
-    FROM rol_superadmin
-    ON CONFLICT (email) DO UPDATE
-        SET rol_id = EXCLUDED.rol_id,
-            activo = TRUE
-    RETURNING id
-)
-INSERT INTO personal (usuario_id, nombres, apellidos, especialidad)
-SELECT id, 'Super', 'Admin', 'Control Maestro'
-FROM usuario_superadmin
-ON CONFLICT (usuario_id) DO UPDATE
-    SET nombres = EXCLUDED.nombres,
-        apellidos = EXCLUDED.apellidos,
-        especialidad = EXCLUDED.especialidad;
-
 -- ==========================================
 -- 3. Rutinas y progreso
 -- ==========================================

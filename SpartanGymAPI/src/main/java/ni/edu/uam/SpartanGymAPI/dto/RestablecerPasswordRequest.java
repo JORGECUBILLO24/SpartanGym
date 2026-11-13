@@ -10,6 +10,6 @@ public class RestablecerPasswordRequest {
     private String token;
 
     @NotBlank(message = "La nueva contraseña es obligatoria")
-    @Size(min = 6, message = "La nueva contraseña debe tener al menos 6 caracteres")
+    @Size(min = 8, message = "La nueva contraseña debe tener al menos 8 caracteres")
     private String password;
 }

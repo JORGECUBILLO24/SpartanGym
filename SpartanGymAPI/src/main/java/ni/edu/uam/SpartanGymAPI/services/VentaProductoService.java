@@ -138,7 +138,9 @@ public class VentaProductoService {
         aplicarPagoEfectivo(venta, request);
 
         VentaProducto ventaGuardada = ventaRepository.save(venta);
-        registrarMovimiento(ventaGuardada, auth);
+        if (!"Pendiente en recepción".equalsIgnoreCase(ventaGuardada.getMetodoPago())) {
+            registrarMovimiento(ventaGuardada, auth);
+        }
         return toResponse(ventaGuardada);
     }
 

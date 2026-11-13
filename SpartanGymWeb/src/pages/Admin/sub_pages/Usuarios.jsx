@@ -90,7 +90,9 @@ const Usuarios = () => {
   };
 
   const generarPassword = () => {
-    const randomPass = Math.random().toString(36).slice(-8) + "Gym!";
+    const bytes = new Uint8Array(12);
+    crypto.getRandomValues(bytes);
+    const randomPass = `${Array.from(bytes, (byte) => (byte % 36).toString(36)).join('')}Gym!`;
     setFormData({ ...formData, password: randomPass });
   };
 
@@ -572,12 +574,12 @@ const Usuarios = () => {
                 <Lock className="absolute left-4 top-3.5 text-gray-500" size={18} />
                 <input
                   type="text"
-                  minLength={6}
+                  minLength={8}
                   required
                   value={passwordTemporal}
                   onChange={(e) => setPasswordTemporal(e.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-[#050505] py-3 pl-12 pr-4 text-sm text-white outline-none transition-all focus:border-amber-400"
-                  placeholder="Minimo 6 caracteres"
+                  placeholder="Minimo 8 caracteres"
                 />
               </span>
             </label>
@@ -585,7 +587,11 @@ const Usuarios = () => {
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => setPasswordTemporal(Math.random().toString(36).slice(-8) + 'Gym!')}
+                onClick={() => {
+                  const bytes = new Uint8Array(12);
+                  crypto.getRandomValues(bytes);
+                  setPasswordTemporal(`${Array.from(bytes, (byte) => (byte % 36).toString(36)).join('')}Gym!`);
+                }}
                 className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-gray-300 transition-colors hover:bg-white/10"
               >
                 Generar

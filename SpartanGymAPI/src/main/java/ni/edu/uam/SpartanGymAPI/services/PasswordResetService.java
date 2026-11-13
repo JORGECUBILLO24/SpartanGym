@@ -11,6 +11,7 @@ import ni.edu.uam.SpartanGymAPI.repositories.PasswordResetTokenRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.PersonalRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.SocioRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.UsuarioRepository;
+import ni.edu.uam.SpartanGymAPI.util.ValidacionCuenta;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -192,13 +193,11 @@ public class PasswordResetService {
     }
 
     private void validarPassword(String password) {
-        if (password == null || password.length() < 6) {
-            throw new ReglaNegocioException("La nueva contraseña debe tener al menos 6 caracteres");
-        }
+        ValidacionCuenta.password(password);
     }
 
     private String normalizarEmail(String email) {
-        return email == null ? "" : email.trim();
+        return email == null ? "" : email.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     private String obtenerNombreUsuario(Usuario usuario) {

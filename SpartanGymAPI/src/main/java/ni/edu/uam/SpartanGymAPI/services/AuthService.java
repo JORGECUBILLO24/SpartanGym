@@ -15,6 +15,7 @@ import ni.edu.uam.SpartanGymAPI.repositories.SucursalRepository;
 import ni.edu.uam.SpartanGymAPI.repositories.UsuarioRepository;
 import ni.edu.uam.SpartanGymAPI.security.JwtService;
 import ni.edu.uam.SpartanGymAPI.security.UserDetailsImpl;
+import ni.edu.uam.SpartanGymAPI.util.ValidacionCuenta;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,12 +38,20 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        String email = ValidacionCuenta.email(request.getEmail());
+        String password = ValidacionCuenta.password(request.getPassword());
+        String nombres = ValidacionCuenta.requerido(request.getNombres(), "nombres");
+        String apellidos = ValidacionCuenta.requerido(request.getApellidos(), "apellidos");
+        if (usuarioRepository.findByEmailIgnoreCase(email).isPresent()) {
+            throw new ConflictoException("El correo ya está en uso.");
+        }
+
         Rol rolSocio = rolRepository.findByNombre("ROLE_SOCIO")
                 .orElseThrow(() -> new IllegalStateException("Error: Rol ROLE_SOCIO no encontrado en BD."));
 
         Usuario usuario = new Usuario();
-        usuario.setEmail(request.getEmail());
-        usuario.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        usuario.setEmail(email);
+        usuario.setPasswordHash(passwordEncoder.encode(password));
         usuario.setRol(rolSocio);
         usuario.setActivo(true);
 
@@ -50,8 +59,8 @@ public class AuthService {
 
         Socio socio = new Socio();
         socio.setUsuario(usuario);
-        socio.setNombres(request.getNombres());
-        socio.setApellidos(request.getApellidos());
+        socio.setNombres(nombres);
+        socio.setApellidos(apellidos);
         socio.setTelefono(request.getTelefono());
         socio.setEstadoAcceso("Activo");
         if (request.getSucursalId() != null) {
@@ -67,7 +76,7 @@ public class AuthService {
         String token = jwtService.generateToken(userDetails);
 
         // Enviamos el correo en segundo plano
-        notificacionService.enviarCorreoBienvenida(usuario.getEmail(), request.getNombres());
+        notificacionService.enviarCorreoBienvenida(usuario.getEmail(), nombres);
 
         // Hacemos el ÚNICO return correcto al final
         return AuthResponse.builder()
@@ -79,11 +88,12 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
+        String email = ValidacionCuenta.email(request.getEmail());
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(email, request.getPassword())
         );
 
-        Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
+        Usuario usuario = usuarioRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new IllegalStateException("Usuario no encontrado tras autenticación."));
 
         return iniciarSesion(usuario);
